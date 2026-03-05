@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MELEC">
+  <meta name="theme-color" content="#1e3a5f">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MELEC — Suivi Pédagogique v8</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --blue:#0078d4;--blue-dk:#005a9e;--blue-lt:#e8f4fd;
+  --bg:#f3f3f3;--sb:#1e2530;--sb-hov:#2d3748;
+  --brd:#d0d0d0;--txt:#1a1a1a;--muted:#666;
+  --ok:#107c10;--warn:#d83b01;--yel:#ffb900;
+  --shad:0 2px 8px rgba(0,0,0,.1);--bar:#1a1a2e;
+  --pfmp:#6b21a8;--hab:#92400e;
+  --2nde:#0ea5e9;--1ere:#16a34a;--term:#f59e0b;
+}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;align-items:center;justify-content:center;min-height:100vh;font-size:13px;}
+.window{width:1280px;height:820px;background:var(--bg);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;}
+.tbar{background:var(--bar);color:#fff;display:flex;align-items:center;padding:0 12px;height:36px;flex-shrink:0;user-select:none;}
+.tbar .ico{font-size:16px;margin-right:8px;}
+.tbar .ttl{font-size:12px;flex:1;}
+.wbtn{width:46px;height:36px;border:none;background:transparent;color:#fff;cursor:pointer;font-size:11px;}
+.wbtn:hover{background:rgba(255,255,255,.1);}
+.wbtn.cls:hover{background:#e81123;}
+/* SYNC BAR */
+.syncbar{background:#1e3a5f;border-bottom:1px solid #2d5f9e;padding:4px 14px;font-size:11px;color:#90caf9;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.syncbar .sync-dot{width:8px;height:8px;border-radius:50%;background:#4caf50;display:inline-block;margin-right:2px;flex-shrink:0;}
+.syncbar .sync-dot.warn{background:#ff9800;}
+.syncbar .sync-dot.err{background:#f44336;}
+.syncbar .sync-dot.pulse{animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+/* LOCK BAR */
+.lockbar{background:#fff4ce;border-bottom:2px solid var(--yel);padding:7px 14px;font-size:12px;color:#7a5900;display:none;align-items:center;gap:8px;flex-shrink:0;}
+.lockbar.show{display:flex;}
+/* RIBBON */
+.ribbon{background:#fff;border-bottom:1px solid var(--brd);padding:5px 12px;display:flex;align-items:center;gap:5px;flex-shrink:0;flex-wrap:wrap;}
+.rg{display:flex;align-items:center;gap:3px;padding-right:8px;border-right:1px solid var(--brd);}
+.rg:last-child{border-right:none;}
+.rl{font-size:10px;color:var(--muted);margin-right:3px;white-space:nowrap;}
+.rb{padding:4px 9px;border:1px solid var(--brd);background:#fff;border-radius:3px;cursor:pointer;font-size:11px;color:var(--txt);display:flex;align-items:center;gap:3px;transition:all .15s;white-space:nowrap;}
+.rb:hover{background:var(--blue-lt);border-color:var(--blue);color:var(--blue);}
+.rb:disabled{opacity:.35;cursor:not-allowed;pointer-events:none;}
+.rb.pri{background:var(--blue);color:#fff;border-color:var(--blue);}
+.rb.pri:hover{background:var(--blue-dk);}
+.rb.dan{background:#c00;color:#fff;border-color:#c00;}
+.rb.dan:hover{background:#900;}
+.rb.yel{background:#7a5900;color:#fff;border-color:#7a5900;}
+.tsel{padding:3px 8px;border:1px solid var(--brd);border-radius:3px;font-size:12px;background:#fff;color:var(--txt);outline:none;}
+/* BODY */
+.abody{display:flex;flex:1;overflow:hidden;}
+/* SIDEBAR */
+.sb{width:210px;background:var(--sb);color:#ccc;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.sbt{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;padding:10px 14px 3px;margin-top:4px;}
+.si{padding:7px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .15s;border-left:3px solid transparent;font-size:12px;}
+.si:hover{background:var(--sb-hov);color:#fff;}
+.si.act{background:rgba(0,120,212,.25);border-left-color:var(--blue);color:#fff;}
+.si .ic{font-size:13px;width:17px;text-align:center;}
+/* Level pills */
+.lvlp{display:flex;flex-direction:column;gap:3px;padding:4px 12px 10px;}
+.lp{padding:6px 10px;border-radius:5px;cursor:pointer;font-size:11px;font-weight:700;border:2px solid transparent;transition:all .15s;text-align:center;}
+.lp.s1{background:rgba(14,165,233,.15);color:var(--2nde);}
+.lp.s2{background:rgba(22,163,74,.15);color:var(--1ere);}
+.lp.s3{background:rgba(245,158,11,.15);color:var(--term);}
+.lp:hover,.lp.alv{border-color:currentColor;opacity:1;}
+/* CONTENT */
+.cont{flex:1;overflow-y:auto;padding:14px 16px;background:var(--bg);}
+.view{display:none;}.view.act{display:block;}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.pt{font-size:17px;font-weight:600;color:var(--txt);}
+.ps{font-size:11px;color:var(--muted);margin-top:2px;}
+/* STATUS BAR */
+.stbar{background:var(--blue);color:#fff;font-size:11px;padding:3px 12px;display:flex;gap:16px;flex-shrink:0;flex-wrap:wrap;}
+/* KPIs */
+.dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+.kpi{background:#fff;border-radius:4px;padding:11px 13px;box-shadow:var(--shad);border-top:3px solid var(--blue);display:flex;flex-direction:column;gap:2px;}
+.kpi.g{border-top-color:var(--ok);}.kpi.y{border-top-color:var(--yel);}.kpi.p{border-top-color:var(--pfmp);}
+.kl{font-size:10px;color:var(--muted);}.kv{font-size:24px;font-weight:700;color:var(--txt);line-height:1;}.ks{font-size:10px;color:var(--muted);}
+.pb{background:#e0e0e0;border-radius:3px;height:5px;margin:2px 0;}
+.pf{height:5px;border-radius:3px;background:var(--blue);transition:width .4s;}
+/* TABLE */
+.dt{width:100%;border-collapse:collapse;background:#fff;border-radius:4px;overflow:hidden;box-shadow:var(--shad);margin-bottom:12px;}
+.dt th{background:var(--bar);color:#fff;padding:6px 9px;text-align:left;font-size:11px;font-weight:600;}
+.dt td{padding:5px 9px;border-bottom:1px solid #f0f0f0;font-size:11px;color:var(--txt);vertical-align:middle;}
+.dt tr:hover td{background:var(--blue-lt);}
+.dt tr:last-child td{border-bottom:none;}
+/* BADGES */
+.bdg{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;}
+.bdg.done,.bdg.main{background:#dff6dd;color:var(--ok);}
+.bdg.prep{background:#e8f4fd;color:#005a9e;}
+.bdg.real{background:#fff4ce;color:#7a5900;}
+.bdg.mise{background:#fde7e9;color:#a80000;}
+.bdg.prog{background:#fff4ce;color:#7a5900;}
+.bdg.todo{background:#fde7e9;color:#a80000;}
+.lbdg{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;}
+.lbdg.s1{background:#dbeafe;color:#1d4ed8;}
+.lbdg.s2{background:#dcfce7;color:#15803d;}
+.lbdg.s3{background:#fef9c3;color:#854d0e;}
+/* PROGRESS BAR */
+.mp{display:flex;align-items:center;gap:5px;}
+.mpb{flex:1;background:#e0e0e0;border-radius:3px;height:6px;}
+.mpf{height:6px;border-radius:3px;background:var(--blue);}
+.mpt{font-size:10px;color:var(--muted);width:32px;text-align:right;}
+/* INPUTS */
+.gi{width:46px;padding:2px 4px;border:1px solid var(--brd);border-radius:3px;text-align:center;font-size:12px;outline:none;}
+.gi:focus{border-color:var(--blue);}
+/* MODAL */
+.moverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;}
+.moverlay.show{display:flex;}
+.modal{background:#fff;border-radius:4px;width:480px;max-height:92vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.4);}
+.modal.w{width:640px;}.modal.xl{width:840px;}
+.mhd{background:var(--bar);color:#fff;padding:9px 15px;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px;position:sticky;top:0;z-index:1;}
+.mhd.pf{background:#4a1168;}.mhd.hab{background:#78350f;}.mhd.dan{background:#8b0000;}.mhd.edt{background:#005a9e;}.mhd.ens{background:#1a1a2e;}.mhd.gr{background:#1a6b2e;}
+.mcl{background:none;border:none;color:#fff;cursor:pointer;font-size:16px;}
+.mbdy{padding:15px;}
+.mft{padding:9px 15px;border-top:1px solid var(--brd);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:#fff;}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fg{margin-bottom:9px;}
+.fl{display:block;font-size:11px;color:var(--muted);margin-bottom:3px;font-weight:600;}
+.fi,.fs,.fta{width:100%;padding:6px 10px;border:1px solid var(--brd);border-radius:3px;font-size:12px;outline:none;font-family:inherit;}
+.fta{min-height:65px;resize:vertical;}
+.fi:focus,.fs:focus,.fta:focus{border-color:var(--blue);}
+.btn{padding:5px 15px;border:1px solid var(--brd);border-radius:3px;cursor:pointer;font-size:12px;font-family:inherit;}
+.bpri{background:var(--blue);color:#fff;border-color:var(--blue);}.bpri:hover{background:var(--blue-dk);}
+.bsec{background:#fff;color:var(--txt);}.bsec:hover{background:var(--bg);}
+.bdan{background:#c00;color:#fff;border-color:#c00;}.bdan:hover{background:#900;}
+.sh{font-size:12px;font-weight:700;color:var(--blue-dk);border-bottom:2px solid var(--blue);padding-bottom:3px;margin-bottom:8px;margin-top:14px;}
+.sh:first-child{margin-top:0;}.sh.p{color:var(--pfmp);border-bottom-color:var(--pfmp);}.sh.h{color:#92400e;border-bottom-color:#b45309;}
+.asl{max-height:140px;overflow-y:auto;border:1px solid var(--brd);border-radius:3px;padding:5px;background:#fafafa;}
+.asi{display:flex;align-items:center;gap:6px;padding:3px;border-radius:3px;font-size:12px;cursor:pointer;}
+.asi:hover{background:var(--blue-lt);}
+.asi input{accent-color:var(--blue);cursor:pointer;}
+.dzone{background:#fff5f5;border:1px solid #fcc;border-radius:4px;padding:13px;}
+.dzone h4{color:#c00;font-size:13px;margin-bottom:7px;}
+.dzone p{font-size:11px;color:#666;margin-bottom:10px;line-height:1.5;}
+.cinp{padding:5px 10px;border:2px solid #fcc;border-radius:3px;font-size:13px;outline:none;width:100%;}
+.cinp:focus{border-color:#c00;}
+/* ELEVE BLOCKS */
+.eblk{background:#fff;border-radius:4px;box-shadow:var(--shad);margin-bottom:10px;overflow:hidden;}
+.ebh{display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:#f7f7f7;border-bottom:1px solid #eee;}
+.ra{display:flex;gap:4px;flex-wrap:wrap;}
+/* PFMP */
+.pc{background:#fff;border-radius:4px;padding:13px;box-shadow:var(--shad);border-left:4px solid var(--pfmp);}
+.pc h4{font-size:12px;font-weight:700;color:var(--pfmp);margin-bottom:7px;}
+.pf2{display:flex;gap:6px;margin-bottom:3px;font-size:11px;}
+.pf2 label{color:var(--muted);min-width:100px;}
+.pf2 span{color:var(--txt);font-weight:600;}
+.pcm{background:#f9f0ff;border-radius:3px;padding:7px;font-size:11px;color:#555;margin-top:7px;font-style:italic;border-left:3px solid var(--pfmp);}
+/* ENSEIGNANTS */
+.fc{background:#fff;border-radius:4px;padding:14px;box-shadow:var(--shad);margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;}
+.fav{width:48px;height:48px;background:linear-gradient(135deg,var(--blue),#00b4d8);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;font-weight:700;flex-shrink:0;}
+.fn{font-size:14px;font-weight:700;color:var(--txt);}
+.fct{display:flex;gap:12px;font-size:11px;flex-wrap:wrap;margin-top:3px;}
+.ens-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px;}
+.ens-card{background:#fff;border-radius:4px;box-shadow:var(--shad);overflow:hidden;border-top:4px solid var(--blue);}
+.ens-card-body{padding:12px 14px;}
+.ens-name{font-size:13px;font-weight:700;color:var(--txt);}
+.ens-spec{font-size:11px;color:var(--muted);margin-top:2px;}
+.ens-card-footer{padding:7px 14px;background:#f7f7f7;border-top:1px solid #eee;display:flex;gap:6px;}
+/* HABILITATIONS */
+.hbdg{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.hbdg.ok{background:#dff6dd;color:var(--ok);}
+.hbdg.partial{background:#fff4ce;color:#7a5900;}
+.hbdg.no{background:#f3f3f3;color:#aaa;}
+/* TP SEANCES */
+.tp-sel{font-size:11px;padding:2px 5px;border:1px solid var(--brd);border-radius:3px;outline:none;background:#fff;}
+.tp-seance-btn{width:22px;height:22px;border:1px solid var(--brd);background:#fff;border-radius:3px;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;justify-content:center;line-height:1;}
+.tp-seance-btn:hover{background:var(--blue-lt);}
+.tp-seance-btn:disabled{opacity:.3;cursor:not-allowed;}
+/* NOTIF */
+.notif{position:fixed;bottom:40px;right:20px;background:var(--ok);color:#fff;padding:9px 17px;border-radius:4px;font-size:12px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.3);transform:translateY(80px);opacity:0;transition:all .3s;z-index:9999;}
+.notif.show{transform:translateY(0);opacity:1;}
+.notif.err{background:#c00;}
+.notif.info{background:#0078d4;}
+/* EMPTY */
+.empty{text-align:center;padding:34px 20px;color:var(--muted);}
+.empty .eic{font-size:34px;margin-bottom:7px;}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px;}
+/* LIVE INDICATOR */
+.live-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:10px;background:#dff6dd;color:#107c10;font-weight:600;}
+.live-dot{width:6px;height:6px;background:#107c10;border-radius:50%;animation:pulse 1.5s infinite;}
+/* SESSIONS GRID */
+.sessions-bar{background:#0f172a;border-bottom:1px solid #1e293b;padding:3px 14px;font-size:10px;color:#64748b;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+/* 3-CLASS OVERVIEW */
+.class-overview{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+.class-card{background:#fff;border-radius:6px;box-shadow:var(--shad);overflow:hidden;}
+.class-card-hd{padding:9px 13px;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between;}
+.class-card-hd.s1{background:rgba(14,165,233,.12);color:#0369a1;border-bottom:2px solid var(--2nde);}
+.class-card-hd.s2{background:rgba(22,163,74,.12);color:#166534;border-bottom:2px solid var(--1ere);}
+.class-card-hd.s3{background:rgba(245,158,11,.12);color:#92400e;border-bottom:2px solid var(--term);}
+.class-card-body{padding:10px 13px;}
+.class-stat{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:11px;border-bottom:1px solid #f5f5f5;}
+.class-stat:last-child{border-bottom:none;}
+.class-stat-lbl{color:var(--muted);}
+.class-stat-val{font-weight:700;color:var(--txt);}
+
+/* Verrouillage global — aucun enseignant connecté */
+.app-locked .tp-seance-btn,
+.app-locked .tp-sel,
+.app-locked .gi,
+.app-locked input[type="checkbox"],
+.app-locked input[type="number"] {
+  pointer-events: none !important;
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.app-locked [onclick*="deleteEleve"],
+.app-locked [onclick*="openEditEleve"],
+.app-locked [onclick*="deletePFMP"],
+.app-locked [onclick*="openEditFromFiche"] {
+  pointer-events: none !important;
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── PWA / Mobile responsive ── */
+@media (max-width: 768px) {
+  .window { border-radius: 0; width: 100vw; min-height: 100dvh; }
+  .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap;
+             padding: 4px; gap: 2px; border-right: none;
+             border-bottom: 1px solid #e2e8f0; }
+  .si { padding: 6px 10px; font-size: 11px; flex: 1 1 auto; text-align: center; border-radius: 4px; }
+  .si .ic { display: block; font-size: 18px; }
+  .main { padding: 8px; }
+  .syncbar { flex-wrap: wrap; gap: 4px; font-size: 10px; padding: 4px 8px; }
+  .lockbar { flex-direction: column; gap: 6px; padding: 8px; }
+  .lockbar .tsel { width: 100%; }
+  .lockbar .rb { width: 100%; justify-content: center; }
+  table { font-size: 11px; }
+  .modal { width: 96vw !important; max-height: 90dvh; overflow-y: auto; }
+  .fi, .fs { font-size: 16px; } /* évite zoom auto iOS */
+}
+@media (max-width: 480px) {
+  .sidebar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+             flex-direction: row; overflow-x: auto; border-top: 1px solid #e2e8f0;
+             background: #fff; padding: 4px 2px; border-bottom: none; border-right: none; }
+  .si { min-width: 56px; font-size: 9px; padding: 4px 2px; }
+  .si .ic { font-size: 20px; }
+  .main { padding: 6px 4px 80px; } /* espace pour la navbar fixe en bas */
+  .top { padding: 6px 8px; }
+  h2 { font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<div class="window">
+
+<!-- TITLE BAR -->
+<div class="tbar">
+  <span class="ico">⚡</span>
+  <span class="ttl">MELEC — Suivi Pédagogique v8 · Bac Pro Électrotechnique · 3 classes</span>
+  <div style="display:flex;gap:2px">
+    <button class="wbtn">—</button><button class="wbtn">□</button><button class="wbtn cls">✕</button>
+  </div>
+</div>
+
+<!-- SESSIONS BAR -->
+<div class="sessions-bar" id="sessionsBar">
+  <span id="sessionsIcon">👁</span>
+  <span id="sessionsMsg">Initialisation…</span>
+  <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
+    <span class="live-badge" id="liveBadge" style="display:none"><span class="live-dot"></span> EN DIRECT</span>
+    <span style="font-size:10px;color:#475569" id="syncTime"></span>
+    <button class="rb" onclick="openWdConfig()" style="font-size:10px;padding:2px 7px;background:#1e293b;border-color:#334155;color:#94a3b8">⚙ Config. serveur</button>
+  </span>
+</div>
+
+<!-- SYNC BAR -->
+<div class="syncbar" id="syncBar">
+  <span class="sync-dot pulse" id="syncDot"></span>
+  <span id="syncMsg">Initialisation…</span>
+  <span style="margin-left:auto;font-size:10px;color:#64748b" id="syncDetail"></span>
+</div>
+
+<!-- LOCK BAR -->
+<div class="lockbar" id="lockBar">
+  🔒 Aucun enseignant sélectionné — identifiez-vous pour accéder aux fonctions de saisie.
+</div>
+
+<!-- RIBBON -->
+<div class="ribbon">
+  <div class="rg">
+    <span class="rl">Enseignant :</span>
+    <select class="tsel" id="teacherSelect" onchange="askTeacherPassword()"><option value="">— Sélectionner —</option></select>
+    <button class="rb pri" onclick="openModal('teacherModal')">+ Enseignant</button>
+    <button class="rb" id="btnDelTeacher" onclick="openDeleteTeacherModal()" style="color:#c00" disabled>🗑</button>
+  </div>
+  <div class="rg">
+    <button class="rb" id="bNewTp" onclick="openTpModal()" disabled>🔧 Nouveau TP</button>
+    <button class="rb" id="bNewCours" onclick="openCoursModal()" disabled>📖 Nouveau cours</button>
+    <button class="rb" id="bNewEleve" onclick="openModal('eleveModal')" disabled>👤 Élève</button>
+    <button class="rb" id="bNewPfmp" onclick="openPfmpModal()" style="color:var(--pfmp);border-color:var(--pfmp)" disabled>🏭 PFMP</button>
+  </div>
+  <div class="rg">
+    <button class="rb pri" onclick="exportJSON()">💾 Export JSON</button>
+    <button class="rb pri" onclick="exportCSV()" style="background:#1a6b2e;border-color:#1a6b2e">📊 Export CSV</button>
+    <button class="rb" onclick="document.getElementById('importFile').click()">📂 Importer</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importFile(event)">
+  </div>
+  <div class="rg">
+    <button class="rb yel" id="bMontee" onclick="openModal('monteeModal')" disabled>🎓 Montée de niveau</button>
+    <button class="rb dan" onclick="openModal('resetModal')">⚠ Effacer tout</button>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="abody">
+  <!-- SIDEBAR -->
+  <div class="sb">
+    <div class="sbt">Navigation</div>
+    <div class="si act" onclick="showView('dashboard')" data-view="dashboard"><span class="ic">🏠</span> Tableau de bord</div>
+    <div class="si" onclick="showView('vue3classes')" data-view="vue3classes"><span class="ic">🏫</span> Vue 3 classes</div>
+    <div class="si" onclick="showView('enseignants')" data-view="enseignants"><span class="ic">👨‍🏫</span> Enseignants</div>
+    <div class="si" onclick="showView('tp')" data-view="tp"><span class="ic">🔧</span> Travaux Pratiques</div>
+    <div class="si" onclick="showView('cours')" data-view="cours"><span class="ic">📖</span> Cours dispensés</div>
+    <div class="si" onclick="showView('resultats')" data-view="resultats"><span class="ic">📊</span> Résultats</div>
+    <div class="si" onclick="showView('eleves')" data-view="eleves"><span class="ic">👥</span> Élèves</div>
+    <div class="si" onclick="showView('pfmp')" data-view="pfmp"><span class="ic">🏭</span> PFMP</div>
+    <div class="si" onclick="showView('habilitations')" data-view="habilitations"><span class="ic">⚡</span> Habilitations</div>
+
+    <div class="sbt" style="margin-top:8px">Classe affichée</div>
+    <div class="lvlp">
+      <div class="lp s1 alv" onclick="setLevel('2MELEC')" id="pill-2MELEC">2<sup>nde</sup> MELEC</div>
+      <div class="lp s2" onclick="setLevel('1MELEC')" id="pill-1MELEC">1<sup>ère</sup> MELEC</div>
+      <div class="lp s3" onclick="setLevel('T-MELEC')" id="pill-T-MELEC">Terminale MELEC</div>
+    </div>
+
+    <div style="flex:1"></div>
+    <div style="padding:9px 14px;font-size:10px;color:#475569;border-top:1px solid #2d3748;margin-top:8px">
+      <div style="color:#94a3b8;font-weight:600;">⚡ MELEC Suivi v8</div>
+      <div id="curTeacherDisplay" style="margin-top:3px;color:#64748b">Non connecté</div>
+      <div id="syncFooter" style="margin-top:3px;color:#64748b;font-size:9px"></div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="cont">
+
+    <!-- DASHBOARD -->
+    <div class="view act" id="view-dashboard">
+      <div class="ph">
+        <div><div class="pt">Tableau de bord</div><div class="ps">Classe : <span id="curLevelLabel">2<sup>nde</sup> MELEC</span></div></div>
+      </div>
+      <div class="dgrid" id="dashKpis"></div>
+      <div class="sh">🔧 Avancement des Travaux Pratiques — <span id="dashTpLvl"></span></div>
+      <table class="dt"><thead><tr><th>TP</th><th>Phase</th><th>Progression</th><th>Séances</th><th>Enseignant</th></tr></thead><tbody id="dashTpBody"></tbody></table>
+      <div class="sh">📖 Cours — <span id="dashCoursLvl"></span></div>
+      <table class="dt"><thead><tr><th>Cours</th><th>Enseignant</th><th>Statut</th><th>Date</th></tr></thead><tbody id="dashCoursBody"></tbody></table>
+    </div>
+
+    <!-- VUE 3 CLASSES -->
+    <div class="view" id="view-vue3classes">
+      <div class="ph"><div><div class="pt">Vue d'ensemble — 3 classes</div><div class="ps">Synthèse TP, Cours, PFMP et Habilitations par classe</div></div></div>
+      <div class="class-overview" id="classOverview"></div>
+      <div class="sh">🔧 État des TP — toutes classes</div>
+      <table class="dt"><thead><tr><th>Classe</th><th>TP</th><th>Enseignant</th><th>Phase</th><th>Progression</th></tr></thead><tbody id="allTpBody"></tbody></table>
+      <div class="sh">📖 État des Cours — toutes classes</div>
+      <table class="dt"><thead><tr><th>Classe</th><th>Cours</th><th>Enseignant</th><th>Statut</th><th>Date</th></tr></thead><tbody id="allCoursBody"></tbody></table>
+    </div>
+
+    <!-- ENSEIGNANTS -->
+    <div class="view" id="view-enseignants">
+      <div class="ph"><div><div class="pt">Enseignants</div><div class="ps">Équipe pédagogique</div></div>
+        <button class="rb pri" onclick="openModal('teacherModal')">+ Ajouter</button></div>
+      <div class="ens-grid" id="ensGrid"></div>
+    </div>
+
+    <!-- TP -->
+    <div class="view" id="view-tp">
+      <div class="ph">
+        <div><div class="pt">Travaux Pratiques</div><div class="ps">Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div>
+        <button class="rb pri" id="bNewTp2" onclick="openTpModal()" disabled>+ Ajouter un TP</button>
+      </div>
+      <div id="tpContent"></div>
+    </div>
+
+    <!-- COURS -->
+    <div class="view" id="view-cours">
+      <div class="ph">
+        <div><div class="pt">Cours dispensés</div><div class="ps">Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div>
+        <button class="rb pri" id="bNewCours2" onclick="openCoursModal()" disabled>+ Ajouter un cours</button>
+      </div>
+      <div id="coursContent"></div>
+    </div>
+
+    <!-- RÉSULTATS -->
+    <div class="view" id="view-resultats">
+      <div class="ph"><div><div class="pt">Résultats</div><div class="ps">Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div></div>
+      <div id="resultatsContent"></div>
+    </div>
+
+    <!-- ÉLÈVES -->
+    <div class="view" id="view-eleves">
+      <div class="ph">
+        <div><div class="pt">Gestion des élèves</div><div class="ps">Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div>
+        <button class="rb pri" id="bNewEleve2" onclick="openModal('eleveModal')" disabled>+ Ajouter un élève</button>
+      </div>
+      <div id="elevesContent"></div>
+    </div>
+
+    <!-- PFMP -->
+    <div class="view" id="view-pfmp">
+      <div class="ph">
+        <div><div class="pt">PFMP — Stages en entreprise</div><div class="ps">Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div>
+        <button class="rb pri" id="bNewPfmp2" onclick="openPfmpModal()" style="background:var(--pfmp);border-color:var(--pfmp)" disabled>+ Nouvelle PFMP</button>
+      </div>
+      <div id="pfmpContent"></div>
+    </div>
+
+    <!-- HABILITATIONS -->
+    <div class="view" id="view-habilitations">
+      <div class="ph"><div><div class="pt">Habilitations Électriques</div><div class="ps">B0 / B1V / BR — Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div></div>
+      <div id="habContent"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="stbar">
+  <span id="stTeacher">Enseignant : —</span>
+  <span id="stLevel">Classe : 2nde MELEC</span>
+  <span id="stCounts"></span>
+  <span style="margin-left:auto" id="stDate"></span>
+</div>
+</div><!-- /window -->
+
+<!-- ═══════════════ MODALS ═══════════════ -->
+
+<!-- Nouvel enseignant -->
+<div class="moverlay" id="teacherModal"><div class="modal">
+  <div class="mhd ens">👨‍🏫 Nouvel enseignant <button class="mcl" onclick="closeModal('teacherModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fg"><label class="fl">Nom et prénom *</label><input class="fi" id="tName" placeholder="Ex: M. Dupont Pierre"></div>
+    <div class="fg"><label class="fl">Spécialité / Matière</label><input class="fi" id="tSpec" placeholder="Ex: Installations électriques"></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Mot de passe *</label><input class="fi" type="password" id="tPass"></div>
+      <div class="fg"><label class="fl">Confirmer *</label><input class="fi" type="password" id="tPass2"></div>
+    </div>
+    <div style="background:#fff4ce;border:1px solid #fde68a;border-radius:3px;padding:8px;font-size:11px;color:#7a5900;margin-bottom:8px">
+      🔑 Mot de passe administrateur requis (défaut : <strong>admin</strong>)
+    </div>
+    <div class="fg"><label class="fl">Mot de passe administrateur *</label><input class="fi" type="password" id="tAdminPass"></div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('teacherModal')">Annuler</button><button class="btn bpri" onclick="addTeacher()">Créer</button></div>
+</div></div>
+
+<!-- Identification -->
+<div class="moverlay" id="pwModal"><div class="modal">
+  <div class="mhd ens">🔐 Identification <button class="mcl" onclick="cancelTeacherSelect()">✕</button></div>
+  <div class="mbdy">
+    <div style="margin-bottom:10px;font-size:13px;font-weight:600" id="pwTeacherName"></div>
+    <div class="fg"><label class="fl">Mot de passe</label><input class="fi" type="password" id="pwInput" onkeydown="if(event.key==='Enter')confirmPassword()"></div>
+    <div id="pwError" style="color:#c00;font-size:11px;display:none">❌ Mot de passe incorrect.</div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="cancelTeacherSelect()">Annuler</button><button class="btn bpri" onclick="confirmPassword()">Valider</button></div>
+</div></div>
+
+<!-- Changer mot de passe -->
+<div class="moverlay" id="changePassModal"><div class="modal">
+  <div class="mhd edt">🔑 Modifier le mot de passe <button class="mcl" onclick="closeModal('changePassModal')">✕</button></div>
+  <div class="mbdy">
+    <input type="hidden" id="cpTeacherId">
+    <div class="fg"><label class="fl">Nouveau mot de passe *</label><input class="fi" type="password" id="cpNew"></div>
+    <div class="fg"><label class="fl">Confirmer *</label><input class="fi" type="password" id="cpNew2"></div>
+    <div class="fg"><label class="fl">Mot de passe admin *</label><input class="fi" type="password" id="cpAdmin" placeholder="admin"></div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('changePassModal')">Annuler</button><button class="btn bpri" onclick="saveChangePass()">Enregistrer</button></div>
+</div></div>
+
+<!-- Supprimer enseignant -->
+<div class="moverlay" id="delTeacherModal"><div class="modal">
+  <div class="mhd dan">🗑 Supprimer un enseignant <button class="mcl" onclick="closeModal('delTeacherModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fg"><label class="fl">Enseignant à supprimer</label><select class="fs" id="delTeacherSel"></select></div>
+    <div class="fg"><label class="fl">Mot de passe administrateur *</label><input class="fi" type="password" id="delTeacherAdmin" placeholder="admin"></div>
+    <p style="font-size:11px;color:#c00;background:#fff5f5;padding:7px;border-radius:3px;border:1px solid #fcc">⚠ Les TP et cours associés seront désaffectés.</p>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('delTeacherModal')">Annuler</button><button class="btn bdan" onclick="deleteTeacher()">Supprimer</button></div>
+</div></div>
+
+<!-- Nouveau TP -->
+<div class="moverlay" id="tpModal"><div class="modal w">
+  <div class="mhd">🔧 Nouveau TP <button class="mcl" onclick="closeModal('tpModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fr">
+      <div class="fg"><label class="fl">Intitulé *</label><input class="fi" id="tpTitle" placeholder="Ex: TP1 — Câblage tableau BT"></div>
+      <div class="fg"><label class="fl">Classe *</label>
+        <select class="fs" id="tpLevel" onchange="populateAssign('tpAsl','tpLevel')">
+          <option value="2MELEC">2nde MELEC</option><option value="1MELEC">1ère MELEC</option><option value="T-MELEC">Terminale MELEC</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Description</label><input class="fi" id="tpDesc" placeholder="Brève description"></div>
+    <div class="fg"><label class="fl">Nombre de séances prévues</label><input class="fi" type="number" id="tpSeances" value="2" min="1" max="20"></div>
+    <div class="sh">Affecter à des élèves spécifiques (facultatif — vide = tout le niveau)</div>
+    <div class="asl" id="tpAsl"></div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('tpModal')">Annuler</button><button class="btn bpri" onclick="addTP()">Créer le TP</button></div>
+</div></div>
+
+<!-- Nouveau cours -->
+<div class="moverlay" id="coursModal"><div class="modal w">
+  <div class="mhd">📖 Nouveau cours <button class="mcl" onclick="closeModal('coursModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fr">
+      <div class="fg"><label class="fl">Intitulé *</label><input class="fi" id="coursTitle" placeholder="Ex: Ch.1 — Lois fondamentales"></div>
+      <div class="fg"><label class="fl">Classe *</label>
+        <select class="fs" id="coursLevel" onchange="populateAssign('coursAsl','coursLevel')">
+          <option value="2MELEC">2nde MELEC</option><option value="1MELEC">1ère MELEC</option><option value="T-MELEC">Terminale MELEC</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="coursDate"></div>
+      <div class="fg"><label class="fl">Statut</label>
+        <select class="fs" id="coursStatus">
+          <option value="todo">À faire</option><option value="prog">En cours</option><option value="done">Terminé</option>
+        </select>
+      </div>
+    </div>
+    <div class="sh">Affecter à des élèves spécifiques (facultatif)</div>
+    <div class="asl" id="coursAsl"></div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('coursModal')">Annuler</button><button class="btn bpri" onclick="addCours()">Créer le cours</button></div>
+</div></div>
+
+<!-- Nouvel élève -->
+<div class="moverlay" id="eleveModal"><div class="modal">
+  <div class="mhd">👤 Ajouter un élève <button class="mcl" onclick="closeModal('eleveModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fr">
+      <div class="fg"><label class="fl">NOM (majuscules) *</label><input class="fi" id="eName" placeholder="Ex: DUPONT" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="fg"><label class="fl">Prénom *</label><input class="fi" id="ePrenom" placeholder="Ex: Lucas"></div>
+    </div>
+    <div class="fg"><label class="fl">Classe *</label>
+      <select class="fs" id="eLevel">
+        <option value="2MELEC">2nde MELEC</option><option value="1MELEC">1ère MELEC</option><option value="T-MELEC">Terminale MELEC</option>
+      </select>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Téléphone</label><input class="fi" id="eTel" placeholder="06 …"></div>
+      <div class="fg"><label class="fl">Email</label><input class="fi" id="eMail" placeholder="prenom.nom@..."></div>
+    </div>
+    <div class="fg"><label class="fl">Date de naissance (JJMMAAAA)</label><input class="fi" id="eDdn" placeholder="15032008" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)"></div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('eleveModal')">Annuler</button><button class="btn bpri" onclick="addEleve()">Ajouter</button></div>
+</div></div>
+
+<!-- Modifier élève -->
+<div class="moverlay" id="editEleveModal"><div class="modal">
+  <div class="mhd edt">✏️ Modifier l'élève <button class="mcl" onclick="closeModal('editEleveModal')">✕</button></div>
+  <div class="mbdy">
+    <input type="hidden" id="eeId">
+    <div class="fr">
+      <div class="fg"><label class="fl">NOM *</label><input class="fi" id="eeName" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="fg"><label class="fl">Prénom *</label><input class="fi" id="eePrenom"></div>
+    </div>
+    <div class="fg"><label class="fl">Classe *</label>
+      <select class="fs" id="eeLevel">
+        <option value="2MELEC">2nde MELEC</option><option value="1MELEC">1ère MELEC</option><option value="T-MELEC">Terminale MELEC</option>
+      </select>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Téléphone</label><input class="fi" id="eeTel"></div>
+      <div class="fg"><label class="fl">Email</label><input class="fi" id="eeMail"></div>
+    </div>
+    <div class="fg"><label class="fl">Date de naissance (JJMMAAAA)</label><input class="fi" id="eeDdn" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)"></div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('editEleveModal')">Annuler</button><button class="btn bpri" onclick="saveEditEleve()">Enregistrer</button></div>
+</div></div>
+
+<!-- Fiche élève -->
+<div class="moverlay" id="ficheModal"><div class="modal xl">
+  <div class="mhd">📋 Fiche élève <button class="mcl" onclick="closeModal('ficheModal')">✕</button></div>
+  <div class="mbdy" id="ficheContent"></div>
+  <div class="mft">
+    <button class="btn bsec" onclick="closeModal('ficheModal')">Fermer</button>
+    <button class="btn bpri" onclick="openEditFromFiche()">✏️ Modifier</button>
+  </div>
+</div></div>
+
+<!-- Nouvelle PFMP -->
+<div class="moverlay" id="pfmpModal"><div class="modal w">
+  <div class="mhd pf">🏭 Nouvelle PFMP <button class="mcl" onclick="closeModal('pfmpModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fg"><label class="fl">Élève *</label><select class="fs" id="pfmpEleve"></select></div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Session N°</label><input class="fi" type="number" id="pfmpSession" value="1" min="1" max="5"></div>
+      <div class="fg"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Début *</label><input class="fi" type="date" id="pfmpDebut"></div>
+      <div class="fg"><label class="fl">Fin *</label><input class="fi" type="date" id="pfmpFin"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Entreprise *</label><input class="fi" id="pfmpEnt" placeholder="Raison sociale"></div>
+      <div class="fg"><label class="fl">Secteur</label><input class="fi" id="pfmpSect" placeholder="Bâtiment, Industrie…"></div>
+    </div>
+    <div class="sh">Tuteur en entreprise</div>
+    <div class="fr">
+      <div class="fg"><label class="fl">Nom du tuteur *</label><input class="fi" id="pfmpTut"></div>
+      <div class="fg"><label class="fl">Téléphone</label><input class="fi" id="pfmpTutTel" placeholder="06 …"></div>
+    </div>
+    <div class="fg"><label class="fl">Email tuteur</label><input class="fi" id="pfmpTutMail" placeholder="tuteur@entreprise.fr"></div>
+    <div class="fg"><label class="fl">Commentaire</label><textarea class="fta" id="pfmpComment" placeholder="Observations, évaluation…"></textarea></div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('pfmpModal')">Annuler</button><button class="btn bpri" onclick="addPFMP()" style="background:var(--pfmp);border-color:var(--pfmp)">Enregistrer</button></div>
+</div></div>
+
+<!-- Montée de niveau -->
+<div class="moverlay" id="monteeModal"><div class="modal">
+  <div class="mhd gr">🎓 Montée de niveau <button class="mcl" onclick="closeModal('monteeModal')">✕</button></div>
+  <div class="mbdy">
+    <div style="background:#dff6dd;border:1px solid #a0d8a0;border-radius:4px;padding:12px;margin-bottom:12px;font-size:12px;line-height:1.8">
+      <strong>🔄 Passage de classe :</strong><br>
+      • Élèves de <strong>2nde MELEC → 1ère MELEC</strong><br>
+      • Élèves de <strong>1ère MELEC → Terminale MELEC</strong><br>
+      • Les Terminales sont archivés et supprimés<br>
+      • TP, cours, PFMP et habilitations suivent les élèves
+    </div>
+    <div class="dzone">
+      <h4>⚠ Confirmation requise</h4>
+      <p>Saisissez <strong>MONTEE</strong> pour confirmer :</p>
+      <input class="cinp" id="monteeConfirmInput" placeholder="Tapez MONTEE" oninput="checkMonteeConfirm()">
+    </div>
+  </div>
+  <div class="mft">
+    <button class="btn bsec" onclick="closeModal('monteeModal')">Annuler</button>
+    <button class="btn bpri" id="monteeBtnConfirm" onclick="doMontee()" disabled style="background:#1a6b2e;border-color:#1a6b2e">🎓 Confirmer</button>
+  </div>
+</div></div>
+
+<!-- Effacer tout -->
+<div class="moverlay" id="resetModal"><div class="modal">
+  <div class="mhd dan">⚠ Effacer toutes les données <button class="mcl" onclick="closeModal('resetModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="dzone">
+      <h4>⚠ Action irréversible</h4>
+      <p>Toutes les données seront supprimées.<br>Saisissez <strong style="color:#c00">EFFACER</strong> pour confirmer :</p>
+      <input class="cinp" id="resetInput" placeholder="Tapez EFFACER" oninput="checkReset()">
+    </div>
+  </div>
+  <div class="mft"><button class="btn bsec" onclick="closeModal('resetModal')">Annuler</button><button class="btn bdan" id="resetBtn" onclick="doReset()" disabled>Effacer</button></div>
+</div></div>
+
+<!-- Config serveur local -->
+<div class="moverlay" id="wdConfigModal"><div class="modal" style="width:620px">
+  <div class="mhd" style="background:#0f172a">🔗 Configuration — Serveur pédagogique <button class="mcl" onclick="closeModal('wdConfigModal')">✕</button></div>
+  <div class="mbdy">
+
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:5px;padding:13px;margin-bottom:14px;font-size:12px;line-height:1.9">
+      <strong>📋 Architecture recommandée (réseau pédagogique fermé) :</strong><br>
+      1. Placez <code style="background:#e0f2fe;padding:1px 4px;border-radius:2px">melec-suivi-v8.html</code> et <code style="background:#e0f2fe;padding:1px 4px;border-radius:2px">melec-data.json</code> dans le <strong>même dossier partagé</strong> sur le serveur<br>
+      2. Lancez <strong>une seule fois</strong> le mini-serveur HTTP (voir ci-dessous) sur le poste serveur<br>
+      3. Chaque enseignant ouvre <code style="background:#e0f2fe;padding:1px 4px;border-radius:2px">http://&lt;ip-serveur&gt;:8080/melec-suivi-v8.html</code> dans son navigateur<br>
+      4. La synchronisation entre postes se fait <strong>automatiquement toutes les 10 secondes</strong>
+    </div>
+
+    <div style="background:#1e293b;border-radius:5px;padding:12px;margin-bottom:12px;font-size:11px;font-family:monospace;color:#94a3b8;line-height:1.8">
+      <div style="color:#fbbf24;font-weight:700;margin-bottom:6px">▶ Mini-serveur HTTP Python — à lancer UNE FOIS sur le serveur :</div>
+      <div style="color:#86efac"># 1. Ouvrir un Invite de commandes dans le dossier du fichier :</div>
+      <div style="color:#e2e8f0">cd "\\\\serveur\partage\melec"</div>
+      <div style="color:#86efac"># 2. Lancer le serveur (Python est inclus dans Windows depuis Win10) :</div>
+      <div style="color:#e2e8f0">python -m http.server 8080 --bind 0.0.0.0</div>
+      <div style="color:#86efac"># 3. Accès depuis tous les postes :</div>
+      <div style="color:#38bdf8">http://&lt;ip-du-serveur&gt;:8080/melec-suivi-v8.html</div>
+    </div>
+
+    <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:5px;padding:10px;font-size:11px;color:#78350f;margin-bottom:12px">
+      <strong>⚠ Remarque :</strong> Si Python n'est pas disponible, IIS (gestionnaire de services Internet) peut être activé sur Windows Server via <em>Ajout de rôles → Serveur Web (IIS)</em> et le dossier partagé défini comme répertoire racine.<br>
+      Le fichier <code style="background:#fef08a;padding:1px 3px;border-radius:2px">melec-data.json</code> doit être accessible en <strong>lecture ET écriture</strong> via HTTP (voir <em>Permissions NTFS</em> et <em>requêtes PUT</em> dans IIS).
+    </div>
+
+    <div class="fg">
+      <label class="fl">URL de base du serveur (où est hébergé le fichier HTML)</label>
+      <input class="fi" id="wdUrl" placeholder="http://192.168.1.10:8080/">
+      <div style="font-size:10px;color:#888;margin-top:3px">Terminer par un slash /  ·  Laisser <strong>vide</strong> si le HTML est déjà ouvert depuis ce serveur (chemin relatif automatique)</div>
+    </div>
+    <div class="fg">
+      <label class="fl">Intervalle de synchronisation (secondes)</label>
+      <input class="fi" type="number" id="wdInterval" value="10" min="5" max="60" style="max-width:100px">
+    </div>
+    <div id="wdTestResult" style="display:none;padding:9px;border-radius:4px;font-size:12px;margin-top:4px"></div>
+  </div>
+  <div class="mft">
+    <button class="btn bsec" onclick="closeModal('wdConfigModal')">Fermer</button>
+    <button class="btn" onclick="wdTestConnection()" style="background:#1565c0;color:#fff;border-color:#1565c0">🔍 Tester la connexion</button>
+    <button class="btn bpri" onclick="wdSaveConfig()" style="background:#0f172a;border-color:#0f172a">💾 Connecter</button>
+  </div>
+</div></div>
+
+<div class="notif" id="notif"></div>
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+
+// ═══ CONSTANTES ══════════════════════════════════════════════════════════════
+const LEVELS = {
+  '2MELEC': {label:'2nde MELEC', cls:'s1', color:'var(--2nde)', short:'2nde'},
+  '1MELEC': {label:'1ère MELEC', cls:'s2', color:'var(--1ere)', short:'1ère'},
+  'T-MELEC': {label:'Terminale MELEC', cls:'s3', color:'var(--term)', short:'Term.'}
+};
+const TP_PHASES = {
+  prep:  {label:'Préparation',   cls:'prep'},
+  real:  {label:'Réalisation',   cls:'real'},
+  mise:  {label:'Mise en service', cls:'mise'},
+  main:  {label:'Maintenance',   cls:'main'}
+};
+const COURS_STATUS = {
+  todo: 'À faire',
+  prog: 'En cours',
+  done: 'Terminé'
+};
+const HAB_NIV = ['B0','B1V','BR'];
+const HAB_LBL = {
+  'B0':  'Non électricien, travaux hors tension',
+  'B1V': 'Électricien, travaux sous tension BT',
+  'BR':  'Chargé d\'interventions BT générales'
+};
+const ADMIN_PWD = 'admin';
+const LS_CFG   = 'melec_v8_cfg';
+const LS_DATA  = 'melec_v8_data';
+const DATA_FILE = 'melec-data.json';
+
+// ═══ STATE ════════════════════════════════════════════════════════════════════
+// serverBase : URL de base où est servi le HTML (et le JSON).
+// Si vide → chemin relatif (le serveur HTTP tourne sur la même origine).
+// Configuré via la modale "Config. serveur".
+let serverBase = '';     // ex: 'http://192.168.1.10:8080/'
+let syncInterval = 10;   // secondes
+let gsMode = false;      // true = serveur HTTP joignable
+let gsSaving = false;
+let autoSyncTimer = null;
+let curTeacher = null;
+let curLevel = '2MELEC';
+let pendingTeacherId = null;
+let ficheEleveId = null;
+let lastRemoteHash = null;
+
+let data = {
+  teachers: [], tp: [], cours: [], eleves: [],
+  notes: {}, pfmp: [], habilitations: {},
+  _version: 0, _ts: 0
+};
+
+// ═══ GITHUB GIST — PERSISTENCE ══════════════════════════════════════════════
+// Stockage centralisé via GitHub Gist API.
+// Token et ID intégrés — aucune configuration pour les enseignants.
+// Lecture  : GET  https://api.github.com/gists/{GIST_ID}
+// Écriture : PATCH https://api.github.com/gists/{GIST_ID}
+
+var GIST_ID    = 'a953954f369f7fad1597e2a6da38578c';
+var GIST_TOKEN = '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';
+var GIST_FILE  = 'melec-data.json';
+var GIST_API   = 'https://api.github.com/gists/' + GIST_ID;
+
+function gistHeaders() {
+  return {
+    'Authorization': 'Bearer ' + GIST_TOKEN,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+}
+
+// ── Lecture ───────────────────────────────────────────────────────────────────
+async function httpLoad() {
+  var r = await fetch(GIST_API + '?t=' + Date.now(), {
+    method: 'GET',
+    headers: gistHeaders(),
+    cache: 'no-store'
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  var j = await r.json();
+  var file = j.files && j.files[GIST_FILE];
+  if (!file || !file.content) return null;
+  var parsed = JSON.parse(file.content);
+  return parsed;
+}
+
+// ── Écriture ──────────────────────────────────────────────────────────────────
+async function httpSave() {
+  var body = { files: {} };
+  body.files[GIST_FILE] = { content: JSON.stringify(data) };
+  var r = await fetch(GIST_API, {
+    method: 'PATCH',
+    headers: gistHeaders(),
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+}
+
+// ── cfgLoad : serverBase non vide = connexion activée ─────────────────────────
+function cfgLoad() {
+  serverBase   = GIST_ID;   // toujours configuré (intégré dans le fichier)
+  syncInterval = 30;
+}
+
+function cfgSave() {}     // rien à persister, config intégrée
+
+// ── openServerConfig : juste un message d'info ────────────────────────────────
+function openWdConfig() {
+  notify('✅ Stockage GitHub Gist intégré — aucune configuration requise.');
+}
+function openServerConfig() {
+  openWdConfig();
+}
+
+
+
+function simpleHash(str) {
+  let h = 0;
+  for(let i = 0; i < str.length; i++){h = ((h<<5)-h) + str.charCodeAt(i); h |= 0;}
+  return String(h);
+}
+
+
+function localSave(){try{localStorage.setItem(LS_DATA,JSON.stringify(data));}catch(e){}}
+
+
+function localLoad(){
+  try{
+    var d = localStorage.getItem(LS_DATA);
+    if(d){data = JSON.parse(d); fixData(); return true;}
+    return false;
+  }catch(e){return false;}
+}
+
+
+function fixData(){
+  if(!data.pfmp) data.pfmp = [];
+  if(!data.habilitations) data.habilitations = {};
+  if(!data.notes) data.notes = {};
+  if(!data._version) data._version = 0;
+  if(!data._ts) data._ts = 0;
+}
+
+
+async function serverSave() {
+  data._version = (data._version||0) + 1;
+  data._ts = Date.now();
+  localSave();
+  if(!gsMode) return;
+  try {
+    await httpSave();
+    setSyncState('ok', 'Sauvegardé sur le serveur');
+  } catch(e) {
+    setSyncState('warn', 'Erreur écriture — cache local utilisé');
+    console.error('HTTP write error:', e);
+  }
+}
+
+
+function setSyncState(state, msg) {
+  var dot = document.getElementById('syncDot');
+  var sm  = document.getElementById('syncMsg');
+  var sd  = document.getElementById('syncDetail');
+  var lb  = document.getElementById('liveBadge');
+  var sf  = document.getElementById('syncFooter');
+  var ts  = new Date().toLocaleTimeString('fr-FR');
+  if(sm) sm.textContent = msg;
+  if(sd) sd.textContent = ts;
+  if(sf) sf.textContent = 'Sync : ' + ts;
+  if(dot){
+    dot.className = 'sync-dot';
+    if(state==='ok')  { dot.style.background='#4caf50'; dot.classList.add('pulse'); }
+    else if(state==='warn') { dot.style.background='#ff9800'; }
+    else if(state==='err')  { dot.style.background='#f44336'; }
+    else if(state==='sync') { dot.style.background='#2196f3'; dot.classList.add('pulse'); }
+  }
+  if(lb) lb.style.display = (gsMode && state==='ok') ? '' : 'none';
+  setTimeout(()=>{ if(dot && state==='ok') dot.classList.remove('pulse'); }, 2000);
+}
+
+
+function setSessionMsg(msg){
+  var sm = document.getElementById('sessionsMsg');
+  if(sm) sm.textContent = msg;
+}
+
+
+function startAutoSync() {
+  if(autoSyncTimer) clearInterval(autoSyncTimer);
+  autoSyncTimer = setInterval(async function(){
+    if(!gsMode) return;
+    try {
+      var remote = await httpLoad();
+      if(remote && remote.teachers !== undefined) {
+        var rStr  = JSON.stringify(remote);
+        var rHash = simpleHash(rStr);
+        if(rHash !== lastRemoteHash) {
+          data = remote; fixData(); localSave(); lastRemoteHash = rHash;
+          renderAll();
+          setSyncState('ok', '⟳ Mise à jour reçue du serveur');
+          notify('Mise à jour reçue — données rechargées', false, true);
+          setSessionMsg('Mise à jour reçue · ' + new Date().toLocaleTimeString('fr-FR'));
+        } else {
+          setSyncState('ok', 'Synchronisé · ' + new Date().toLocaleTimeString('fr-FR'));
+        }
+      }
+    } catch(e) {
+      setSyncState('warn', 'Sync impossible — vérifiez que le serveur HTTP est actif');
+    }
+  }, syncInterval * 1000);
+}
+
+
+async function init(){
+  try{ cfgLoad(); }catch(e){}
+
+  // Si une config serveur est mémorisée (serverBase non vide et connected=true) → tentative connexion
+  var prevConnected = false;
+  try{ var c=localStorage.getItem(LS_CFG); if(c){var cfg=JSON.parse(c);prevConnected=!!cfg.connected;} }catch(e){}
+
+  if(serverBase || prevConnected){
+    gsMode = true;
+    setSyncState('sync','Connexion au serveur…');
+    try{
+      var remote = await httpLoad();
+      if(remote && remote.teachers !== undefined){
+        data = remote; fixData(); localSave();
+        lastRemoteHash = simpleHash(JSON.stringify(data));
+        setSyncState('ok','Données chargées (' + data.eleves.length + ' élève(s))');
+      } else {
+        localLoad();
+        if(!data.teachers.length) loadDemo();
+        try{ await httpSave(); }catch(e2){}
+        setSyncState('ok','Serveur connecté — données initiales synchronisées');
+      }
+      startAutoSync();
+      setSessionMsg('Serveur : ' + (serverBase||'(relatif)') + ' · Sync : ' + syncInterval + 's');
+    }catch(e){
+      gsMode = false;
+      localLoad();
+      if(!data.teachers.length) loadDemo();
+      setSyncState('warn','Serveur inaccessible — mode local. Cliquez ⚙ pour reconfigurer.');
+      setSessionMsg('Mode local — cliquer ⚙ pour configurer le serveur partagé');
+    }
+  } else {
+    gsMode = false;
+    localLoad();
+    if(!data.teachers.length) loadDemo();
+    setSyncState('warn','Mode local — Cliquez ⚙ Config. serveur pour activer le partage multi-sessions');
+    setSessionMsg('Mode local uniquement — configurez le serveur pour le partage entre postes');
+  }
+
+  try{ updateTeacherSelect(); }catch(e){}
+  try{ setLockState(); }catch(e){}
+  try{ renderAll(); }catch(e){ console.error('renderAll:', e); }
+  try{ updateTeacherSelect(); }catch(e){}
+  try{ setLockState(); }catch(e){}
+  try{ renderAll(); }catch(e){ console.error('renderAll:', e); }
+  try{
+    var stDate = document.getElementById('stDate');
+    if(stDate) stDate.textContent = new Date().toLocaleDateString('fr-FR',{weekday:'short',year:'numeric',month:'long',day:'numeric'});
+  }catch(e){}
+}
+
+function loadDemo(){
+  const h = hashPass('demo');
+  data.teachers = [
+    {id:'T1',name:'M. Dupont Pierre',spec:'Installations électriques',pass:h},
+    {id:'T2',name:'Mme Martin Sophie',spec:'Automatismes / Variateurs',pass:h}
+  ];
+  data.tp = [
+    {id:'TP1',title:'TP1 — Câblage tableau BT',level:'2MELEC',desc:'Tableau basse tension',seances:4,seancesDone:2,phase:'real',teacher:'T1',date:'2025-09-15',assignedTo:[]},
+    {id:'TP2',title:'TP1 — Moteur asynchrone',level:'1MELEC',desc:'Démarrage direct',seances:3,seancesDone:1,phase:'prep',teacher:'T1',date:'2025-10-02',assignedTo:['E1','E2']},
+    {id:'TP3',title:'TP1 — Variateur de vitesse',level:'1MELEC',desc:'Paramétrage Schneider',seances:6,seancesDone:6,phase:'main',teacher:'T2',date:'2025-09-10',assignedTo:[]},
+    {id:'TP4',title:'TP1 — Bilan de puissance',level:'T-MELEC',desc:'Analyse installation',seances:5,seancesDone:2,phase:'mise',teacher:'T1',date:'2025-09-20',assignedTo:[]}
+  ];
+  data.cours = [
+    {id:'C1',title:'Ch.1 — Lois fondamentales',level:'2MELEC',status:'done',teacher:'T1',date:'2025-09-05',assignedTo:[]},
+    {id:'C2',title:'Ch.2 — Circuits monophasés',level:'2MELEC',status:'prog',teacher:'T1',date:'2025-09-20',assignedTo:[]},
+    {id:'C3',title:'Ch.1 — Circuits triphasés',level:'1MELEC',status:'done',teacher:'T1',date:'2025-09-10',assignedTo:[]},
+    {id:'C4',title:'Ch.1 — Automatismes industriels',level:'1MELEC',status:'done',teacher:'T2',date:'2025-09-08',assignedTo:[]},
+    {id:'C5',title:'Ch.2 — Variateurs de vitesse',level:'1MELEC',status:'prog',teacher:'T2',date:'2025-10-01',assignedTo:[]},
+    {id:'C6',title:'Ch.1 — Habilitation électrique',level:'T-MELEC',status:'done',teacher:'T1',date:'2025-09-02',assignedTo:[]}
+  ];
+  data.eleves = [
+    {id:'E1',name:'BERNARD',prenom:'Lucas',level:'1MELEC',tel:'06 11 22 33 44',mail:'lucas.bernard@lycee.fr',ddn:'15032008'},
+    {id:'E2',name:'CHEN',prenom:'Emma',level:'1MELEC',tel:'',mail:'',ddn:'22072008'},
+    {id:'E3',name:'GARCIA',prenom:'Léa',level:'2MELEC',tel:'06 44 55 66 77',mail:'lea.garcia@lycee.fr',ddn:'05112009'},
+    {id:'E4',name:'MOREL',prenom:'Tom',level:'2MELEC',tel:'',mail:'',ddn:''},
+    {id:'E5',name:'PIRES',prenom:'Camille',level:'T-MELEC',tel:'06 66 77 88 99',mail:'camille.pires@lycee.fr',ddn:'14042006'}
+  ];
+  data.notes = {
+    'E1':{'TP2':14,'C3':15,'C4':13},
+    'E2':{'TP2':16,'C3':17,'C4':12},
+    'E3':{'TP1':13,'C1':15,'C2':11},
+    'E5':{'TP4':15,'C6':14}
+  };
+  data.pfmp = [
+    {id:'P1',eleveId:'E1',session:'1',debut:'2025-11-04',fin:'2025-11-22',entreprise:'Electricité Générale SARL',secteur:'Bâtiment',tuteur:'M. Lefebvre Jean',tuteurTel:'06 12 34 56 78',tuteurMail:'j.lefebvre@eg.fr',comment:'Excellent travail.'},
+    {id:'P2',eleveId:'E5',session:'2',debut:'2025-03-10',fin:'2025-03-28',entreprise:'Méca-Elec Industries',secteur:'Industrie',tuteur:'Mme Rousseau Claire',tuteurTel:'',tuteurMail:'',comment:''}
+  ];
+  data.habilitations = {
+    'E1':{'B0':{theo:true,prat:true},'B1V':{theo:true,prat:false},'BR':{theo:false,prat:false}},
+    'E5':{'B0':{theo:true,prat:true},'B1V':{theo:true,prat:true},'BR':{theo:true,prat:true}}
+  };
+  data._version = 1;
+  data._ts = Date.now();
+  serverSave();
+}
+
+// ═══ AUTH ════════════════════════════════════════════════════════════════════
+function hashPass(p){let h=0;for(let i=0;i<p.length;i++){h=((h<<5)-h)+p.charCodeAt(i);h|=0;}return String(h);}
+
+function updateTeacherSelect(){
+  const sel = document.getElementById('teacherSelect');
+  sel.innerHTML = '<option value="">— Sélectionner —</option>';
+  data.teachers.forEach(t=>{
+    const o = document.createElement('option');
+    o.value=t.id; o.textContent=t.name;
+    if(curTeacher&&t.id===curTeacher.id) o.selected=true;
+    sel.appendChild(o);
+  });
+}
+function askTeacherPassword(){
+  const id = document.getElementById('teacherSelect').value;
+  if(!id){curTeacher=null;setLockState();renderAll();return;}
+  const t = data.teachers.find(x=>x.id===id);if(!t)return;
+  pendingTeacherId = id;
+  document.getElementById('pwTeacherName').textContent = '👨‍🏫 ' + t.name;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').style.display = 'none';
+  openModal('pwModal');
+  setTimeout(()=>document.getElementById('pwInput').focus(),100);
+}
+function confirmPassword(){
+  const val = document.getElementById('pwInput').value;
+  const t = data.teachers.find(x=>x.id===pendingTeacherId);if(!t)return;
+  if(hashPass(val)!==t.pass){document.getElementById('pwError').style.display='block';document.getElementById('pwInput').value='';return;}
+  curTeacher=t; closeModal('pwModal');
+  document.getElementById('curTeacherDisplay').textContent=t.name;
+  document.getElementById('stTeacher').textContent='Enseignant : '+t.name;
+  setLockState();renderAll();notify('Bienvenue, '+t.name+' !');
+}
+function cancelTeacherSelect(){
+  const sel = document.getElementById('teacherSelect');
+  if(curTeacher) sel.value=curTeacher.id; else sel.value='';
+  closeModal('pwModal');
+}
+function setLockState(){
+  const locked = !curTeacher;
+  document.getElementById('lockBar').classList.toggle('show', locked);
+  ['bNewTp','bNewTp2','bNewCours','bNewCours2','bNewEleve','bNewEleve2','bNewPfmp','bNewPfmp2','btnDelTeacher','bMontee']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=locked;});
+  document.body.classList.toggle('app-locked', locked);
+}
+
+// ═══ TEACHERS CRUD ════════════════════════════════════════════════════════════
+function addTeacher(){
+  const name=document.getElementById('tName').value.trim();
+  const spec=document.getElementById('tSpec').value.trim();
+  const pass=document.getElementById('tPass').value;
+  const pass2=document.getElementById('tPass2').value;
+  const admin=document.getElementById('tAdminPass').value;
+  if(!name){alert('Nom requis.');return;}
+  if(!pass){alert('Mot de passe requis.');return;}
+  if(pass!==pass2){alert('Mots de passe différents.');return;}
+  if(admin!==ADMIN_PWD){alert('Mot de passe admin incorrect.');return;}
+  data.teachers.push({id:'T'+Date.now(),name,spec,pass:hashPass(pass)});
+  serverSave();updateTeacherSelect();closeModal('teacherModal');
+  ['tName','tSpec','tPass','tPass2','tAdminPass'].forEach(id=>document.getElementById(id).value='');
+  renderEnseignants();notify('Enseignant créé !');
+}
+function openDeleteTeacherModal(){
+  const sel=document.getElementById('delTeacherSel');
+  sel.innerHTML='<option value="">— Choisir —</option>';
+  data.teachers.forEach(t=>sel.innerHTML+=`<option value="${t.id}">${t.name}</option>`);
+  document.getElementById('delTeacherAdmin').value='';
+  openModal('delTeacherModal');
+}
+function deleteTeacher(){
+  const id=document.getElementById('delTeacherSel').value;
+  const admin=document.getElementById('delTeacherAdmin').value;
+  if(!id){alert('Sélectionnez un enseignant.');return;}
+  if(admin!==ADMIN_PWD){alert('Mot de passe admin incorrect.');return;}
+  if(!confirm('Supprimer cet enseignant ?'))return;
+  data.teachers=data.teachers.filter(t=>t.id!==id);
+  data.tp.forEach(t=>{if(t.teacher===id)t.teacher='';});
+  data.cours.forEach(c=>{if(c.teacher===id)c.teacher='';});
+  if(curTeacher&&curTeacher.id===id){curTeacher=null;document.getElementById('teacherSelect').value='';}
+  serverSave();updateTeacherSelect();closeModal('delTeacherModal');setLockState();renderAll();notify('Enseignant supprimé.');
+}
+function openChangePass(id){
+  document.getElementById('cpTeacherId').value=id;
+  ['cpNew','cpNew2','cpAdmin'].forEach(i=>document.getElementById(i).value='');
+  openModal('changePassModal');
+}
+function saveChangePass(){
+  const id=document.getElementById('cpTeacherId').value;
+  const np=document.getElementById('cpNew').value;
+  const np2=document.getElementById('cpNew2').value;
+  const adm=document.getElementById('cpAdmin').value;
+  if(!np){alert('Nouveau mot de passe requis.');return;}
+  if(np!==np2){alert('Mots de passe différents.');return;}
+  if(adm!==ADMIN_PWD){alert('Mot de passe admin incorrect.');return;}
+  const t=data.teachers.find(x=>x.id===id);if(!t)return;
+  t.pass=hashPass(np);serverSave();closeModal('changePassModal');renderEnseignants();notify('Mot de passe modifié !');
+}
+
+// ═══ LEVEL / VIEW ════════════════════════════════════════════════════════════
+function setLevel(level){
+  curLevel=level;
+  document.querySelectorAll('.lp').forEach(p=>p.classList.remove('alv'));
+  document.getElementById('pill-'+level).classList.add('alv');
+  document.querySelectorAll('.cur-lv-lbl').forEach(el=>el.innerHTML=LEVELS[level].label);
+  document.getElementById('curLevelLabel').innerHTML=LEVELS[level].label;
+  document.getElementById('stLevel').textContent='Classe : '+LEVELS[level].label;
+  renderAll();
+}
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('act'));
+  document.getElementById('view-'+v).classList.add('act');
+  document.querySelectorAll('.si').forEach(x=>x.classList.remove('act'));
+  document.querySelector('[data-view="'+v+'"]').classList.add('act');
+  renderAll();
+}
+
+// ═══ ASSIGN ═══════════════════════════════════════════════════════════════════
+function populateAssign(cid, lvlSelId){
+  const level=document.getElementById(lvlSelId).value;
+  const c=document.getElementById(cid);
+  const eleves=data.eleves.filter(e=>e.level===level);
+  if(!eleves.length){c.innerHTML='<div style="color:#999;padding:5px;font-size:11px">Aucun élève dans ce niveau.</div>';return;}
+  c.innerHTML=eleves.map(e=>`<label class="asi"><input type="checkbox" value="${e.id}" class="acb"> ${e.name} ${e.prenom}</label>`).join('');
+}
+
+// ═══ TP CRUD ═════════════════════════════════════════════════════════════════
+function openTpModal(){
+  if(!curTeacher){alert('Veuillez vous identifier.');return;}
+  document.getElementById('tpLevel').value=curLevel;
+  document.getElementById('tpTitle').value='';
+  document.getElementById('tpDesc').value='';
+  document.getElementById('tpSeances').value='2';
+  openModal('tpModal');populateAssign('tpAsl','tpLevel');
+}
+function addTP(){
+  const title=document.getElementById('tpTitle').value.trim();
+  const level=document.getElementById('tpLevel').value;
+  const desc=document.getElementById('tpDesc').value.trim();
+  const seances=parseInt(document.getElementById('tpSeances').value)||2;
+  if(!title){alert('Intitulé requis.');return;}
+  const assignedTo=[...document.querySelectorAll('#tpAsl .acb:checked')].map(cb=>cb.value);
+  data.tp.push({id:'TP'+Date.now(),title,level,desc,seances,seancesDone:0,phase:'prep',teacher:curTeacher.id,date:new Date().toISOString().split('T')[0],assignedTo});
+  serverSave();closeModal('tpModal');renderAll();notify('TP créé !');
+}
+function setTPPhase(id,phase){if(!curTeacher)return;const tp=data.tp.find(t=>t.id===id);if(tp){tp.phase=phase;serverSave();renderTP();renderDashboard();}}
+function updateTPSeances(id,delta){if(!curTeacher)return;
+  const tp=data.tp.find(t=>t.id===id);if(!tp)return;
+  tp.seancesDone=Math.max(0,Math.min(tp.seances,(tp.seancesDone||0)+delta));
+  serverSave();renderAll();
+}
+function deleteTP(id){if(!confirm('Supprimer ce TP ?'))return;data.tp=data.tp.filter(t=>t.id!==id);serverSave();renderAll();notify('TP supprimé.');}
+
+// ═══ COURS CRUD ══════════════════════════════════════════════════════════════
+function openCoursModal(){
+  if(!curTeacher){alert('Veuillez vous identifier.');return;}
+  document.getElementById('coursLevel').value=curLevel;
+  document.getElementById('coursTitle').value='';
+  document.getElementById('coursDate').value='';
+  document.getElementById('coursStatus').value='todo';
+  openModal('coursModal');populateAssign('coursAsl','coursLevel');
+}
+function addCours(){
+  const title=document.getElementById('coursTitle').value.trim();
+  const level=document.getElementById('coursLevel').value;
+  const date=document.getElementById('coursDate').value;
+  const status=document.getElementById('coursStatus').value;
+  if(!title){alert('Intitulé requis.');return;}
+  const assignedTo=[...document.querySelectorAll('#coursAsl .acb:checked')].map(cb=>cb.value);
+  data.cours.push({id:'C'+Date.now(),title,level,status,teacher:curTeacher.id,date:date||new Date().toISOString().split('T')[0],assignedTo});
+  serverSave();closeModal('coursModal');renderAll();notify('Cours créé !');
+}
+function setCoursStatus(id,status){if(!curTeacher)return;const c=data.cours.find(x=>x.id===id);if(c){c.status=status;serverSave();renderDashboard();renderCours();}}
+function deleteCours(id){if(!confirm('Supprimer ce cours ?'))return;data.cours=data.cours.filter(c=>c.id!==id);serverSave();renderAll();notify('Cours supprimé.');}
+
+// ═══ ELEVE CRUD ══════════════════════════════════════════════════════════════
+function addEleve(){
+  if(!curTeacher){alert('Veuillez vous identifier.');return;}
+  const name=document.getElementById('eName').value.trim().toUpperCase();
+  const prenom=document.getElementById('ePrenom').value.trim();
+  const level=document.getElementById('eLevel').value;
+  const tel=document.getElementById('eTel').value.trim();
+  const mail=document.getElementById('eMail').value.trim();
+  const ddn=document.getElementById('eDdn').value.trim();
+  if(!name||!prenom){alert('Nom et prénom requis.');return;}
+  data.eleves.push({id:'E'+Date.now(),name,prenom,level,tel,mail,ddn});
+  serverSave();closeModal('eleveModal');
+  ['eName','ePrenom','eTel','eMail','eDdn'].forEach(id=>document.getElementById(id).value='');
+  refreshPfmpEleveSelect();renderAll();notify('Élève ajouté !');
+}
+function deleteEleve(id){if(!curTeacher){notify('Connectez-vous pour supprimer.',true);return;}if(!confirm('Supprimer cet élève ?'))return;data.eleves=data.eleves.filter(e=>e.id!==id);serverSave();refreshPfmpEleveSelect();renderAll();notify('Élève supprimé.');}
+function openEditEleve(id){if(!curTeacher){notify('Connectez-vous pour modifier.',true);return;}
+  const e=data.eleves.find(x=>x.id===id);if(!e)return;
+  ficheEleveId=id;
+  document.getElementById('eeId').value=id;
+  document.getElementById('eeName').value=e.name;
+  document.getElementById('eePrenom').value=e.prenom;
+  document.getElementById('eeLevel').value=e.level;
+  document.getElementById('eeTel').value=e.tel||'';
+  document.getElementById('eeMail').value=e.mail||'';
+  document.getElementById('eeDdn').value=e.ddn||'';
+  openModal('editEleveModal');
+}
+function openEditFromFiche(){if(!curTeacher){notify('Connectez-vous pour modifier.',true);return;}closeModal('ficheModal');openEditEleve(ficheEleveId);}
+function saveEditEleve(){
+  const id=document.getElementById('eeId').value;
+  const e=data.eleves.find(x=>x.id===id);if(!e)return;
+  const name=document.getElementById('eeName').value.trim().toUpperCase();
+  const prenom=document.getElementById('eePrenom').value.trim();
+  if(!name||!prenom){alert('Nom et prénom requis.');return;}
+  e.name=name;e.prenom=prenom;e.level=document.getElementById('eeLevel').value;
+  e.tel=document.getElementById('eeTel').value.trim();e.mail=document.getElementById('eeMail').value.trim();
+  e.ddn=document.getElementById('eeDdn').value.trim();
+  serverSave();closeModal('editEleveModal');refreshPfmpEleveSelect();renderAll();notify('Fiche mise à jour !');
+  openFiche(id);
+}
+
+// ═══ FICHE ÉLÈVE ════════════════════════════════════════════════════════════
+function openFiche(id){
+  ficheEleveId=id;
+  const e=data.eleves.find(x=>x.id===id);if(!e)return;
+  const eN=data.notes[id]||{};
+  const eTp=data.tp.filter(t=>t.level===e.level&&(!t.assignedTo||!t.assignedTo.length||t.assignedTo.includes(id)));
+  const eCours=data.cours.filter(c=>c.level===e.level&&(!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(id)));
+  const ePfmp=data.pfmp.filter(p=>p.eleveId===id);
+  const eHab=data.habilitations[id]||{};
+  const vals=Object.values(eN).map(n=>parseFloat(n)).filter(n=>!isNaN(n));
+  const moy=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):'—';
+  const mc=vals.length?(parseFloat(moy)>=12?'#107c10':parseFloat(moy)>=8?'#7a5900':'#a80000'):'#888';
+
+  let html=`<div class="fc"><div class="fav">${(e.name[0]||'')}${(e.prenom[0]||'')}</div>
+  <div style="flex:1">
+    <div class="fn">${e.name} ${e.prenom}</div>
+    <div style="margin:3px 0"><span class="lbdg ${LEVELS[e.level].cls}">${LEVELS[e.level].label}</span>${e.ddn?` <span style="font-size:11px;color:var(--muted)">🎂 ${fmtDdn(e.ddn)}</span>`:''}</div>
+    <div class="fct">${e.tel?`<span>📞 <a href="tel:${e.tel}">${e.tel}</a></span>`:''}${e.mail?`<span>✉ <a href="mailto:${e.mail}">${e.mail}</a></span>`:''}</div>
+  </div>
+  <div style="text-align:right"><div style="font-size:10px;color:#888">Moyenne</div>
+    <div style="font-size:26px;font-weight:700;color:${mc}">${moy}${vals.length?'/20':''}</div></div>
+</div>`;
+
+  html+=`<div class="sh">🔧 Travaux Pratiques (${eTp.length})</div>`;
+  if(eTp.length){
+    html+=`<table class="dt"><thead><tr><th>TP</th><th>Phase</th><th>Séances</th><th style="text-align:center">Note /20</th></tr></thead><tbody>`;
+    eTp.forEach(tp=>{
+      const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
+      const ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
+      const n=eN[tp.id]!==undefined?eN[tp.id]:null;
+      html+=`<tr>
+        <td><strong>${tp.title}</strong><br><span style="color:#888;font-size:10px">${tp.desc||''}</span></td>
+        <td><select class="tp-sel" onchange="setTPPhase('${tp.id}',this.value)">${Object.entries(TP_PHASES).map(([k,v])=>`<option value="${k}"${tp.phase===k?' selected':''}>${v.label}</option>`).join('')}</select></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:5px">
+            <button class="tp-seance-btn" onclick="updateTPSeances('${tp.id}',-1)" ${(tp.seancesDone||0)<=0?'disabled':''}>−</button>
+            <div class="mp" style="min-width:80px"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${tp.seancesDone||0}/${tp.seances}</span></div>
+            <button class="tp-seance-btn" onclick="updateTPSeances('${tp.id}',1)" ${(tp.seancesDone||0)>=tp.seances?'disabled':''}>+</button>
+          </div>
+        </td>
+        <td style="text-align:center"><input class="gi" type="number" min="0" max="20" step="0.5" value="${n!==null?n:''}" placeholder="—" onchange="saveNote('${id}','${tp.id}',this.value)"></td>
+      </tr>`;
+    });
+    html+='</tbody></table>';
+  } else html+='<p style="color:#aaa;font-size:12px;margin-bottom:10px">Aucun TP affecté.</p>';
+
+  html+=`<div class="sh">📖 Cours (${eCours.length})</div>`;
+  if(eCours.length){
+    html+=`<table class="dt"><thead><tr><th>Cours</th><th>Statut</th><th style="text-align:center">Note /20</th></tr></thead><tbody>`;
+    eCours.forEach(c=>{
+      const n=eN[c.id]!==undefined?eN[c.id]:null;
+      html+=`<tr><td>${c.title}</td>
+        <td><select class="tp-sel" onchange="setCoursStatus('${c.id}',this.value)">${Object.entries(COURS_STATUS).map(([k,v])=>`<option value="${k}"${c.status===k?' selected':''}>${v}</option>`).join('')}</select></td>
+        <td style="text-align:center"><input class="gi" type="number" min="0" max="20" step="0.5" value="${n!==null?n:''}" placeholder="—" onchange="saveNote('${id}','${c.id}',this.value)"></td>
+      </tr>`;
+    });
+    html+='</tbody></table>';
+  } else html+='<p style="color:#aaa;font-size:12px;margin-bottom:10px">Aucun cours affecté.</p>';
+
+  html+=`<div class="sh p">🏭 PFMP (${ePfmp.length} session(s))</div>`;
+  html+=ePfmp.length?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${ePfmp.map(p=>`
+    <div class="pc"><h4>Session ${p.session} — ${fmtD(p.debut)} → ${fmtD(p.fin)}</h4>
+    <div class="pf2"><label>Entreprise</label><span>${p.entreprise}</span></div>
+    ${p.secteur?`<div class="pf2"><label>Secteur</label><span>${p.secteur}</span></div>`:''}
+    <div class="pf2"><label>Tuteur</label><span>${p.tuteur}</span></div>
+    ${p.tuteurTel?`<div class="pf2"><label>Tél.</label><span>${p.tuteurTel}</span></div>`:''}
+    ${p.tuteurMail?`<div class="pf2"><label>Mail</label><span><a href="mailto:${p.tuteurMail}" style="color:var(--blue)">${p.tuteurMail}</a></span></div>`:''}
+    ${p.comment?`<div class="pcm">💬 ${p.comment}</div>`:''}</div>`).join('')}</div>`
+    :'<p style="color:#aaa;font-size:12px;margin-bottom:10px">Aucune PFMP.</p>';
+
+  html+=`<div class="sh h">⚡ Habilitations électriques</div>
+  <table class="dt"><thead><tr><th>Niveau</th><th>Description</th><th style="text-align:center">Théorique</th><th style="text-align:center">Pratique</th><th style="text-align:center">Statut</th></tr></thead><tbody>
+  ${HAB_NIV.map(niv=>{const h=eHab[niv]||{};const ok=h.theo&&h.prat;const partial=h.theo||h.prat;
+    const cls=ok?'ok':partial?'partial':'no';const lbl=ok?'✅ Validée':partial?'⚠️ Partielle':'❌ Non obtenue';
+    return `<tr><td><strong style="color:#92400e">${niv}</strong></td><td style="color:var(--muted);font-size:11px">${HAB_LBL[niv]}</td>
+    <td style="text-align:center">${h.theo?'✅':'⬜'}</td><td style="text-align:center">${h.prat?'✅':'⬜'}</td>
+    <td style="text-align:center"><span class="hbdg ${cls}">${lbl}</span></td></tr>`;}).join('')}
+  </tbody></table>`;
+
+  document.getElementById('ficheContent').innerHTML=html;
+  openModal('ficheModal');
+}
+
+// ═══ PFMP ════════════════════════════════════════════════════════════════════
+function refreshPfmpEleveSelect(){
+  const sel=document.getElementById('pfmpEleve');
+  sel.innerHTML='<option value="">— Choisir un élève —</option>';
+  Object.entries(LEVELS).forEach(([key,lvl])=>{
+    const grp=document.createElement('optgroup');grp.label=lvl.label;
+    data.eleves.filter(e=>e.level===key).forEach(e=>{const o=document.createElement('option');o.value=e.id;o.textContent=e.name+' '+e.prenom;grp.appendChild(o);});
+    if(grp.children.length)sel.appendChild(grp);
+  });
+}
+function openPfmpModal(){if(!curTeacher){alert('Veuillez vous identifier.');return;}refreshPfmpEleveSelect();openModal('pfmpModal');}
+function addPFMP(){
+  const eleveId=document.getElementById('pfmpEleve').value;
+  const session=document.getElementById('pfmpSession').value;
+  const debut=document.getElementById('pfmpDebut').value;
+  const fin=document.getElementById('pfmpFin').value;
+  const entreprise=document.getElementById('pfmpEnt').value.trim();
+  const tuteur=document.getElementById('pfmpTut').value.trim();
+  if(!eleveId||!debut||!fin||!entreprise||!tuteur){alert('Champs obligatoires manquants (élève, dates, entreprise, tuteur).');return;}
+  data.pfmp.push({id:'P'+Date.now(),eleveId,session,debut,fin,entreprise,
+    secteur:document.getElementById('pfmpSect').value.trim(),
+    tuteur,tuteurTel:document.getElementById('pfmpTutTel').value.trim(),
+    tuteurMail:document.getElementById('pfmpTutMail').value.trim(),
+    comment:document.getElementById('pfmpComment').value.trim()});
+  serverSave();closeModal('pfmpModal');
+  ['pfmpEleve','pfmpDebut','pfmpFin','pfmpEnt','pfmpSect','pfmpTut','pfmpTutTel','pfmpTutMail','pfmpComment'].forEach(id=>document.getElementById(id).value='');
+  renderAll();notify('PFMP enregistrée !');
+}
+function deletePFMP(id){if(!curTeacher){notify('Connectez-vous pour supprimer.',true);return;}if(!confirm('Supprimer cette PFMP ?'))return;data.pfmp=data.pfmp.filter(p=>p.id!==id);serverSave();renderAll();notify('PFMP supprimée.');}
+
+// ═══ HABILITATIONS ════════════════════════════════════════════════════════════
+function toggleHab(eleveId,niv,type){if(!curTeacher){notify('Connectez-vous pour modifier.',true);return;}
+  if(!data.habilitations[eleveId])data.habilitations[eleveId]={};
+  if(!data.habilitations[eleveId][niv])data.habilitations[eleveId][niv]={theo:false,prat:false};
+  data.habilitations[eleveId][niv][type]=!data.habilitations[eleveId][niv][type];
+  serverSave();renderHabilitations();
+}
+
+// ═══ NOTES ════════════════════════════════════════════════════════════════════
+function saveNote(eleveId,evalId,value){if(!curTeacher)return;
+  if(!data.notes[eleveId])data.notes[eleveId]={};
+  if(value===''||value===null){delete data.notes[eleveId][evalId];}
+  else{const n=parseFloat(value);if(!isNaN(n)&&n>=0&&n<=20)data.notes[eleveId][evalId]=n;}
+  serverSave();
+}
+
+// ═══ MONTÉE DE NIVEAU ════════════════════════════════════════════════════════
+function checkMonteeConfirm(){document.getElementById('monteeBtnConfirm').disabled=(document.getElementById('monteeConfirmInput').value!=='MONTEE');}
+function doMontee(){
+  if(!curTeacher){alert('Enseignant non identifié.');return;}
+  // TP et cours : 1ère→Terminale, 2nde→1ère
+  data.tp.forEach(tp=>{
+    if(tp.level==='1MELEC') tp.level='T-MELEC';
+    else if(tp.level==='2MELEC') tp.level='1MELEC';
+  });
+  data.cours.forEach(c=>{
+    if(c.level==='1MELEC') c.level='T-MELEC';
+    else if(c.level==='2MELEC') c.level='1MELEC';
+  });
+  // Élèves terminales → archivage
+  const termIds=data.eleves.filter(e=>e.level==='T-MELEC').map(e=>e.id);
+  termIds.forEach(id=>{delete data.notes[id];delete data.habilitations[id];});
+  data.pfmp=data.pfmp.filter(p=>!termIds.includes(p.eleveId));
+  data.eleves=data.eleves.filter(e=>e.level!=='T-MELEC');
+  // 1ère → Terminale
+  data.eleves.filter(e=>e.level==='1MELEC').forEach(e=>e.level='T-MELEC');
+  // 2nde → 1ère
+  data.eleves.filter(e=>e.level==='2MELEC').forEach(e=>e.level='1MELEC');
+  serverSave();closeModal('monteeModal');
+  document.getElementById('monteeConfirmInput').value='';
+  document.getElementById('monteeBtnConfirm').disabled=true;
+  refreshPfmpEleveSelect();renderAll();
+  notify('🎓 Montée de niveau effectuée !');
+}
+
+// ═══ RESET ════════════════════════════════════════════════════════════════════
+function checkReset(){document.getElementById('resetBtn').disabled=(document.getElementById('resetInput').value!=='EFFACER');}
+function doReset(){
+  data={teachers:[],tp:[],cours:[],eleves:[],notes:{},pfmp:[],habilitations:{},_version:0,_ts:Date.now()};
+  serverSave();curTeacher=null;document.getElementById('teacherSelect').value='';
+  document.getElementById('curTeacherDisplay').textContent='Non connecté';
+  document.getElementById('stTeacher').textContent='Enseignant : —';
+  closeModal('resetModal');document.getElementById('resetInput').value='';document.getElementById('resetBtn').disabled=true;
+  updateTeacherSelect();setLockState();renderAll();notify('Données effacées.');
+}
+
+// ═══ EXPORT ═══════════════════════════════════════════════════════════════════
+function exportJSON(){
+  dlBlob(JSON.stringify(data,null,2),'application/json','MELEC_sauvegarde_'+today()+'.json');
+  notify('Export JSON téléchargé !');
+}
+function exportCSV(){
+  const date=today();
+  function csvCell(v){var s=String(v===null||v===undefined?'':v).replace(/"/g,'""');return(s.indexOf(';')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0)?'"'+s+'"':s;}
+  function row(arr){return arr.map(csvCell).join(';')+'\r\n';}
+  let csv='\uFEFF'; // BOM UTF-8
+
+  csv+='ÉLÈVES\r\n';
+  csv+=row(['Nom','Prénom','Classe','Naissance','Téléphone','Email']);
+  data.eleves.forEach(e=>csv+=row([e.name,e.prenom,LEVELS[e.level]?.label||e.level,fmtDdn(e.ddn),e.tel||'',e.mail||'']));
+  csv+='\r\n';
+
+  csv+='TRAVAUX PRATIQUES\r\n';
+  csv+=row(['Classe','Titre','Description','Séances prévues','Séances réalisées','Phase','Enseignant','Date']);
+  data.tp.forEach(tp=>{
+    const t=data.teachers.find(x=>x.id===tp.teacher);
+    csv+=row([LEVELS[tp.level]?.label||tp.level,tp.title,tp.desc||'',tp.seances,tp.seancesDone||0,TP_PHASES[tp.phase]?.label||tp.phase,t?t.name:'',tp.date||'']);
+  });
+  csv+='\r\n';
+
+  csv+='COURS\r\n';
+  csv+=row(['Classe','Titre','Enseignant','Date','Statut']);
+  data.cours.forEach(c=>{
+    const t=data.teachers.find(x=>x.id===c.teacher);
+    csv+=row([LEVELS[c.level]?.label||c.level,c.title,t?t.name:'',c.date||'',COURS_STATUS[c.status]||c.status]);
+  });
+  csv+='\r\n';
+
+  csv+='RÉSULTATS\r\n';
+  csv+=row(['Élève','Classe','Évaluation','Type','Note /20']);
+  data.eleves.forEach(e=>{
+    const eN=data.notes[e.id]||{};
+    Object.entries(eN).forEach(([eid,n])=>{
+      const tp=data.tp.find(x=>x.id===eid);
+      const c=data.cours.find(x=>x.id===eid);
+      csv+=row([e.name+' '+e.prenom,LEVELS[e.level]?.label||e.level,(tp?tp.title:c?c.title:eid),(tp?'TP':'Cours'),n]);
+    });
+  });
+  csv+='\r\n';
+
+  csv+='PFMP\r\n';
+  csv+=row(['Élève','Classe','Session','Début','Fin','Jours','Entreprise','Secteur','Tuteur','Tél. tuteur','Mail tuteur','Commentaire']);
+  data.pfmp.forEach(p=>{
+    const e=data.eleves.find(x=>x.id===p.eleveId);
+    const nbJ=p.debut&&p.fin?Math.round((new Date(p.fin)-new Date(p.debut))/86400000)+1:'';
+    csv+=row([e?e.name+' '+e.prenom:'?',e?LEVELS[e.level]?.label||e.level:'?','Session '+p.session,p.debut,p.fin,nbJ,p.entreprise,p.secteur||'',p.tuteur,p.tuteurTel||'',p.tuteurMail||'',p.comment||'']);
+  });
+  csv+='\r\n';
+
+  csv+='HABILITATIONS\r\n';
+  var habHeader=['Élève','Classe'];
+  HAB_NIV.forEach(n=>{habHeader.push(n+' Théo.',n+' Prat.',n+' Validé');});
+  csv+=row(habHeader);
+  data.eleves.forEach(e=>{
+    const eH=data.habilitations[e.id]||{};
+    const r=[e.name+' '+e.prenom,LEVELS[e.level]?.label||e.level];
+    HAB_NIV.forEach(niv=>{const h=eH[niv]||{};r.push(h.theo?'Oui':'Non',h.prat?'Oui':'Non',(h.theo&&h.prat)?'OUI':'NON');});
+    csv+=row(r);
+  });
+
+  dlBlob(csv,'text/csv;charset=utf-8','MELEC_Export_'+date+'.csv');
+  notify('Export CSV téléchargé !');
+}
+function dlBlob(content,type,filename){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function today(){return new Date().toISOString().split('T')[0];}
+
+async function importFile(event){
+  const file=event.target.files[0];if(!file)return;
+  event.target.value='';
+  const text=await file.text();
+  try{
+    const imp=JSON.parse(text);
+    if(!imp.teachers||!imp.eleves){alert('JSON invalide ou incomplet.');return;}
+    if(!confirm('Importer ces données ? Les données actuelles seront remplacées.'))return;
+    data=imp;fixData();
+    await serverSave();
+    updateTeacherSelect();setLockState();refreshPfmpEleveSelect();renderAll();
+    notify('Import JSON réussi !');
+  }catch(err){alert('Erreur JSON : '+err.message);}
+}
+
+// ═══ RENDER ═══════════════════════════════════════════════════════════════════
+function renderAll(){
+  renderDashboard();renderVue3Classes();renderEnseignants();renderTP();renderCours();
+  renderResultats();renderEleves();renderPFMP();renderHabilitations();updateStatus();
+}
+
+function renderDashboard(){
+  const lTp=data.tp.filter(t=>t.level===curLevel);
+  const lCours=data.cours.filter(c=>c.level===curLevel);
+  const lEleves=data.eleves.filter(e=>e.level===curLevel);
+  const lPfmp=data.pfmp.filter(p=>lEleves.some(e=>e.id===p.eleveId));
+  const tpFin=lTp.filter(t=>t.phase==='main').length;
+  const coursDone=lCours.filter(c=>c.status==='done').length;
+  const habValid=lEleves.reduce((acc,e)=>{const eH=data.habilitations[e.id]||{};return acc+HAB_NIV.filter(n=>eH[n]&&eH[n].theo&&eH[n].prat).length;},0);
+
+  if(document.getElementById('dashTpLvl'))document.getElementById('dashTpLvl').innerHTML=LEVELS[curLevel].label;
+  if(document.getElementById('dashCoursLvl'))document.getElementById('dashCoursLvl').innerHTML=LEVELS[curLevel].label;
+
+  document.getElementById('dashKpis').innerHTML=`
+    <div class="kpi"><div class="kl">TP (phase Maintenance)</div><div class="kv">${tpFin}/${lTp.length}</div>
+      <div class="pb"><div class="pf" style="width:${lTp.length?tpFin/lTp.length*100:0}%"></div></div></div>
+    <div class="kpi g"><div class="kl">Cours terminés</div><div class="kv">${coursDone}/${lCours.length}</div>
+      <div class="pb"><div class="pf" style="width:${lCours.length?coursDone/lCours.length*100:0}%;background:var(--ok)"></div></div></div>
+    <div class="kpi y"><div class="kl">Élèves · PFMP</div><div class="kv">${lEleves.length} · <span style="font-size:14px">${lPfmp.length}</span></div><div class="ks">élèves · sessions PFMP</div></div>
+    <div class="kpi p"><div class="kl">Habilitations validées</div><div class="kv">${habValid}</div><div class="ks">théo. + prat. sur ${lEleves.length * HAB_NIV.length} possibles</div></div>`;
+
+  document.getElementById('dashTpBody').innerHTML=!lTp.length?'<tr><td colspan="5" style="text-align:center;color:#aaa;padding:14px">Aucun TP pour cette classe</td></tr>':
+    lTp.map(tp=>{
+      const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
+      const ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
+      const t=data.teachers.find(x=>x.id===tp.teacher);
+      return `<tr><td><strong>${tp.title}</strong><br><span style="color:#888;font-size:10px">${tp.desc||''}</span></td>
+        <td><span class="bdg ${tp.phase}">${ph.label}</span></td>
+        <td><div class="mp"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${pct}%</span></div></td>
+        <td style="font-size:10px;color:var(--muted)">${tp.seancesDone||0}/${tp.seances} séances</td>
+        <td style="font-size:11px">${t?t.name:'—'}</td></tr>`;
+    }).join('');
+
+  document.getElementById('dashCoursBody').innerHTML=!lCours.length?'<tr><td colspan="4" style="text-align:center;color:#aaa;padding:14px">Aucun cours pour cette classe</td></tr>':
+    lCours.map(c=>{
+      const t=data.teachers.find(x=>x.id===c.teacher);
+      const pct=c.status==='done'?100:c.status==='prog'?50:0;
+      return `<tr><td><strong>${c.title}</strong></td><td>${t?t.name:'—'}</td>
+        <td><div style="display:flex;align-items:center;gap:6px">
+          <div class="mpb" style="width:70px"><div class="mpf" style="width:${pct}%;background:${c.status==='done'?'var(--ok)':c.status==='prog'?'var(--yel)':'#ccc'}"></div></div>
+          <span class="bdg ${c.status}">${COURS_STATUS[c.status]||c.status}</span></div></td>
+        <td>${fmtD(c.date)}</td></tr>`;
+    }).join('');
+}
+
+function renderVue3Classes(){
+  const c = document.getElementById('classOverview');
+  if(!c) return;
+  c.innerHTML = Object.entries(LEVELS).map(([key, lvl])=>{
+    const lTp=data.tp.filter(t=>t.level===key);
+    const lCours=data.cours.filter(c=>c.level===key);
+    const lEleves=data.eleves.filter(e=>e.level===key);
+    const lPfmp=data.pfmp.filter(p=>lEleves.some(e=>e.id===p.eleveId));
+    const habValid=lEleves.reduce((acc,e)=>{const eH=data.habilitations[e.id]||{};return acc+HAB_NIV.filter(n=>eH[n]&&eH[n].theo&&eH[n].prat).length;},0);
+    const tpDone=lTp.filter(t=>t.phase==='main').length;
+    const coursDone=lCours.filter(c=>c.status==='done').length;
+    return `<div class="class-card">
+      <div class="class-card-hd ${lvl.cls}">${lvl.label}<span class="lbdg ${lvl.cls}" style="font-size:12px">${lEleves.length} élèves</span></div>
+      <div class="class-card-body">
+        <div class="class-stat"><span class="class-stat-lbl">TP (phase Maintenance)</span><span class="class-stat-val">${tpDone}/${lTp.length}</span></div>
+        <div class="class-stat"><span class="class-stat-lbl">Cours terminés</span><span class="class-stat-val">${coursDone}/${lCours.length}</span></div>
+        <div class="class-stat"><span class="class-stat-lbl">PFMP enregistrées</span><span class="class-stat-val">${lPfmp.length}</span></div>
+        <div class="class-stat"><span class="class-stat-lbl">Habilitations validées</span><span class="class-stat-val">${habValid}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // All TP
+  const allTpBody=document.getElementById('allTpBody');
+  if(allTpBody){
+    if(!data.tp.length){allTpBody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:14px">Aucun TP enregistré</td></tr>';}
+    else{
+      allTpBody.innerHTML=data.tp.map(tp=>{
+        const ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
+        const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
+        const t=data.teachers.find(x=>x.id===tp.teacher);
+        const lvl=LEVELS[tp.level]||{label:tp.level,cls:'s1'};
+        return `<tr><td><span class="lbdg ${lvl.cls}">${lvl.short||lvl.label}</span></td>
+          <td><strong>${tp.title}</strong></td>
+          <td>${t?t.name:'—'}</td>
+          <td><span class="bdg ${tp.phase}">${ph.label}</span></td>
+          <td><div class="mp"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${pct}%</span></div></td></tr>`;
+      }).join('');
+    }
+  }
+
+  // All Cours
+  const allCoursBody=document.getElementById('allCoursBody');
+  if(allCoursBody){
+    if(!data.cours.length){allCoursBody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#aaa;padding:14px">Aucun cours enregistré</td></tr>';}
+    else{
+      allCoursBody.innerHTML=data.cours.map(c=>{
+        const t=data.teachers.find(x=>x.id===c.teacher);
+        const lvl=LEVELS[c.level]||{label:c.level,cls:'s1'};
+        return `<tr><td><span class="lbdg ${lvl.cls}">${lvl.short||lvl.label}</span></td>
+          <td><strong>${c.title}</strong></td>
+          <td>${t?t.name:'—'}</td>
+          <td><span class="bdg ${c.status}">${COURS_STATUS[c.status]||c.status}</span></td>
+          <td>${fmtD(c.date)}</td></tr>`;
+      }).join('');
+    }
+  }
+}
+
+function renderEnseignants(){
+  const c=document.getElementById('ensGrid');if(!c)return;
+  if(!data.teachers.length){c.innerHTML='<div class="empty"><div class="eic">👨‍🏫</div><div>Aucun enseignant.</div></div>';return;}
+  c.innerHTML=data.teachers.map(t=>`
+    <div class="ens-card">
+      <div class="ens-card-body">
+        <div class="ens-name">${t.name}</div>
+        <div class="ens-spec">${t.spec||'—'}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:#aaa">
+          ${Object.entries(LEVELS).map(([key,lvl])=>{
+            const nTp=data.tp.filter(x=>x.teacher===t.id&&x.level===key).length;
+            const nC=data.cours.filter(x=>x.teacher===t.id&&x.level===key).length;
+            if(!nTp&&!nC) return '';
+            return `<span class="lbdg ${lvl.cls}">${lvl.short} : ${nTp}TP ${nC}Cours</span>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="ens-card-footer">
+        <button class="rb" onclick="openChangePass('${t.id}')">🔑 Mot de passe</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderTP(){
+  const lTp=data.tp.filter(t=>t.level===curLevel);
+  const c=document.getElementById('tpContent');if(!c)return;
+  if(!lTp.length){c.innerHTML='<div class="empty"><div class="eic">🔧</div><div>Aucun TP pour cette classe.<br><small>La gestion des séances se fait via la fiche élève.</small></div></div>';return;}
+  c.innerHTML=`<div style="background:#e8f4fd;border:1px solid #b3d9f7;border-radius:4px;padding:9px 13px;font-size:11px;color:#005a9e;margin-bottom:12px">
+    ℹ️ Gestion des séances par élève via le bouton <strong>📋 Fiche</strong> dans la rubrique Élèves.
+  </div>
+  <table class="dt"><thead><tr><th>Intitulé</th><th>Description</th><th style="text-align:center">Séances</th><th>Phase</th><th>Enseignant</th><th>Actions</th></tr></thead><tbody>
+  ${lTp.map(tp=>{
+    const ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
+    const t=data.teachers.find(x=>x.id===tp.teacher);
+    const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
+    return `<tr>
+      <td><strong>${tp.title}</strong></td>
+      <td style="color:var(--muted);font-size:10px">${tp.desc||'—'}</td>
+      <td style="text-align:center">
+        <div class="mp" style="min-width:80px"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${tp.seancesDone||0}/${tp.seances}</span></div>
+      </td>
+      <td><select class="tp-sel" onchange="setTPPhase('${tp.id}',this.value)">${Object.entries(TP_PHASES).map(([k,v])=>`<option value="${k}"${tp.phase===k?' selected':''}>${v.label}</option>`).join('')}</select></td>
+      <td style="font-size:11px">${t?t.name:'—'}</td>
+      <td><button class="rb" style="color:#c00" onclick="deleteTP('${tp.id}')">🗑</button></td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+
+function renderCours(){
+  const lCours=data.cours.filter(c=>c.level===curLevel);
+  const c=document.getElementById('coursContent');if(!c)return;
+  if(!lCours.length){c.innerHTML='<div class="empty"><div class="eic">📖</div><div>Aucun cours pour cette classe.</div></div>';return;}
+  c.innerHTML=`<table class="dt"><thead><tr><th>Intitulé</th><th>Enseignant</th><th>Date</th><th>Statut</th><th>Actions</th></tr></thead><tbody>
+  ${lCours.map(c=>{
+    const t=data.teachers.find(x=>x.id===c.teacher);
+    return `<tr>
+      <td><strong>${c.title}</strong></td>
+      <td>${t?t.name:'—'}</td>
+      <td>${fmtD(c.date)}</td>
+      <td><select class="tp-sel" onchange="setCoursStatus('${c.id}',this.value)">${Object.entries(COURS_STATUS).map(([k,v])=>`<option value="${k}"${c.status===k?' selected':''}>${v}</option>`).join('')}</select></td>
+      <td><button class="rb" style="color:#c00" onclick="deleteCours('${c.id}')">🗑</button></td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+
+function renderResultats(){
+  const lEleves=data.eleves.filter(e=>e.level===curLevel);
+  const lTp=data.tp.filter(t=>t.level===curLevel);
+  const lCours=data.cours.filter(c=>c.level===curLevel);
+  const c=document.getElementById('resultatsContent');if(!c)return;
+  if(!lEleves.length){c.innerHTML='<div class="empty"><div class="eic">📊</div><div>Aucun élève pour cette classe.</div></div>';return;}
+  let html='';
+  lEleves.forEach(eleve=>{
+    if(!data.notes[eleve.id])data.notes[eleve.id]={};
+    const eTp=lTp.filter(t=>!t.assignedTo||!t.assignedTo.length||t.assignedTo.includes(eleve.id));
+    const eCours=lCours.filter(c=>!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(eleve.id));
+    const evals=[...eTp.map(t=>({id:t.id,label:t.title,type:'TP'})),...eCours.map(c=>({id:c.id,label:c.title,type:'Cours'}))];
+    const notes=evals.map(e=>data.notes[eleve.id][e.id]!==undefined?parseFloat(data.notes[eleve.id][e.id]):null);
+    const valid=notes.filter(n=>n!==null);
+    const moy=valid.length?(valid.reduce((a,b)=>a+b,0)/valid.length).toFixed(1):'—';
+    const mc=valid.length?(parseFloat(moy)>=12?'#107c10':parseFloat(moy)>=8?'#7a5900':'#a80000'):'#888';
+    html+=`<div class="eblk"><div class="ebh"><div style="font-weight:700;font-size:12px">${eleve.name} ${eleve.prenom}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:11px;color:#888">Moy : <strong style="color:${mc};font-size:13px">${moy}${valid.length?'/20':''}</strong></span>
+        <button class="rb" onclick="openFiche('${eleve.id}')">📋 Fiche</button>
+      </div></div>
+      ${evals.length?`<table class="dt" style="margin-bottom:0;box-shadow:none;border-radius:0"><thead><tr><th>Évaluation</th><th>Type</th><th style="width:90px;text-align:center">Note /20</th></tr></thead><tbody>
+        ${evals.map((e,i)=>`<tr><td>${e.label}</td><td><span class="bdg ${e.type==='TP'?'real':'done'}">${e.type}</span></td>
+          <td style="text-align:center"><input class="gi" type="number" min="0" max="20" step="0.5" value="${notes[i]!==null?notes[i]:''}" placeholder="—"
+          onchange="saveNote('${eleve.id}','${e.id}',this.value)" onblur="renderResultats()"></td></tr>`).join('')}
+      </tbody></table>`:`<div style="padding:9px 11px;font-size:11px;color:#aaa">Aucune évaluation affectée.</div>`}
+    </div>`;
+  });
+  c.innerHTML=html;
+}
+
+function renderEleves(){
+  const c=document.getElementById('elevesContent');if(!c)return;
+  const eleves=data.eleves.filter(e=>e.level===curLevel);
+  const lTp=data.tp.filter(t=>t.level===curLevel);
+  const lCours=data.cours.filter(c=>c.level===curLevel);
+  const lvl=LEVELS[curLevel];
+  let html=`<div class="sh" style="margin-top:0"><span class="lbdg ${lvl.cls}">${lvl.label}</span> — ${eleves.length} élève(s)</div>`;
+  if(!eleves.length){html+='<div class="empty"><div class="eic">👥</div><div>Aucun élève dans cette classe.</div></div>';c.innerHTML=html;return;}
+  eleves.forEach(eleve=>{
+    const eTp=lTp.filter(t=>!t.assignedTo||!t.assignedTo.length||t.assignedTo.includes(eleve.id));
+    const eCours=lCours.filter(c=>!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(eleve.id));
+    html+=`<div class="eblk">
+      <div class="ebh">
+        <div>
+          <strong style="font-size:13px">${eleve.name} ${eleve.prenom}</strong>
+          <div style="display:flex;gap:10px;font-size:11px;margin-top:2px;flex-wrap:wrap">
+            ${eleve.ddn?`<span style="color:var(--muted)">🎂 ${fmtDdn(eleve.ddn)}</span>`:''}
+            ${eleve.tel?`<a href="tel:${eleve.tel}" style="color:var(--blue);text-decoration:none">📞 ${eleve.tel}</a>`:''}
+            ${eleve.mail?`<a href="mailto:${eleve.mail}" style="color:var(--blue);text-decoration:none">✉ ${eleve.mail}</a>`:''}
+          </div>
+        </div>
+        <div class="ra">
+          <button class="rb pri" onclick="openFiche('${eleve.id}')">📋 Fiche / TP</button>
+          <button class="rb" onclick="openEditEleve('${eleve.id}')">✏️</button>
+          <button class="rb" style="color:#c00" onclick="deleteEleve('${eleve.id}')">🗑</button>
+        </div>
+      </div>
+      <div style="padding:8px 11px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--blue-dk);text-transform:uppercase;margin-bottom:5px">🔧 TP (${eTp.length})</div>
+          ${eTp.length?eTp.map(tp=>{const ph=TP_PHASES[tp.phase]||TP_PHASES.prep;const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
+            return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:11px">
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${tp.title}">${tp.title}</span>
+              <span class="bdg ${tp.phase}">${ph.label}</span>
+              <span style="font-size:10px;color:var(--muted);min-width:30px;text-align:right">${pct}%</span>
+            </div>`;}).join(''):'<div style="color:#aaa;font-size:11px">Aucun TP affecté</div>'}
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--blue-dk);text-transform:uppercase;margin-bottom:5px">📖 Cours (${eCours.length})</div>
+          ${eCours.length?eCours.map(c=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:11px">
+              <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.title}</span>
+              <span class="bdg ${c.status}">${COURS_STATUS[c.status]||c.status}</span>
+            </div>`).join(''):'<div style="color:#aaa;font-size:11px">Aucun cours affecté</div>'}
+        </div>
+      </div>
+    </div>`;
+  });
+  c.innerHTML=html;
+}
+
+function renderPFMP(){
+  const lEleves=data.eleves.filter(e=>e.level===curLevel);
+  const c=document.getElementById('pfmpContent');if(!c)return;
+  if(!lEleves.length){c.innerHTML='<div class="empty"><div class="eic">🏭</div><div>Aucun élève dans cette classe.</div></div>';return;}
+  let html='';
+  lEleves.forEach(eleve=>{
+    const ePfmp=data.pfmp.filter(p=>p.eleveId===eleve.id);
+    html+=`<div class="eblk"><div class="ebh" style="background:#f7f0ff;border-bottom-color:#e5d4f5">
+      <div style="font-weight:700;font-size:12px;color:var(--pfmp)">${eleve.name} ${eleve.prenom}</div>
+      <span style="font-size:11px;color:#888">${ePfmp.length} session(s)</span></div>`;
+    if(!ePfmp.length){html+='<div style="padding:9px 11px;font-size:11px;color:#aaa">Aucune PFMP enregistrée.</div>';}
+    else html+=`<div style="padding:10px 11px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${ePfmp.map(p=>{const nbJ=p.debut&&p.fin?Math.round((new Date(p.fin)-new Date(p.debut))/86400000)+1:'?';
+        return `<div class="pc"><h4>Session ${p.session} — ${fmtD(p.debut)} → ${fmtD(p.fin)} (${nbJ}j)</h4>
+          <div class="pf2"><label>Entreprise</label><span>${p.entreprise}</span></div>
+          ${p.secteur?`<div class="pf2"><label>Secteur</label><span>${p.secteur}</span></div>`:''}
+          <div class="pf2"><label>Tuteur</label><span>${p.tuteur}</span></div>
+          ${p.tuteurTel?`<div class="pf2"><label>Tél.</label><span>${p.tuteurTel}</span></div>`:''}
+          ${p.tuteurMail?`<div class="pf2"><label>Mail</label><span><a href="mailto:${p.tuteurMail}" style="color:var(--blue)">${p.tuteurMail}</a></span></div>`:''}
+          ${p.comment?`<div class="pcm">💬 ${p.comment}</div>`:''}
+          <div style="margin-top:8px"><button class="rb" style="color:#c00;font-size:11px" onclick="deletePFMP('${p.id}')">🗑 Supprimer</button></div>
+        </div>`;}).join('')}
+    </div>`;
+    html+='</div>';
+  });
+  c.innerHTML=html;
+}
+
+function renderHabilitations(){
+  const lEleves=data.eleves.filter(e=>e.level===curLevel);
+  const c=document.getElementById('habContent');if(!c)return;
+  if(!lEleves.length){c.innerHTML='<div class="empty"><div class="eic">⚡</div><div>Aucun élève dans cette classe.</div></div>';return;}
+  c.innerHTML=`<div style="overflow-x:auto"><table class="dt" style="min-width:750px">
+    <thead>
+      <tr><th rowspan="2" style="vertical-align:middle;min-width:140px">Élève</th>
+        ${HAB_NIV.map(n=>`<th colspan="2" style="text-align:center;background:#78350f;border-left:2px solid rgba(255,255,255,.2)">
+          <div style="font-size:12px;font-weight:800">${n}</div>
+          <div style="font-size:9px;font-weight:400;opacity:.8">${HAB_LBL[n].split(',')[0]}</div></th>`).join('')}
+        <th rowspan="2" style="vertical-align:middle;text-align:center">Bilan</th></tr>
+      <tr style="background:#92400e">
+        ${HAB_NIV.map(()=>`<th style="text-align:center;font-size:10px;color:#fde68a;border-left:2px solid rgba(255,255,255,.15)">Théo.</th><th style="text-align:center;font-size:10px;color:#fde68a">Prat.</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>
+    ${lEleves.map(eleve=>{
+      const eHab=data.habilitations[eleve.id]||{};
+      const cells=HAB_NIV.map(niv=>{const h=eHab[niv]||{theo:false,prat:false};
+        return `<td style="text-align:center;border-left:2px solid #f0e8d0"><input type="checkbox" ${h.theo?'checked':''} onchange="toggleHab('${eleve.id}','${niv}','theo')" style="width:15px;height:15px;accent-color:#b45309;cursor:pointer"></td>
+                <td style="text-align:center"><input type="checkbox" ${h.prat?'checked':''} onchange="toggleHab('${eleve.id}','${niv}','prat')" style="width:15px;height:15px;accent-color:#b45309;cursor:pointer"></td>`;}).join('');
+      const valid=HAB_NIV.filter(niv=>{const h=eHab[niv]||{};return h.theo&&h.prat;});
+      const bilan=valid.length?valid.map(niv=>`<span class="hbdg ok" style="margin:1px">${niv} ✓</span>`).join(''):'<span style="color:#bbb;font-size:10px">Aucune</span>';
+      return `<tr><td><strong>${eleve.name}</strong> ${eleve.prenom}</td>${cells}<td style="text-align:center">${bilan}</td></tr>`;
+    }).join('')}
+    </tbody></table></div>
+  <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:9px 13px;font-size:11px;color:#78350f;margin-top:10px">
+    ℹ️ Cochez <strong>Théorique</strong> puis <strong>Pratique</strong> pour valider chaque niveau d'habilitation. Les deux cases doivent être cochées pour que le niveau soit acquis.
+  </div>`;
+}
+
+function updateStatus(){
+  const habTotal=Object.values(data.habilitations).reduce((acc,eH)=>acc+HAB_NIV.filter(n=>eH[n]&&eH[n].theo&&eH[n].prat).length,0);
+  var el=document.getElementById('stCounts');
+  if(el) el.textContent=`TP : ${data.tp.length} | Cours : ${data.cours.length} | Élèves : ${data.eleves.length} | PFMP : ${data.pfmp.length} | Hab. validées : ${habTotal}`;
+}
+
+// ═══ MODAL ═══════════════════════════════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+document.addEventListener('click',function(e){
+  if(e.target.classList&&e.target.classList.contains('moverlay'))e.target.classList.remove('show');
+});
+
+// ═══ NOTIFY ══════════════════════════════════════════════════════════════════
+function notify(msg,err=false,info=false){
+  const n=document.getElementById('notif');
+  n.textContent=(err?'⚠ ':info?'🔄 ':'✓ ')+msg;
+  n.className='notif'+(err?' err':info?' info':'');
+  n.classList.add('show');setTimeout(()=>n.classList.remove('show'),3500);
+}
+
+// ═══ UTIL ════════════════════════════════════════════════════════════════════
+function fmtD(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;}}
+function fmtDdn(ddn){if(!ddn||ddn.length!==8)return ddn||'';return ddn.slice(0,2)+'/'+ddn.slice(2,4)+'/'+ddn.slice(4,8);}
+
+// ═══ START ═══════════════════════════════════════════════════════════════════
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',()=>init().catch(e=>console.error('init error:',e)));
+}else{
+  init().catch(e=>console.error('init error:',e));
+}
+</script>
+
+<script>
+// ── PWA : Manifest inline ────────────────────────────────────────────────────
+(function() {
+  var manifest = '{\n  "name": "MELEC Suivi Pédagogique",\n  "short_name": "MELEC",\n  "description": "Suivi pédagogique — TP, cours, élèves, PFMP, habilitations",\n  "start_url": ".",\n  "display": "standalone",\n  "orientation": "any",\n  "background_color": "#1e3a5f",\n  "theme_color": "#1e3a5f",\n  "icons": [\n    {\n      "src": "data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 192 192\'><rect width=\'192\' height=\'192\' rx=\'24\' fill=\'%231e3a5f\'/><text y=\'130\' x=\'96\' text-anchor=\'middle\' font-size=\'110\' font-family=\'sans-serif\'>⚡</text></svg>",\n      "sizes": "192x192",\n      "type": "image/svg+xml",\n      "purpose": "any maskable"\n    },\n    {\n      "src": "data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 512 512\'><rect width=\'512\' height=\'512\' rx=\'64\' fill=\'%231e3a5f\'/><text y=\'360\' x=\'256\' text-anchor=\'middle\' font-size=\'300\' font-family=\'sans-serif\'>⚡</text></svg>",\n      "sizes": "512x512",\n      "type": "image/svg+xml",\n      "purpose": "any maskable"\n    }\n  ]\n}';
+  var blob = new Blob([manifest], {type: 'application/json'});
+  var url  = URL.createObjectURL(blob);
+  var link = document.createElement('link');
+  link.rel  = 'manifest';
+  link.href = url;
+  document.head.appendChild(link);
+})();
+
+// ── PWA : Service Worker inline ───────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  var swCode = "\nconst CACHE = 'melec-v1';\nself.addEventListener('install', e => {\n  self.skipWaiting();\n});\nself.addEventListener('activate', e => {\n  e.waitUntil(self.clients.claim());\n});\nself.addEventListener('fetch', e => {\n  // Laisser passer les appels GitHub API (toujours en réseau)\n  if (e.request.url.includes('api.github.com')) return;\n  e.respondWith(\n    caches.open(CACHE).then(cache =>\n      cache.match(e.request).then(hit => hit || fetch(e.request).then(res => {\n        cache.put(e.request, res.clone()); return res;\n      }))\n    )\n  );\n});\n";
+  var swBlob = new Blob([swCode], {type: 'application/javascript'});
+  var swUrl  = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl, {scope: '/'})
+    .catch(function(e) {
+      // scope '/' peut échouer sur file:// — réessai sans scope
+      navigator.serviceWorker.register(swUrl).catch(function(){});
+    });
+}
+
+// ── PWA : Bandeau d'installation sur Android ──────────────────────────────────
+var deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Afficher un bouton d'installation discret dans la syncbar
+  var btn = document.createElement('button');
+  btn.className = 'rb';
+  btn.style.cssText = 'background:#1a6b2e;border-color:#1a6b2e;color:#fff;font-size:10px;padding:2px 8px;margin-left:6px';
+  btn.textContent = '📲 Installer l\u2019app';
+  btn.onclick = function() {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(function() { btn.remove(); deferredPrompt = null; });
+  };
+  var syncbar = document.getElementById('syncBar');
+  if (syncbar) syncbar.appendChild(btn);
+});
+</script>
+
+</body>
+</html>
