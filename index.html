@@ -246,6 +246,22 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
   .top { padding: 6px 8px; }
   h2 { font-size: 14px; }
 }
+
+/* Appel */
+.appel-table td, .appel-table th { padding:5px 8px; border:1px solid #e2e8f0; font-size:12px; text-align:center; }
+.appel-table th { background:#f1f5f9; font-weight:600; }
+.appel-table td:first-child { text-align:left; font-weight:500; }
+.ap-p { background:#dff6dd; color:#107c10; border-radius:3px; padding:1px 5px; cursor:pointer; font-size:11px; }
+.ap-a { background:#fde7e9; color:#a80000; border-radius:3px; padding:1px 5px; cursor:pointer; font-size:11px; }
+.ap-r { background:#fff4ce; color:#7a5900; border-radius:3px; padding:1px 5px; cursor:pointer; font-size:11px; }
+.ap-btn { border:none; background:none; font-size:12px; cursor:pointer; padding:2px 5px; border-radius:3px; }
+/* Notes enseignants */
+.note-ens-table td, .note-ens-table th { padding:5px 8px; border:1px solid #e2e8f0; font-size:12px; text-align:center; }
+.note-ens-table th { background:#f1f5f9; font-weight:600; }
+.note-ens-table td:first-child { text-align:left; }
+.ni { width:58px; padding:3px; border:1px solid #ccc; border-radius:3px; font-size:12px; text-align:center; }
+.ni:disabled { background:#f5f5f5; color:#888; border-color:#ddd; }
+
 </style>
 </head>
 <body>
@@ -296,10 +312,13 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
     <button class="rb" id="bNewCours" onclick="openCoursModal()" disabled>📖 Nouveau cours</button>
     <button class="rb" id="bNewEleve" onclick="openModal('eleveModal')" disabled>👤 Élève</button>
     <button class="rb" id="bNewPfmp" onclick="openPfmpModal()" style="color:var(--pfmp);border-color:var(--pfmp)" disabled>🏭 PFMP</button>
+    <button class="rb" id="bNewAppel" onclick="openAppelModal()" disabled>📋 Appel</button>
+    <button class="rb" id="bNewNote" onclick="openNoteEnsModal()" disabled>🗒️ Note</button>
   </div>
   <div class="rg">
     <button class="rb pri" onclick="exportJSON()">💾 Export JSON</button>
     <button class="rb pri" onclick="exportCSV()" style="background:#1a6b2e;border-color:#1a6b2e">📊 Export CSV</button>
+    <button class="rb pri" onclick="exportXLSX()" style="background:#217346;border-color:#217346">📗 Export XLSX</button>
     <button class="rb" onclick="document.getElementById('importFile').click()">📂 Importer</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importFile(event)">
   </div>
@@ -323,6 +342,8 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
     <div class="si" onclick="showView('eleves')" data-view="eleves"><span class="ic">👥</span> Élèves</div>
     <div class="si" onclick="showView('pfmp')" data-view="pfmp"><span class="ic">🏭</span> PFMP</div>
     <div class="si" onclick="showView('habilitations')" data-view="habilitations"><span class="ic">⚡</span> Habilitations</div>
+    <div class="si" onclick="showView('appel')" data-view="appel"><span class="ic">📋</span> Appel</div>
+    <div class="si" onclick="showView('notes')" data-view="notes"><span class="ic">🗒️</span> Notes</div>
 
     <div class="sbt" style="margin-top:8px">Classe affichée</div>
     <div class="lvlp">
@@ -348,8 +369,8 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
         <div><div class="pt">Tableau de bord</div><div class="ps">Classe : <span id="curLevelLabel">2<sup>nde</sup> MELEC</span></div></div>
       </div>
       <div class="dgrid" id="dashKpis"></div>
-      <div class="sh">🔧 Avancement des Travaux Pratiques — <span id="dashTpLvl"></span></div>
-      <table class="dt"><thead><tr><th>TP</th><th>Phase</th><th>Progression</th><th>Séances</th><th>Enseignant</th></tr></thead><tbody id="dashTpBody"></tbody></table>
+      <div class="sh">📋 Dernière feuille d'appel — <span id="dashAppelLvl"></span></div>
+      <div id="dashAppelContent"></div>
       <div class="sh">📖 Cours — <span id="dashCoursLvl"></span></div>
       <table class="dt"><thead><tr><th>Cours</th><th>Enseignant</th><th>Statut</th><th>Date</th></tr></thead><tbody id="dashCoursBody"></tbody></table>
     </div>
@@ -696,6 +717,48 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
   </div>
 </div></div>
 
+
+<!-- Modal Appel -->
+<div class="moverlay" id="appelModal"><div class="modal" style="width:480px">
+  <div class="mhd">📋 Nouvelle feuille d'appel <button class="mcl" onclick="closeModal('appelModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fg"><label class="fl">Date *</label><input class="fi" type="date" id="appelDate"></div>
+    <div class="fg"><label class="fl">Classe *</label>
+      <select class="fs" id="appelLevel" onchange="populateAppelEleves()">
+        <option value="2MELEC">2nde MELEC</option>
+        <option value="1MELEC">1ère MELEC</option>
+        <option value="T-MELEC">Terminale MELEC</option>
+      </select>
+    </div>
+    <div id="appelElevesList" style="margin-top:10px"></div>
+  </div>
+  <div class="mft">
+    <button class="btn bsec" onclick="closeModal('appelModal')">Annuler</button>
+    <button class="btn bpri" onclick="saveAppel()">💾 Enregistrer</button>
+  </div>
+</div></div>
+
+<!-- Modal Note enseignant -->
+<div class="moverlay" id="noteEnsModal"><div class="modal" style="width:500px">
+  <div class="mhd">🗒️ Nouvel événement noté <button class="mcl" onclick="closeModal('noteEnsModal')">✕</button></div>
+  <div class="mbdy">
+    <div class="fg"><label class="fl">Intitulé de l'évaluation *</label><input class="fi" id="noteEnsTitle" placeholder="Ex: DS1 — Lois de Kirchhoff"></div>
+    <div class="fg"><label class="fl">Date</label><input class="fi" type="date" id="noteEnsDate"></div>
+    <div class="fg"><label class="fl">Classe *</label>
+      <select class="fs" id="noteEnsLevel" onchange="populateNoteEnsEleves()">
+        <option value="2MELEC">2nde MELEC</option>
+        <option value="1MELEC">1ère MELEC</option>
+        <option value="T-MELEC">Terminale MELEC</option>
+      </select>
+    </div>
+    <div id="noteEnsElevesList" style="margin-top:10px"></div>
+  </div>
+  <div class="mft">
+    <button class="btn bsec" onclick="closeModal('noteEnsModal')">Annuler</button>
+    <button class="btn bpri" onclick="saveNoteEns()">💾 Enregistrer</button>
+  </div>
+</div></div>
+
 <div class="notif" id="notif"></div>
 
 <!-- ═══════════════ SCRIPT ═══════════════ -->
@@ -838,6 +901,8 @@ function fixData(){
   if(!data.pfmp) data.pfmp = [];
   if(!data.habilitations) data.habilitations = {};
   if(!data.notes) data.notes = {};
+  if(!data.appel) data.appel = [];
+  if(!data.notesEns) data.notesEns = {};
   if(!data._version) data._version = 0;
   if(!data._ts) data._ts = 0;
 }
@@ -1050,7 +1115,7 @@ function cancelTeacherSelect(){
 function setLockState(){
   const locked = !curTeacher;
   document.getElementById('lockBar').classList.toggle('show', locked);
-  ['bNewTp','bNewTp2','bNewCours','bNewCours2','bNewEleve','bNewEleve2','bNewPfmp','bNewPfmp2','btnDelTeacher','bMontee']
+  ['bNewTp','bNewTp2','bNewCours','bNewCours2','bNewEleve','bNewEleve2','bNewPfmp','bNewPfmp2','btnDelTeacher','bMontee','bNewAppel','bNewAppel2','bNewNote','bNewNote2']
     .forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=locked;});
   document.body.classList.toggle('app-locked', locked);
 }
@@ -1482,40 +1547,51 @@ async function importFile(event){
 // ═══ RENDER ═══════════════════════════════════════════════════════════════════
 function renderAll(){
   renderDashboard();renderVue3Classes();renderEnseignants();renderTP();renderCours();
-  renderResultats();renderEleves();renderPFMP();renderHabilitations();updateStatus();
+  renderResultats();renderEleves();renderPFMP();renderHabilitations();
+  renderAppel();renderNotesEns();updateStatus();
 }
 
 function renderDashboard(){
-  const lTp=data.tp.filter(t=>t.level===curLevel);
   const lCours=data.cours.filter(c=>c.level===curLevel);
   const lEleves=data.eleves.filter(e=>e.level===curLevel);
   const lPfmp=data.pfmp.filter(p=>lEleves.some(e=>e.id===p.eleveId));
-  const tpFin=lTp.filter(t=>t.phase==='main').length;
   const coursDone=lCours.filter(c=>c.status==='done').length;
   const habValid=lEleves.reduce((acc,e)=>{const eH=data.habilitations[e.id]||{};return acc+HAB_NIV.filter(n=>eH[n]&&eH[n].theo&&eH[n].prat).length;},0);
+  const lTp=data.tp.filter(t=>t.level===curLevel);
+  const tpFin=lTp.filter(t=>t.phase==='main').length;
 
-  if(document.getElementById('dashTpLvl'))document.getElementById('dashTpLvl').innerHTML=LEVELS[curLevel].label;
+  if(document.getElementById('dashAppelLvl'))document.getElementById('dashAppelLvl').innerHTML=LEVELS[curLevel].label;
   if(document.getElementById('dashCoursLvl'))document.getElementById('dashCoursLvl').innerHTML=LEVELS[curLevel].label;
 
   document.getElementById('dashKpis').innerHTML=`
-    <div class="kpi"><div class="kl">TP (phase Maintenance)</div><div class="kv">${tpFin}/${lTp.length}</div>
-      <div class="pb"><div class="pf" style="width:${lTp.length?tpFin/lTp.length*100:0}%"></div></div></div>
     <div class="kpi g"><div class="kl">Cours terminés</div><div class="kv">${coursDone}/${lCours.length}</div>
       <div class="pb"><div class="pf" style="width:${lCours.length?coursDone/lCours.length*100:0}%;background:var(--ok)"></div></div></div>
+    <div class="kpi"><div class="kl">TP (phase Maintenance)</div><div class="kv">${tpFin}/${lTp.length}</div>
+      <div class="pb"><div class="pf" style="width:${lTp.length?tpFin/lTp.length*100:0}%"></div></div></div>
     <div class="kpi y"><div class="kl">Élèves · PFMP</div><div class="kv">${lEleves.length} · <span style="font-size:14px">${lPfmp.length}</span></div><div class="ks">élèves · sessions PFMP</div></div>
     <div class="kpi p"><div class="kl">Habilitations validées</div><div class="kv">${habValid}</div><div class="ks">théo. + prat. sur ${lEleves.length * HAB_NIV.length} possibles</div></div>`;
 
-  document.getElementById('dashTpBody').innerHTML=!lTp.length?'<tr><td colspan="5" style="text-align:center;color:#aaa;padding:14px">Aucun TP pour cette classe</td></tr>':
-    lTp.map(tp=>{
-      const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
-      const ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
-      const t=data.teachers.find(x=>x.id===tp.teacher);
-      return `<tr><td><strong>${tp.title}</strong><br><span style="color:#888;font-size:10px">${tp.desc||''}</span></td>
-        <td><span class="bdg ${tp.phase}">${ph.label}</span></td>
-        <td><div class="mp"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${pct}%</span></div></td>
-        <td style="font-size:10px;color:var(--muted)">${tp.seancesDone||0}/${tp.seances} séances</td>
-        <td style="font-size:11px">${t?t.name:'—'}</td></tr>`;
-    }).join('');
+  // Dernière feuille d'appel
+  const seances=(data.appel||[]).filter(a=>a.level===curLevel).sort((a,b)=>b.date.localeCompare(a.date));
+  const elvs=data.eleves.filter(e=>e.level===curLevel).sort((a,b)=>a.name.localeCompare(b.name));
+  const dashAppel=document.getElementById('dashAppelContent');
+  if(dashAppel){
+    if(!seances.length){
+      dashAppel.innerHTML='<p style="color:#aaa;padding:8px">Aucune feuille d\'appel enregistrée pour cette classe.</p>';
+    } else {
+      const s=seances[0];
+      const t=data.teachers.find(x=>x.id===s.teacherId);
+      let html=`<p style="font-size:12px;color:#64748b;margin-bottom:6px">Séance du ${fmtD(s.date)}${t?' — '+t.name:''}</p>`;
+      html+='<div style="display:flex;flex-wrap:wrap;gap:5px;">';
+      elvs.forEach(e=>{
+        const v=(s.presences||{})[e.id]||'P';
+        const cls=v==='P'?'ap-p':v==='A'?'ap-a':'ap-r';
+        html+=`<span class="${cls}" style="padding:2px 8px;border-radius:12px;font-size:11px">${e.name} ${e.prenom[0]}. <strong>${v}</strong></span>`;
+      });
+      html+='</div>';
+      dashAppel.innerHTML=html;
+    }
+  }
 
   document.getElementById('dashCoursBody').innerHTML=!lCours.length?'<tr><td colspan="4" style="text-align:center;color:#aaa;padding:14px">Aucun cours pour cette classe</td></tr>':
     lCours.map(c=>{
@@ -1819,6 +1895,385 @@ function notify(msg,err=false,info=false){
 // ═══ UTIL ════════════════════════════════════════════════════════════════════
 function fmtD(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;}}
 function fmtDdn(ddn){if(!ddn||ddn.length!==8)return ddn||'';return ddn.slice(0,2)+'/'+ddn.slice(2,4)+'/'+ddn.slice(4,8);}
+
+
+// ═══ APPEL ════════════════════════════════════════════════════════════════════
+
+function openAppelModal() {
+  if (!curTeacher) { notify('Connectez-vous pour saisir un appel.', true); return; }
+  var d = document.getElementById('appelDate');
+  if (d) d.value = today();
+  var lvl = document.getElementById('appelLevel');
+  if (lvl) lvl.value = curLevel;
+  populateAppelEleves();
+  openModal('appelModal');
+}
+
+function populateAppelEleves() {
+  var lvl   = (document.getElementById('appelLevel') || {}).value || curLevel;
+  var eleves = data.eleves.filter(function(e){ return e.level === lvl; })
+                          .sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var html = '<table class="dt appel-table" style="width:100%"><thead><tr><th style="text-align:left">Élève</th><th>Présence</th></tr></thead><tbody>';
+  eleves.forEach(function(e) {
+    html += '<tr><td>' + e.name + ' ' + e.prenom + '</td><td>'
+      + '<select class="fs" id="ap_' + e.id + '" style="font-size:12px;padding:2px 6px">'
+      + '<option value="P">✅ Présent</option>'
+      + '<option value="A">❌ Absent</option>'
+      + '<option value="R">⚠️ Retard</option>'
+      + '</select></td></tr>';
+  });
+  html += '</tbody></table>';
+  var el = document.getElementById('appelElevesList');
+  if (el) el.innerHTML = html;
+}
+
+function saveAppel() {
+  if (!curTeacher) return;
+  var date  = (document.getElementById('appelDate') || {}).value;
+  var lvl   = (document.getElementById('appelLevel') || {}).value || curLevel;
+  if (!date) { alert('Date requise.'); return; }
+  var eleves = data.eleves.filter(function(e){ return e.level === lvl; });
+  var presences = {};
+  eleves.forEach(function(e) {
+    var sel = document.getElementById('ap_' + e.id);
+    presences[e.id] = sel ? sel.value : 'P';
+  });
+  if (!data.appel) data.appel = [];
+  data.appel.push({
+    id: 'APP' + Date.now(),
+    date: date,
+    level: lvl,
+    teacherId: curTeacher.id,
+    presences: presences
+  });
+  serverSave();
+  closeModal('appelModal');
+  renderAppel();
+  renderDashboard();
+  notify('Feuille d\'appel enregistrée.');
+}
+
+function renderAppel() {
+  var el = document.getElementById('appelContent');
+  if (!el) return;
+  var seances = (data.appel || []).filter(function(a){ return a.level === curLevel; })
+    .sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var eleves = data.eleves.filter(function(e){ return e.level === curLevel; })
+    .sort(function(a,b){ return a.name.localeCompare(b.name); });
+
+  if (!seances.length) { el.innerHTML = '<p style="color:#aaa;padding:16px">Aucune séance enregistrée pour cette classe.</p>'; return; }
+
+  // En-tête : colonne par séance
+  var html = '<div style="overflow-x:auto"><table class="dt appel-table"><thead><tr>'
+    + '<th style="text-align:left;min-width:140px">Élève</th>';
+  seances.forEach(function(s) {
+    var t = data.teachers.find(function(x){ return x.id === s.teacherId; });
+    html += '<th style="min-width:80px">' + fmtD(s.date) + '<br>'
+      + '<span style="font-size:9px;color:#888">' + (t ? t.name.split(' ')[0] : '?') + '</span>'
+      + (curTeacher && curTeacher.id === s.teacherId
+          ? ' <button onclick="deleteAppel(\'' + s.id + '\')" style="background:none;border:none;color:#c00;cursor:pointer;font-size:10px" title="Supprimer">🗑</button>'
+          : '')
+      + '</th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  eleves.forEach(function(e) {
+    var pa = seances.map(function(s){ return (s.presences||{})[e.id]||'P'; });
+    var abs = pa.filter(function(v){ return v==='A'; }).length;
+    var ret = pa.filter(function(v){ return v==='R'; }).length;
+    html += '<tr><td>' + e.name + ' ' + e.prenom
+      + '<br><span style="font-size:9px;color:#888">Abs:' + abs + ' Ret:' + ret + '</span></td>';
+    seances.forEach(function(s) {
+      var val = (s.presences||{})[e.id] || 'P';
+      var cls = val==='P'?'ap-p':val==='A'?'ap-a':'ap-r';
+      var lbl = val==='P'?'P':val==='A'?'A':'R';
+      var canEdit = curTeacher && curTeacher.id === s.teacherId;
+      if (canEdit) {
+        html += '<td><button class="ap-btn ' + cls + '" onclick="cycleAppel(\'' + s.id + '\',\'' + e.id + '\')">' + lbl + '</button></td>';
+      } else {
+        html += '<td><span class="' + cls + '">' + lbl + '</span></td>';
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function cycleAppel(seanceId, eleveId) {
+  if (!curTeacher) return;
+  var s = (data.appel||[]).find(function(x){ return x.id===seanceId; });
+  if (!s || s.teacherId !== curTeacher.id) return;
+  var cur = (s.presences||{})[eleveId] || 'P';
+  var next = cur==='P'?'A':cur==='A'?'R':'P';
+  s.presences[eleveId] = next;
+  serverSave();
+  renderAppel();
+  renderDashboard();
+}
+
+function deleteAppel(id) {
+  if (!curTeacher) return;
+  var s = (data.appel||[]).find(function(x){ return x.id===id; });
+  if (!s || s.teacherId !== curTeacher.id) return;
+  if (!confirm('Supprimer cette feuille d\'appel ?')) return;
+  data.appel = data.appel.filter(function(x){ return x.id!==id; });
+  serverSave();
+  renderAppel();
+  renderDashboard();
+}
+
+// ═══ NOTES ENSEIGNANTS ════════════════════════════════════════════════════════
+
+function openNoteEnsModal() {
+  if (!curTeacher) { notify('Connectez-vous pour saisir des notes.', true); return; }
+  var d = document.getElementById('noteEnsDate');
+  if (d) d.value = today();
+  var lvl = document.getElementById('noteEnsLevel');
+  if (lvl) lvl.value = curLevel;
+  var t = document.getElementById('noteEnsTitle');
+  if (t) t.value = '';
+  populateNoteEnsEleves();
+  openModal('noteEnsModal');
+}
+
+function populateNoteEnsEleves() {
+  var lvl   = (document.getElementById('noteEnsLevel')||{}).value || curLevel;
+  var eleves = data.eleves.filter(function(e){ return e.level===lvl; })
+                          .sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var html = '<table class="dt" style="width:100%"><thead><tr><th style="text-align:left">Élève</th><th>Note</th></tr></thead><tbody>';
+  eleves.forEach(function(e) {
+    html += '<tr><td>' + e.name + ' ' + e.prenom + '</td>'
+      + '<td><input class="ni" id="ne_' + e.id + '" placeholder="—" style="width:90px" list="notesList"></td></tr>';
+  });
+  html += '</tbody></table><datalist id="notesList"><option value="abs"><option value="n.noté"></datalist>';
+  var el = document.getElementById('noteEnsElevesList');
+  if (el) el.innerHTML = html;
+}
+
+function saveNoteEns() {
+  if (!curTeacher) return;
+  var title = (document.getElementById('noteEnsTitle')||{}).value.trim();
+  var date  = (document.getElementById('noteEnsDate')||{}).value;
+  var lvl   = (document.getElementById('noteEnsLevel')||{}).value || curLevel;
+  if (!title) { alert('Intitulé requis.'); return; }
+  var eleves = data.eleves.filter(function(e){ return e.level===lvl; });
+  var notes = {};
+  eleves.forEach(function(e) {
+    var inp = document.getElementById('ne_' + e.id);
+    var v = inp ? inp.value.trim() : '';
+    if (v) notes[e.id] = v;
+  });
+  if (!data.notesEns) data.notesEns = {};
+  var tid = curTeacher.id;
+  if (!data.notesEns[tid]) data.notesEns[tid] = [];
+  data.notesEns[tid].push({
+    id: 'NE' + Date.now(),
+    title: title,
+    date: date,
+    level: lvl,
+    notes: notes
+  });
+  serverSave();
+  closeModal('noteEnsModal');
+  renderNotesEns();
+  notify('Notes enregistrées.');
+}
+
+function renderNotesEns() {
+  var el = document.getElementById('notesEnsContent');
+  if (!el) return;
+  if (!data.notesEns) data.notesEns = {};
+
+  var html = '';
+  data.teachers.forEach(function(t) {
+    var tNotes = (data.notesEns[t.id]||[]).filter(function(n){ return n.level===curLevel; })
+      .sort(function(a,b){ return b.date.localeCompare(a.date); });
+    var isMine = curTeacher && curTeacher.id === t.id;
+    html += '<div class="sh">' + (isMine ? '✏️ ' : '👁 ') + t.name + '</div>';
+    if (!tNotes.length) {
+      html += '<p style="color:#aaa;font-size:12px;padding:4px 0 12px">Aucune évaluation saisie.</p>';
+      return;
+    }
+    var eleves = data.eleves.filter(function(e){ return e.level===curLevel; })
+      .sort(function(a,b){ return a.name.localeCompare(b.name); });
+    html += '<div style="overflow-x:auto"><table class="dt note-ens-table"><thead><tr>'
+      + '<th style="text-align:left;min-width:130px">Élève</th>';
+    tNotes.forEach(function(ev) {
+      html += '<th>' + ev.title + '<br><span style="font-size:9px;font-weight:400;color:#888">' + fmtD(ev.date) + '</span>'
+        + (isMine ? ' <button onclick="deleteNoteEns(\'' + t.id + '\',\'' + ev.id + '\')" style="background:none;border:none;color:#c00;cursor:pointer;font-size:10px">🗑</button>' : '')
+        + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    eleves.forEach(function(e) {
+      html += '<tr><td>' + e.name + ' ' + e.prenom + '</td>';
+      tNotes.forEach(function(ev) {
+        var v = (ev.notes||{})[e.id];
+        var disp = v !== undefined ? v : '—';
+        if (isMine) {
+          html += '<td><input class="ni" value="' + (v||'') + '" placeholder="—" list="notesList2"'
+            + ' onchange="updateNoteEns(\'' + t.id + '\',\'' + ev.id + '\',\'' + e.id + '\',this.value)"></td>';
+        } else {
+          var color = v===undefined?'#aaa':isNaN(parseFloat(v))?'#555':'inherit';
+          html += '<td style="color:' + color + '">' + disp + '</td>';
+        }
+      });
+      html += '</tr>';
+    });
+    // Ligne moyenne
+    html += '<tr style="background:#f8fafc;font-weight:600"><td>Moyenne</td>';
+    tNotes.forEach(function(ev) {
+      var vals = eleves.map(function(e){ return parseFloat((ev.notes||{})[e.id]); }).filter(function(v){ return !isNaN(v); });
+      html += '<td>' + (vals.length ? Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10 : '—') + '</td>';
+    });
+    html += '</tr></tbody></table></div>';
+    html += '<datalist id="notesList2"><option value="abs"><option value="n.noté"></datalist>';
+  });
+  el.innerHTML = html || '<p style="color:#aaa;padding:16px">Aucune note saisie.</p>';
+}
+
+function updateNoteEns(teacherId, evalId, eleveId, value) {
+  if (!curTeacher || curTeacher.id !== teacherId) return;
+  var ev = ((data.notesEns||{})[teacherId]||[]).find(function(x){ return x.id===evalId; });
+  if (!ev) return;
+  if (value.trim() === '' || value.trim() === '—') {
+    delete ev.notes[eleveId];
+  } else {
+    ev.notes[eleveId] = value.trim();
+  }
+  serverSave();
+}
+
+function deleteNoteEns(teacherId, evalId) {
+  if (!curTeacher || curTeacher.id !== teacherId) return;
+  if (!confirm('Supprimer cette évaluation ?')) return;
+  data.notesEns[teacherId] = (data.notesEns[teacherId]||[]).filter(function(x){ return x.id!==evalId; });
+  serverSave();
+  renderNotesEns();
+  notify('Évaluation supprimée.');
+}
+
+// ═══ EXPORT XLSX ══════════════════════════════════════════════════════════════
+
+function exportXLSX() {
+  try {
+    // SheetJS via CDN
+    if (typeof XLSX === 'undefined') {
+      notify('Chargement de la bibliothèque Excel…');
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = function(){ _doExportXLSX(); };
+      document.head.appendChild(s);
+    } else {
+      _doExportXLSX();
+    }
+  } catch(e) { notify('Erreur export XLSX : ' + e.message, true); }
+}
+
+function _doExportXLSX() {
+  try {
+    var wb = XLSX.utils.book_new();
+    var lvls = Object.entries(LEVELS);
+    function tname(id){ var t=data.teachers.find(function(x){return x.id===id;}); return t?t.name:''; }
+    function ename(id){ var e=data.eleves.find(function(x){return x.id===id;}); return e?e.name+' '+e.prenom:'?'; }
+    function fmtDdn(s){ if(!s||s.length!==8)return s||''; return s.slice(0,2)+'/'+s.slice(2,4)+'/'+s.slice(4); }
+    function addSheet(name, rows){ XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), name); }
+
+    // Élèves
+    var rEl = [['Nom','Prénom','Niveau','Naissance','Téléphone','Email']];
+    data.eleves.forEach(function(e){ rEl.push([e.name,e.prenom,LEVELS[e.level]?LEVELS[e.level].label:e.level,fmtDdn(e.ddn||''),e.tel||'',e.mail||'']); });
+    addSheet('Élèves', rEl);
+
+    // TP
+    var rTp = [['Titre','Niveau','Description','Séances prévues','Séances réalisées','Phase','Enseignant','Date']];
+    data.tp.forEach(function(tp){ rTp.push([tp.title,LEVELS[tp.level]?LEVELS[tp.level].label:tp.level,tp.desc||'',tp.seances,tp.seancesDone||0,TP_PHASES[tp.phase]?TP_PHASES[tp.phase].label:'',tname(tp.teacher||''),tp.date||'']); });
+    addSheet('TP', rTp);
+
+    // Cours
+    var rC = [['Titre','Niveau','Enseignant','Date','Statut']];
+    data.cours.forEach(function(c){ rC.push([c.title,LEVELS[c.level]?LEVELS[c.level].label:c.level,tname(c.teacher||''),c.date||'',COURS_STATUS[c.status]||c.status]); });
+    addSheet('Cours', rC);
+
+    // Notes (existantes)
+    var allEvals = [];
+    data.tp.forEach(function(t){ allEvals.push({id:t.id,lbl:t.title+' (TP)'}); });
+    data.cours.forEach(function(c){ allEvals.push({id:c.id,lbl:c.title+' (Cours)'}); });
+    var hdrR = ['Élève','Niveau']; allEvals.forEach(function(e){ hdrR.push(e.lbl); }); hdrR.push('Moyenne');
+    var rR = [hdrR];
+    data.eleves.forEach(function(eleve){
+      var eN=data.notes[eleve.id]||{},vals=[],row=[eleve.name+' '+eleve.prenom,LEVELS[eleve.level]?LEVELS[eleve.level].label:eleve.level];
+      allEvals.forEach(function(e){ var n=eN[e.id]!==undefined?parseFloat(eN[e.id]):null; row.push(n!==null?n:''); if(n!==null)vals.push(n); });
+      row.push(vals.length?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10:'');
+      rR.push(row);
+    });
+    addSheet('Résultats', rR);
+
+    // Notes enseignants — une feuille par enseignant
+    data.teachers.forEach(function(t) {
+      var tNotes = (data.notesEns||{})[t.id] || [];
+      if (!tNotes.length) return;
+      var hdr = ['Élève','Niveau','Date']; tNotes.forEach(function(ev){ hdr.push(ev.title); }); hdr.push('Moyenne');
+      var rows = [hdr];
+      var elvs = data.eleves.sort(function(a,b){ return a.name.localeCompare(b.name); });
+      elvs.forEach(function(eleve) {
+        var myNotes = tNotes.filter(function(n){ return n.level===eleve.level; });
+        if (!myNotes.length) return;
+        var row = [eleve.name+' '+eleve.prenom, LEVELS[eleve.level]?LEVELS[eleve.level].label:eleve.level, ''];
+        var vals = [];
+        myNotes.forEach(function(ev){ var v=(ev.notes||{})[eleve.id]; var n=parseFloat(v); row.push(v!==undefined?v:''); if(!isNaN(n))vals.push(n); });
+        row.push(vals.length?Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10:'');
+        rows.push(row);
+      });
+      var shName = t.name.slice(0,28).replace(/[:\\\/\?\*\[\]]/g,'_');
+      addSheet('Notes_'+shName, rows);
+    });
+
+    // PFMP
+    var rP = [['Élève','Niveau','Session','Début','Fin','Jours','Entreprise','Secteur','Tuteur','Tél.','Mail','Commentaire']];
+    data.pfmp.forEach(function(p){
+      var el=data.eleves.find(function(x){return x.id===p.eleveId;});
+      var nbJ=(p.debut&&p.fin)?Math.round((new Date(p.fin)-new Date(p.debut))/86400000)+1:'';
+      rP.push([el?el.name+' '+el.prenom:'?',el?LEVELS[el.level]?LEVELS[el.level].label:el.level:'?','Session '+(p.session||''),p.debut||'',p.fin||'',nbJ,p.entreprise||'',p.secteur||'',p.tuteur||'',p.tuteurTel||'',p.tuteurMail||'',p.comment||'']);
+    });
+    addSheet('PFMP', rP);
+
+    // Habilitations
+    var habNiv=['B0','B1V','BR'], hdrH=['Élève','Niveau'];
+    habNiv.forEach(function(n){ hdrH.push(n+' Théo',n+' Prat',n+' Validé'); });
+    var rH=[hdrH];
+    data.eleves.forEach(function(e){
+      var eH=data.habilitations[e.id]||{},row=[e.name+' '+e.prenom,LEVELS[e.level]?LEVELS[e.level].label:e.level];
+      habNiv.forEach(function(niv){ var h=eH[niv]||{}; row.push(h.theo?'Oui':'Non',h.prat?'Oui':'Non',(h.theo&&h.prat)?'OUI':'NON'); });
+      rH.push(row);
+    });
+    addSheet('Habilitations', rH);
+
+    // Appel — une feuille par niveau
+    lvls.forEach(function(entry) {
+      var key = entry[0], lvl = entry[1];
+      var seances = (data.appel||[]).filter(function(a){ return a.level===key; })
+        .sort(function(a,b){ return a.date.localeCompare(b.date); });
+      if (!seances.length) return;
+      var elvs = data.eleves.filter(function(e){ return e.level===key; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+      var hdr = ['Élève']; seances.forEach(function(s){ hdr.push(fmtD(s.date)+' ('+tname(s.teacherId).split(' ')[0]+')'); }); hdr.push('Absences','Retards');
+      var rows = [hdr];
+      elvs.forEach(function(e) {
+        var row = [e.name+' '+e.prenom];
+        var abs=0,ret=0;
+        seances.forEach(function(s){ var v=(s.presences||{})[e.id]||'P'; row.push(v); if(v==='A')abs++; if(v==='R')ret++; });
+        row.push(abs,ret);
+        rows.push(row);
+      });
+      addSheet('Appel_'+lvl.label.replace(/ /g,'_').slice(0,25), rows);
+    });
+
+    XLSX.writeFile(wb, 'MELEC_Export_' + today() + '.xlsx');
+    notify('Export XLSX téléchargé !');
+  } catch(e) {
+    notify('Erreur export XLSX : ' + e.message, true);
+    console.error(e);
+  }
+}
 
 // ═══ START ═══════════════════════════════════════════════════════════════════
 if(document.readyState==='loading'){
