@@ -440,6 +440,24 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
       <div id="habContent"></div>
     </div>
 
+    <!-- APPEL -->
+    <div class="view" id="view-appel">
+      <div class="ph">
+        <div><div class="pt">Feuille d'appel</div><div class="ps">Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div>
+        <button class="rb pri" id="bNewAppel2" onclick="openAppelModal()" disabled>+ Nouvelle séance</button>
+      </div>
+      <div id="appelContent"></div>
+    </div>
+
+    <!-- NOTES ENSEIGNANTS -->
+    <div class="view" id="view-notes">
+      <div class="ph">
+        <div><div class="pt">Notes des enseignants</div><div class="ps">Classe : <span class="cur-lv-lbl">2<sup>nde</sup> MELEC</span></div></div>
+        <button class="rb pri" id="bNewNote2" onclick="openNoteEnsModal()" disabled>+ Nouvel événement</button>
+      </div>
+      <div id="notesEnsContent"></div>
+    </div>
+
   </div>
 </div>
 
@@ -1299,7 +1317,7 @@ function openFiche(id){
   const eCours=data.cours.filter(c=>c.level===e.level&&(!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(id)));
   const ePfmp=data.pfmp.filter(p=>p.eleveId===id);
   const eHab=data.habilitations[id]||{};
-  const vals=Object.values(eN).map(n=>parseFloat(n)).filter(n=>!isNaN(n));
+  const vals=getAllNoteVals(id);
   const moy=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):'—';
   const mc=vals.length?(parseFloat(moy)>=12?'#107c10':parseFloat(moy)>=8?'#7a5900':'#a80000'):'#888';
 
@@ -1359,6 +1377,41 @@ function openFiche(id){
     ${p.tuteurMail?`<div class="pf2"><label>Mail</label><span><a href="mailto:${p.tuteurMail}" style="color:var(--blue)">${p.tuteurMail}</a></span></div>`:''}
     ${p.comment?`<div class="pcm">💬 ${p.comment}</div>`:''}</div>`).join('')}</div>`
     :'<p style="color:#aaa;font-size:12px;margin-bottom:10px">Aucune PFMP.</p>';
+
+  // Section Notes enseignants dans la fiche
+  const notesEnsBlock = data.teachers.map(t => {
+    const tNotes = ((data.notesEns||{})[t.id]||[]).filter(n => n.level === e.level);
+    if (!tNotes.length) return '';
+    const vals = [];
+    tNotes.forEach(ev => {
+      const v = (ev.notes||{})[id];
+      if (v !== undefined) { const n = parseFloat(v); if (!isNaN(n)) vals.push(n); }
+    });
+    const moyT = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '—';
+    const mcT  = vals.length ? (parseFloat(moyT)>=12?'#107c10':parseFloat(moyT)>=8?'#7a5900':'#a80000') : '#888';
+    const rows = tNotes.map(ev => {
+      const v    = (ev.notes||{})[id];
+      const disp = v !== undefined ? v : '—';
+      const col  = v === undefined ? '#aaa' : isNaN(parseFloat(v)) ? '#555' : 'inherit';
+      return `<tr><td>${ev.title}</td><td style="font-size:10px;color:#888">${fmtD(ev.date)}</td>
+        <td style="text-align:center;color:${col}">${disp}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:600;color:#1e3a5f">👤 ${t.name}</span>
+        <span style="font-size:11px;color:#888">Moy. notes&nbsp;
+          <strong style="color:${mcT};font-size:13px">${moyT}${vals.length?'/20':''}</strong>
+        </span>
+      </div>
+      <table class="dt" style="margin-bottom:0;box-shadow:none">
+        <thead><tr><th>Évaluation</th><th>Date</th><th style="text-align:center">Note</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`;
+  }).filter(Boolean).join('');
+
+  if (notesEnsBlock) {
+    html += `<div class="sh" style="background:#f0fdf4;color:#166534;border-color:#bbf7d0">🗒️ Notes enseignants</div>${notesEnsBlock}`;
+  }
 
   html+=`<div class="sh h">⚡ Habilitations électriques</div>
   <table class="dt"><thead><tr><th>Niveau</th><th>Description</th><th style="text-align:center">Théorique</th><th style="text-align:center">Pratique</th><th style="text-align:center">Statut</th></tr></thead><tbody>
@@ -1744,12 +1797,24 @@ function renderResultats(){
     const eCours=lCours.filter(c=>!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(eleve.id));
     const evals=[...eTp.map(t=>({id:t.id,label:t.title,type:'TP'})),...eCours.map(c=>({id:c.id,label:c.title,type:'Cours'}))];
     const notes=evals.map(e=>data.notes[eleve.id][e.id]!==undefined?parseFloat(data.notes[eleve.id][e.id]):null);
-    const valid=notes.filter(n=>n!==null);
+    // Moyennes par enseignant pour cet élève
+    const moyEns=data.teachers.map(t=>{
+      const tNotes=((data.notesEns||{})[t.id]||[]).filter(n=>n.level===curLevel);
+      if(!tNotes.length) return null;
+      const hasNote=tNotes.some(ev=>(ev.notes||{})[eleve.id]!==undefined);
+      if(!hasNote) return null;
+      const vals=tNotes.map(ev=>parseFloat((ev.notes||{})[eleve.id])).filter(n=>!isNaN(n));
+      const m=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):'—';
+      const mc=vals.length?(parseFloat(m)>=12?'#107c10':parseFloat(m)>=8?'#7a5900':'#a80000'):'#888';
+      return {teacher:t.name,moy:m,mc};
+    }).filter(Boolean);
+    const valid=getAllNoteVals(eleve.id);
     const moy=valid.length?(valid.reduce((a,b)=>a+b,0)/valid.length).toFixed(1):'—';
     const mc=valid.length?(parseFloat(moy)>=12?'#107c10':parseFloat(moy)>=8?'#7a5900':'#a80000'):'#888';
     html+=`<div class="eblk"><div class="ebh"><div style="font-weight:700;font-size:12px">${eleve.name} ${eleve.prenom}</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-size:11px;color:#888">Moy : <strong style="color:${mc};font-size:13px">${moy}${valid.length?'/20':''}</strong></span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:11px;color:#888">Moy globale : <strong style="color:${mc};font-size:13px">${moy}${valid.length?'/20':''}</strong></span>
+        ${moyEns.map(me=>`<span style="font-size:11px;color:#888">${me.teacher.split(' ')[0]} : <strong style="color:${me.mc}">${me.moy}/20</strong></span>`).join('')}
         <button class="rb" onclick="openFiche('${eleve.id}')">📋 Fiche</button>
       </div></div>
       ${evals.length?`<table class="dt" style="margin-bottom:0;box-shadow:none;border-radius:0"><thead><tr><th>Évaluation</th><th>Type</th><th style="width:90px;text-align:center">Note /20</th></tr></thead><tbody>
@@ -1773,6 +1838,10 @@ function renderEleves(){
   eleves.forEach(eleve=>{
     const eTp=lTp.filter(t=>!t.assignedTo||!t.assignedTo.length||t.assignedTo.includes(eleve.id));
     const eCours=lCours.filter(c=>!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(eleve.id));
+    const _mv=getAllNoteVals(eleve.id);
+    const _mm=_mv.length?(_mv.reduce((a,b)=>a+b,0)/_mv.length).toFixed(1):'—';
+    const _mc=_mv.length?(parseFloat(_mm)>=12?'#107c10':parseFloat(_mm)>=8?'#7a5900':'#a80000'):'#888';
+    const moyHtml=_mv.length?`<span style="font-size:11px;color:#888">Moy&nbsp;<strong style="color:${_mc};font-size:14px">${_mm}</strong>/20</span>`:'';
     html+=`<div class="eblk">
       <div class="ebh">
         <div>
@@ -1783,7 +1852,8 @@ function renderEleves(){
             ${eleve.mail?`<a href="mailto:${eleve.mail}" style="color:var(--blue);text-decoration:none">✉ ${eleve.mail}</a>`:''}
           </div>
         </div>
-        <div class="ra">
+        <div class="ra" style="align-items:center;gap:6px">
+          ${moyHtml}
           <button class="rb pri" onclick="openFiche('${eleve.id}')">📋 Fiche / TP</button>
           <button class="rb" onclick="openEditEleve('${eleve.id}')">✏️</button>
           <button class="rb" style="color:#c00" onclick="deleteEleve('${eleve.id}')">🗑</button>
@@ -1896,6 +1966,29 @@ function notify(msg,err=false,info=false){
 function fmtD(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;}}
 function fmtDdn(ddn){if(!ddn||ddn.length!==8)return ddn||'';return ddn.slice(0,2)+'/'+ddn.slice(2,4)+'/'+ddn.slice(4,8);}
 
+
+
+// Retourne toutes les notes numériques d'un élève (TP/cours + enseignants)
+function getAllNoteVals(eleveId) {
+  var vals = [];
+  // Notes TP/cours
+  var eN = data.notes[eleveId] || {};
+  Object.values(eN).forEach(function(v) {
+    var n = parseFloat(v);
+    if (!isNaN(n)) vals.push(n);
+  });
+  // Notes enseignants
+  Object.values(data.notesEns || {}).forEach(function(tNotes) {
+    tNotes.forEach(function(ev) {
+      var v = (ev.notes || {})[eleveId];
+      if (v !== undefined) {
+        var n = parseFloat(v);
+        if (!isNaN(n)) vals.push(n);
+      }
+    });
+  });
+  return vals;
+}
 
 // ═══ APPEL ════════════════════════════════════════════════════════════════════
 
@@ -2052,32 +2145,33 @@ function populateNoteEnsEleves() {
 }
 
 function saveNoteEns() {
-  if (!curTeacher) return;
-  var title = (document.getElementById('noteEnsTitle')||{}).value.trim();
-  var date  = (document.getElementById('noteEnsDate')||{}).value;
-  var lvl   = (document.getElementById('noteEnsLevel')||{}).value || curLevel;
+  if (!curTeacher) { notify('Connectez-vous pour saisir des notes.', true); return; }
+  var titleEl = document.getElementById('noteEnsTitle');
+  var dateEl  = document.getElementById('noteEnsDate');
+  var lvlEl   = document.getElementById('noteEnsLevel');
+  var title = titleEl ? titleEl.value.trim() : '';
+  var date  = dateEl  ? dateEl.value  : '';
+  var lvl   = lvlEl   ? lvlEl.value   : curLevel;
   if (!title) { alert('Intitulé requis.'); return; }
-  var eleves = data.eleves.filter(function(e){ return e.level===lvl; });
+  // Récupérer les notes saisies
+  var eleves = data.eleves.filter(function(e){ return e.level === lvl; });
   var notes = {};
   eleves.forEach(function(e) {
     var inp = document.getElementById('ne_' + e.id);
-    var v = inp ? inp.value.trim() : '';
-    if (v) notes[e.id] = v;
+    if (inp && inp.value.trim() !== '') notes[e.id] = inp.value.trim();
   });
   if (!data.notesEns) data.notesEns = {};
   var tid = curTeacher.id;
   if (!data.notesEns[tid]) data.notesEns[tid] = [];
-  data.notesEns[tid].push({
-    id: 'NE' + Date.now(),
-    title: title,
-    date: date,
-    level: lvl,
-    notes: notes
-  });
+  var newEval = { id: 'NE' + Date.now(), title: title, date: date, level: lvl, notes: notes };
+  data.notesEns[tid].push(newEval);
   serverSave();
   closeModal('noteEnsModal');
+  // Forcer le niveau courant sur celui de l'éval créée pour que le render l'affiche
+  curLevel = lvl;
+  setLevel(lvl);
   renderNotesEns();
-  notify('Notes enregistrées.');
+  notify('Évaluation "' + title + '" enregistrée (' + Object.keys(notes).length + ' note(s)).');
 }
 
 function renderNotesEns() {
@@ -2086,50 +2180,79 @@ function renderNotesEns() {
   if (!data.notesEns) data.notesEns = {};
 
   var html = '';
+  var hasAny = false;
+
   data.teachers.forEach(function(t) {
-    var tNotes = (data.notesEns[t.id]||[]).filter(function(n){ return n.level===curLevel; })
-      .sort(function(a,b){ return b.date.localeCompare(a.date); });
-    var isMine = curTeacher && curTeacher.id === t.id;
-    html += '<div class="sh">' + (isMine ? '✏️ ' : '👁 ') + t.name + '</div>';
+    // Toutes les évals de cet enseignant pour le niveau courant
+    var tAll   = data.notesEns[t.id] || [];
+    var tNotes = tAll.filter(function(n){ return n.level === curLevel; })
+                     .sort(function(a,b){ return b.date.localeCompare(a.date); });
+    var isMine = !!(curTeacher && curTeacher.id === t.id);
+
+    html += '<div class="sh" style="margin-top:12px">'
+          + (isMine ? '✏️ ' : '👁 ') + t.name
+          + ' <span style="font-size:10px;font-weight:400;color:#888">('
+          + (LEVELS[curLevel] ? LEVELS[curLevel].label : curLevel) + ')</span></div>';
+
     if (!tNotes.length) {
-      html += '<p style="color:#aaa;font-size:12px;padding:4px 0 12px">Aucune évaluation saisie.</p>';
+      html += '<p style="color:#aaa;font-size:12px;padding:2px 0 10px">Aucune évaluation pour cette classe.</p>';
       return;
     }
-    var eleves = data.eleves.filter(function(e){ return e.level===curLevel; })
-      .sort(function(a,b){ return a.name.localeCompare(b.name); });
+    hasAny = true;
+    var eleves = data.eleves.filter(function(e){ return e.level === curLevel; })
+                            .sort(function(a,b){ return a.name.localeCompare(b.name); });
+
     html += '<div style="overflow-x:auto"><table class="dt note-ens-table"><thead><tr>'
-      + '<th style="text-align:left;min-width:130px">Élève</th>';
+          + '<th style="text-align:left;min-width:130px">Élève</th>';
+
     tNotes.forEach(function(ev) {
-      html += '<th>' + ev.title + '<br><span style="font-size:9px;font-weight:400;color:#888">' + fmtD(ev.date) + '</span>'
-        + (isMine ? ' <button onclick="deleteNoteEns(\'' + t.id + '\',\'' + ev.id + '\')" style="background:none;border:none;color:#c00;cursor:pointer;font-size:10px">🗑</button>' : '')
-        + '</th>';
+      html += '<th>' + ev.title
+            + '<br><span style="font-size:9px;font-weight:400;color:#888">' + fmtD(ev.date) + '</span>';
+      if (isMine) {
+        html += ' <button class="del-note-btn" data-tid="' + t.id + '" data-eid="' + ev.id + '"'
+              + ' style="background:none;border:none;color:#c00;cursor:pointer;font-size:10px" title="Supprimer">🗑</button>';
+      }
+      html += '</th>';
     });
     html += '</tr></thead><tbody>';
+
     eleves.forEach(function(e) {
       html += '<tr><td>' + e.name + ' ' + e.prenom + '</td>';
       tNotes.forEach(function(ev) {
-        var v = (ev.notes||{})[e.id];
-        var disp = v !== undefined ? v : '—';
+        var v    = (ev.notes || {})[e.id];
+        var disp = (v !== undefined && v !== '') ? v : '—';
         if (isMine) {
-          html += '<td><input class="ni" value="' + (v||'') + '" placeholder="—" list="notesList2"'
-            + ' onchange="updateNoteEns(\'' + t.id + '\',\'' + ev.id + '\',\'' + e.id + '\',this.value)"></td>';
+          html += '<td><input class="ni" value="' + (v !== undefined ? v : '') + '"'
+                + ' placeholder="—" list="notesList2"'
+                + ' onchange="updateNoteEns(\"' + t.id + '\",\"' + ev.id + '\",\"' + e.id + '\",this.value)"></td>';
         } else {
-          var color = v===undefined?'#aaa':isNaN(parseFloat(v))?'#555':'inherit';
-          html += '<td style="color:' + color + '">' + disp + '</td>';
+          var col = (v === undefined || v === '') ? '#aaa' : isNaN(parseFloat(v)) ? '#555' : 'inherit';
+          html += '<td style="color:' + col + '">' + disp + '</td>';
         }
       });
       html += '</tr>';
     });
+
     // Ligne moyenne
-    html += '<tr style="background:#f8fafc;font-weight:600"><td>Moyenne</td>';
+    html += '<tr style="background:#f8fafc;font-weight:600"><td>Moyenne classe</td>';
     tNotes.forEach(function(ev) {
-      var vals = eleves.map(function(e){ return parseFloat((ev.notes||{})[e.id]); }).filter(function(v){ return !isNaN(v); });
-      html += '<td>' + (vals.length ? Math.round(vals.reduce(function(a,b){return a+b;},0)/vals.length*10)/10 : '—') + '</td>';
+      var vals = eleves.map(function(e){ return parseFloat((ev.notes||{})[e.id]); })
+                       .filter(function(v){ return !isNaN(v); });
+      html += '<td>' + (vals.length
+        ? Math.round(vals.reduce(function(a,b){return a+b;},0) / vals.length * 10) / 10
+        : '—') + '</td>';
     });
     html += '</tr></tbody></table></div>';
-    html += '<datalist id="notesList2"><option value="abs"><option value="n.noté"></datalist>';
   });
+
+  html += '<datalist id="notesList2"><option value="abs"><option value="n.noté"></datalist>';
   el.innerHTML = html || '<p style="color:#aaa;padding:16px">Aucune note saisie.</p>';
+  // Délégation : boutons supprimer évaluation
+  el.querySelectorAll('.del-note-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      deleteNoteEns(this.getAttribute('data-tid'), this.getAttribute('data-eid'));
+    });
+  });
 }
 
 function updateNoteEns(teacherId, evalId, eleveId, value) {
