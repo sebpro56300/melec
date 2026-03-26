@@ -220,31 +220,171 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
 }
 
 /* ── PWA / Mobile responsive ── */
+/* ═══ RESPONSIVE MOBILE — optimisé 1080×2400 (≤768px) ═══════════════════════ */
 @media (max-width: 768px) {
-  .window { border-radius: 0; width: 100vw; min-height: 100dvh; }
-  .sidebar { width: 100%; flex-direction: row; flex-wrap: wrap;
-             padding: 4px; gap: 2px; border-right: none;
-             border-bottom: 1px solid #e2e8f0; }
-  .si { padding: 6px 10px; font-size: 11px; flex: 1 1 auto; text-align: center; border-radius: 4px; }
-  .si .ic { display: block; font-size: 18px; }
-  .main { padding: 8px; }
-  .syncbar { flex-wrap: wrap; gap: 4px; font-size: 10px; padding: 4px 8px; }
-  .lockbar { flex-direction: column; gap: 6px; padding: 8px; }
-  .lockbar .tsel { width: 100%; }
-  .lockbar .rb { width: 100%; justify-content: center; }
-  table { font-size: 11px; }
-  .modal { width: 96vw !important; max-height: 90dvh; overflow-y: auto; }
-  .fi, .fs { font-size: 16px; } /* évite zoom auto iOS */
+
+  /* ── Layout global ── */
+  body {
+    background: #1e2530;
+    align-items: flex-start;
+    overflow: hidden;           /* le scroll se fait dans .cont uniquement */
+    height: 100dvh;
+  }
+  .window {
+    width: 100vw;
+    height: 100dvh;             /* fenêtre exactement = écran */
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;           /* débordement géré par les enfants */
+  }
+
+  /* ── Titlebar masquée sur mobile ── */
+  .tbar { display: none; }
+
+  /* ── Syncbar compacte ── */
+  .syncbar {
+    padding: 5px 10px; font-size: 10px; flex-wrap: wrap;
+    gap: 4px; flex-shrink: 0; z-index: 50;
+  }
+  .syncbar .sync-dot { width: 7px; height: 7px; }
+
+  /* ── Lockbar colonne ── */
+  .lockbar { flex-direction: column; gap: 6px; padding: 10px 12px; flex-shrink: 0; }
+  .lockbar .tsel { width: 100%; font-size: 14px; padding: 8px; }
+  .lockbar .rb   { width: 100%; justify-content: center; font-size: 13px; padding: 8px; }
+
+  /* ── Ribbon → menu hamburger compact ── */
+  .ribbon {
+    padding: 6px 8px; gap: 4px; flex-wrap: wrap;
+    overflow-x: auto; scrollbar-width: none; flex-shrink: 0;
+  }
+  .ribbon::-webkit-scrollbar { display: none; }
+  .rg { padding-right: 6px; gap: 2px; flex-shrink: 0; }
+  .rl { display: none; }
+  .rb { font-size: 11px; padding: 6px 10px; border-radius: 5px; }
+
+  /* ── Layout principal : sidebar → bottom nav ── */
+  .abody {
+    flex-direction: column;
+    overflow: hidden;           /* le scroll est dans .cont */
+    flex: 1;
+  }
+
+  .sb {
+    width: 100%; order: 2;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    flex-direction: row; overflow-x: auto; overflow-y: hidden;
+    height: 62px; padding: 4px 2px env(safe-area-inset-bottom, 4px);
+    border-top: 1px solid rgba(255,255,255,.1);
+    scrollbar-width: none;
+  }
+  .sb::-webkit-scrollbar { display: none; }
+
+  /* Masquer les éléments non-nav dans la sidebar */
+  .sbt, .lvlp { display: none; }
+
+  .si {
+    flex: 0 0 auto; min-width: 58px; padding: 4px 2px 2px;
+    flex-direction: column; justify-content: center;
+    align-items: center; gap: 1px; border-left: none;
+    border-top: 3px solid transparent; font-size: 9px;
+    text-align: center;
+  }
+  .si.act { background: rgba(0,120,212,.3); border-top-color: var(--blue); border-left: none; }
+  .si .ic { font-size: 20px; width: auto; display: block; }
+
+  /* ── Sélecteur de classe → fixe sous la syncbar ── */
+  .lvl-mobile-bar {
+    display: flex !important;
+    background: var(--sb); padding: 6px 10px; gap: 6px;
+    flex-shrink: 0; z-index: 40;
+    border-bottom: 1px solid rgba(255,255,255,.1);
+  }
+  .lp {
+    flex: 1; padding: 8px 4px; font-size: 12px;
+    border-radius: 6px; text-align: center;
+  }
+
+  /* ── Zone de contenu ── */
+  .cont {
+    order: 1;
+    flex: 1;                    /* prend tout l'espace disponible */
+    padding: 10px 10px 80px;    /* 80px = espace bottom nav */
+    overflow-y: auto;           /* SEUL scroll vertical de l'app */
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /* ── Page headers ── */
+  .ph { flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .pt { font-size: 16px; }
+  .ps { font-size: 11px; }
+
+  /* ── KPIs : 2 colonnes ── */
+  .dgrid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .kpi   { padding: 10px 12px; }
+  .kv    { font-size: 20px; }
+
+  /* ── Tableaux ── */
+  table  { font-size: 11px; }
+  .dt th { padding: 6px 6px; font-size: 10px; }
+  .dt td { padding: 5px 6px; font-size: 11px; }
+
+  /* Tableaux avec scroll horizontal */
+  .dt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Inputs ── */
+  .fi, .fs, .fta { font-size: 16px; padding: 10px; } /* évite zoom iOS/Android */
+  .gi  { font-size: 14px; }
+  .ni  { font-size: 14px; width: 70px; padding: 5px; }
+
+  /* ── Modals ── */
+  .moverlay { align-items: flex-end; }
+  .modal {
+    width: 100vw !important; max-width: 100vw !important;
+    max-height: 92dvh; border-radius: 16px 16px 0 0 !important;
+    padding-bottom: env(safe-area-inset-bottom, 8px);
+  }
+
+  /* ── Cartes élèves ── */
+  .eblk  { margin-bottom: 10px; border-radius: 8px; }
+  .ebh   { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+
+  /* ── Ens grid : 1 colonne ── */
+  .ens-grid       { grid-template-columns: 1fr !important; }
+  .class-overview { grid-template-columns: 1fr !important; }
+
+  /* ── PFMP grid ── */
+  div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* ── Habilitations scroll ── */
+  #habContent { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Fiche élève ── */
+  .fc  { flex-wrap: wrap; }
+  .fav { width: 42px; height: 42px; font-size: 16px; }
+  .fn  { font-size: 15px; }
+
+  /* ── Status bar masquée ── */
+  .stbar { display: none; }
+
+  /* ── Notify toast ── */
+  .notif { bottom: 72px !important; font-size: 12px; }
+
+  /* ── Appel : boutons P/A/R plus grands ── */
+  .ap-btn { font-size: 14px; padding: 5px 10px; min-width: 36px; }
+  .ap-p, .ap-a, .ap-r { font-size: 12px; padding: 3px 8px; }
+
+  /* ── Pill sélection niveau dans la barre mobile ── */
+  .lp.s1.alv, .lp.s2.alv, .lp.s3.alv { border-width: 2px; }
 }
-@media (max-width: 480px) {
-  .sidebar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-             flex-direction: row; overflow-x: auto; border-top: 1px solid #e2e8f0;
-             background: #fff; padding: 4px 2px; border-bottom: none; border-right: none; }
-  .si { min-width: 56px; font-size: 9px; padding: 4px 2px; }
-  .si .ic { font-size: 20px; }
-  .main { padding: 6px 4px 80px; } /* espace pour la navbar fixe en bas */
-  .top { padding: 6px 8px; }
-  h2 { font-size: 14px; }
+
+/* ── Spécifique 1080px+ (haute densité) ── */
+@media (min-width: 768px) {
+  .lvl-mobile-bar { display: none !important; }
 }
 
 /* Appel */
@@ -295,6 +435,12 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
 </div>
 
 <!-- LOCK BAR -->
+<!-- Sélecteur de classe mobile (visible uniquement sur mobile) -->
+<div class="lvl-mobile-bar" id="lvlMobileBar" style="display:none">
+  <div class="lp s1 alv" onclick="setLevel('2MELEC')" id="mpill-2MELEC">2<sup>nde</sup></div>
+  <div class="lp s2" onclick="setLevel('1MELEC')" id="mpill-1MELEC">1<sup>ère</sup></div>
+  <div class="lp s3" onclick="setLevel('T-MELEC')" id="mpill-T-MELEC">Term.</div>
+</div>
 <div class="lockbar" id="lockBar">
   🔒 Aucun enseignant sélectionné — identifiez-vous pour accéder aux fonctions de saisie.
 </div>
@@ -777,6 +923,19 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
   </div>
 </div></div>
 
+<div id="splashScreen" style="
+  position:fixed;inset:0;background:#1e3a5f;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity .4s ease;
+">
+  <div style="font-size:72px;margin-bottom:16px">⚡</div>
+  <div style="color:#fff;font-size:22px;font-weight:700;letter-spacing:1px">MELEC</div>
+  <div style="color:#90caf9;font-size:13px;margin-top:6px">Suivi Pédagogique</div>
+  <div style="margin-top:28px;width:48px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden">
+    <div id="splashBar" style="height:100%;width:0%;background:#90caf9;transition:width .8s ease;border-radius:2px"></div>
+  </div>
+</div>
+
 <div class="notif" id="notif"></div>
 
 <!-- ═══════════════ SCRIPT ═══════════════ -->
@@ -1036,7 +1195,8 @@ async function init(){
 
   try{ updateTeacherSelect(); }catch(e){}
   try{ setLockState(); }catch(e){}
-  try{ renderAll(); }catch(e){ console.error('renderAll:', e); }
+  try{ renderAll();
+      hideSplash(); }catch(e){ console.error('renderAll:', e); }
   try{ updateTeacherSelect(); }catch(e){}
   try{ setLockState(); }catch(e){}
   try{ renderAll(); }catch(e){ console.error('renderAll:', e); }
@@ -1194,10 +1354,14 @@ function saveChangePass(){
 function setLevel(level){
   curLevel=level;
   document.querySelectorAll('.lp').forEach(p=>p.classList.remove('alv'));
-  document.getElementById('pill-'+level).classList.add('alv');
+  ['pill-','mpill-'].forEach(function(pfx){
+    var el=document.getElementById(pfx+level);
+    if(el) el.classList.add('alv');
+  });
   document.querySelectorAll('.cur-lv-lbl').forEach(el=>el.innerHTML=LEVELS[level].label);
   document.getElementById('curLevelLabel').innerHTML=LEVELS[level].label;
-  document.getElementById('stLevel').textContent='Classe : '+LEVELS[level].label;
+  var stLvl=document.getElementById('stLevel');
+  if(stLvl) stLvl.textContent='Classe : '+LEVELS[level].label;
   renderAll();
 }
 function showView(v){
@@ -2398,6 +2562,94 @@ function _doExportXLSX() {
   }
 }
 
+
+
+
+// ── Splash screen ─────────────────────────────────────────────────────────────
+function hideSplash() {
+  var sp = document.getElementById('splashScreen');
+  if (!sp) return;
+  var bar = document.getElementById('splashBar');
+  if (bar) bar.style.width = '100%';
+  setTimeout(function() {
+    sp.style.opacity = '0';
+    setTimeout(function() { sp.style.display = 'none'; }, 420);
+  }, 300);
+}
+
+// ── Gestion mode hors-ligne (messages du Service Worker) ─────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', function(e) {
+    if (!e.data) return;
+    if (e.data.type === 'GIST_CACHE') {
+      // Sauvegarder les dernières données Gist dans localStorage comme backup
+      try { localStorage.setItem('melec_offline_backup', e.data.data); } catch(ex) {}
+    }
+    if (e.data.type === 'OFFLINE_MODE') {
+      setSyncState('warn', 'Mode hors-ligne — données locales');
+      // Tenter de charger le backup localStorage
+      try {
+        var backup = localStorage.getItem('melec_offline_backup');
+        if (backup) {
+          var parsed = JSON.parse(backup);
+          if (parsed && parsed.teachers) {
+            data = parsed; fixData(); localSave();
+            renderAll();
+            notify('Mode hors-ligne — données du dernier accès chargées.', false, true);
+          }
+        }
+      } catch(ex) {}
+    }
+  });
+}
+
+// ── Détection mobile & ajustements Capacitor ─────────────────────────────────
+(function() {
+  var isMobile = window.innerWidth <= 768
+    || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+    || (typeof Capacitor !== 'undefined');
+
+  if (isMobile) {
+    document.body.classList.add('is-mobile');
+
+    // Afficher la barre de niveau mobile
+    var lvlBar = document.getElementById('lvlMobileBar');
+    if (lvlBar) lvlBar.style.display = 'flex';
+
+    // Masquer la titlebar (déjà en CSS mais par sécurité)
+    var tbar = document.querySelector('.tbar');
+    if (tbar) tbar.style.display = 'none';
+
+    // Scroll géré par .cont — pas de lock sur le body
+
+    // Touch events : éviter le double-tap zoom
+    document.addEventListener('touchend', function(e) {
+      var now = Date.now();
+      if (now - (document._lastTouch||0) < 300) e.preventDefault();
+      document._lastTouch = now;
+    }, { passive: false });
+  }
+
+  // Capacitor : écouter les événements natifs si disponible
+  if (typeof Capacitor !== 'undefined' && Capacitor.Plugins && Capacitor.Plugins.App) {
+    Capacitor.Plugins.App.addListener('backButton', function() {
+      // Fermer une modal ouverte ou revenir au dashboard
+      var openModal = document.querySelector('.moverlay.show');
+      if (openModal) {
+        openModal.classList.remove('show');
+      } else {
+        showView('dashboard');
+      }
+    });
+    Capacitor.Plugins.App.addListener('appStateChange', function(state) {
+      if (state.isActive) {
+        // Relancer la sync au retour au premier plan
+        if (typeof startAutoSync === 'function') startAutoSync();
+      }
+    });
+  }
+})();
+
 // ═══ START ═══════════════════════════════════════════════════════════════════
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',()=>init().catch(e=>console.error('init error:',e)));
@@ -2420,7 +2672,7 @@ if(document.readyState==='loading'){
 
 // ── PWA : Service Worker inline ───────────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  var swCode = "\nconst CACHE = 'melec-v1';\nself.addEventListener('install', e => {\n  self.skipWaiting();\n});\nself.addEventListener('activate', e => {\n  e.waitUntil(self.clients.claim());\n});\nself.addEventListener('fetch', e => {\n  // Laisser passer les appels GitHub API (toujours en réseau)\n  if (e.request.url.includes('api.github.com')) return;\n  e.respondWith(\n    caches.open(CACHE).then(cache =>\n      cache.match(e.request).then(hit => hit || fetch(e.request).then(res => {\n        cache.put(e.request, res.clone()); return res;\n      }))\n    )\n  );\n});\n";
+  var swCode = "const CACHE='melec-v2';\nself.addEventListener('install',e=>{self.skipWaiting();});\nself.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});\nself.addEventListener('fetch',e=>{\n  var url=e.request.url;\n  if(url.includes('api.github.com/gists')){\n    if(e.request.method==='GET'){\n      e.respondWith(fetch(e.request).then(function(res){\n        if(res.ok){var clone=res.clone();clone.json().then(function(j){var f=j.files&&j.files['melec-data.json'];if(f&&f.content){self.clients.matchAll().then(function(cl){cl.forEach(function(c){c.postMessage({type:'GIST_CACHE',data:f.content});});})}});}\n        return res;\n      }).catch(function(){\n        return self.clients.matchAll().then(function(cl){cl.forEach(function(c){c.postMessage({type:'OFFLINE_MODE'});});return new Response('{\"offline\":true}',{status:200,headers:{'Content-Type':'application/json'}});});\n      }));\n    }\n    return;\n  }\n  e.respondWith(caches.open(CACHE).then(function(cache){return cache.match(e.request).then(function(hit){return hit||fetch(e.request).then(function(res){if(res.ok)cache.put(e.request,res.clone());return res;});});}));\n});";
   var swBlob = new Blob([swCode], {type: 'application/javascript'});
   var swUrl  = URL.createObjectURL(swBlob);
   navigator.serviceWorker.register(swUrl, {scope: '/'})
