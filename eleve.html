@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MELEC Élève">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>MELEC — Espace Élève</title>
+<style>
+:root{
+  --blue:#0078d4;--blue-dk:#005a9e;--blue-lt:#e8f4fd;
+  --bg:#f3f3f3;--sb:#1e2530;--sb-hov:#2d3748;
+  --brd:#d0d0d0;--txt:#1a1a1a;--muted:#666;
+  --ok:#107c10;--warn:#d83b01;--yel:#ffb900;
+  --shad:0 2px 8px rgba(0,0,0,.1);
+  --2nde:#0ea5e9;--1ere:#16a34a;--term:#f59e0b;
+  --tp:#1e3a5f;
+}
+
+/* ── Reset ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#1e2530;
+     display:flex;align-items:center;justify-content:center;
+     min-height:100vh;font-size:13px;overflow:hidden;height:100dvh;}
+
+/* ── Fenêtre principale ── */
+.window{
+  width:420px;height:820px;background:var(--bg);
+  border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+/* ── Header ── */
+.hd{
+  background:var(--sb);color:#fff;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.hd .logo{font-size:22px;}
+.hd .title{font-size:14px;font-weight:700;flex:1;}
+.hd .sub{font-size:10px;color:#90caf9;}
+.hd-right{text-align:right;}
+
+/* ── Syncbar ── */
+.syncbar{
+  background:#1e3a5f;border-bottom:1px solid #2d5f9e;
+  padding:4px 12px;font-size:10px;color:#90caf9;
+  display:flex;align-items:center;gap:6px;flex-shrink:0;
+}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;flex-shrink:0;}
+.sync-dot.warn{background:#ff9800;}
+.sync-dot.err{background:#f44336;}
+.sync-dot.pulse{animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ── Navigation bottom ── */
+.nav{
+  background:var(--sb);display:flex;flex-shrink:0;
+  border-top:1px solid rgba(255,255,255,.1);
+  position:sticky;bottom:0;z-index:50;
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:6px 2px 4px;cursor:pointer;
+  font-size:9px;color:#94a3b8;
+  border-top:3px solid transparent;
+  transition:all .15s;gap:1px;
+}
+.nav-item .ic{font-size:20px;}
+.nav-item.act{color:#90caf9;border-top-color:var(--blue);background:rgba(0,120,212,.2);}
+.nav-item:hover{color:#fff;}
+
+/* ── Contenu ── */
+.cont{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+.view{display:none;padding:12px;}.view.act{display:block;}
+
+/* ── Login ── */
+.login-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:60vh;padding:24px;gap:16px;
+}
+.login-logo{font-size:56px;}
+.login-title{font-size:20px;font-weight:700;color:var(--txt);}
+.login-sub{font-size:12px;color:var(--muted);text-align:center;}
+.login-card{
+  background:#fff;border-radius:10px;padding:20px;
+  box-shadow:var(--shad);width:100%;
+}
+.login-card label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;}
+.login-card input{
+  width:100%;padding:10px;border:1px solid var(--brd);
+  border-radius:6px;font-size:16px;outline:none;font-family:inherit;
+  margin-bottom:12px;
+}
+.login-card input:focus{border-color:var(--blue);}
+.btn-login{
+  width:100%;padding:12px;background:var(--blue);color:#fff;
+  border:none;border-radius:8px;font-size:14px;font-weight:600;
+  cursor:pointer;
+}
+.btn-login:hover{background:var(--blue-dk);}
+.login-err{color:#c00;font-size:12px;text-align:center;display:none;}
+
+/* ── Page headers ── */
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px;}
+.pt{font-size:16px;font-weight:700;color:var(--txt);}
+.ps{font-size:11px;color:var(--muted);}
+
+/* ── Cards ── */
+.card{
+  background:#fff;border-radius:8px;
+  box-shadow:var(--shad);margin-bottom:10px;overflow:hidden;
+}
+.card-hd{
+  background:var(--tp);color:#fff;
+  padding:10px 12px;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-body{padding:10px 12px;}
+
+/* ── Badges ── */
+.bdg{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.bdg.prep{background:#e0f2fe;color:#0369a1;}
+.bdg.real{background:#dcfce7;color:#166534;}
+.bdg.mise{background:#fef3c7;color:#92400e;}
+.bdg.main{background:#dff6dd;color:#107c10;}
+.bdg.done{background:#dff6dd;color:#107c10;}
+.bdg.prog{background:#fff4ce;color:#7a5900;}
+.bdg.todo{background:#f3f3f3;color:#666;}
+.lbdg{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.lbdg.s1{background:rgba(14,165,233,.15);color:var(--2nde);}
+.lbdg.s2{background:rgba(22,163,74,.15);color:var(--1ere);}
+.lbdg.s3{background:rgba(245,158,11,.15);color:var(--term);}
+
+/* ── Progress bar ── */
+.pb{background:#e5e7eb;border-radius:4px;height:6px;margin:4px 0;}
+.pf{background:var(--blue);height:100%;border-radius:4px;transition:width .3s;}
+.pf.ok{background:var(--ok);}
+
+/* ── Tables ── */
+.dt{width:100%;border-collapse:collapse;font-size:11px;}
+.dt th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;font-size:10px;color:var(--muted);}
+.dt td{padding:6px 8px;border-bottom:1px solid #f0f0f0;}
+.dt tr:last-child td{border-bottom:none;}
+
+/* ── Étapes TP ── */
+.step-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;border-bottom:1px solid #f0f0f0;
+}
+.step-row:last-child{border-bottom:none;}
+.step-cb{width:20px;height:20px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;}
+.step-label{flex:1;font-size:12px;}
+.step-label.done{text-decoration:line-through;color:var(--muted);}
+
+/* ── Observations ── */
+.obs-input{
+  width:100%;padding:8px;border:1px solid var(--brd);
+  border-radius:6px;font-size:13px;font-family:inherit;
+  resize:vertical;min-height:70px;outline:none;
+}
+.obs-input:focus{border-color:var(--blue);}
+
+/* ── Notes display ── */
+.note-val{
+  display:inline-block;font-size:18px;font-weight:700;
+  padding:4px 10px;border-radius:6px;
+}
+.note-val.bon{background:#dff6dd;color:#107c10;}
+.note-val.moy{background:#fff4ce;color:#7a5900;}
+.note-val.fai{background:#fde7e9;color:#a80000;}
+.note-val.na{background:#f3f3f3;color:#999;}
+
+/* ── KPIs ── */
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.kpi{background:#fff;border-radius:8px;box-shadow:var(--shad);padding:12px;text-align:center;}
+.kpi .kv{font-size:22px;font-weight:700;color:var(--blue);}
+.kpi .kl{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* ── Formulaire bon ── */
+.fg{margin-bottom:10px;}
+.fl{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px;}
+.fi,.fs{
+  width:100%;padding:9px 10px;border:1px solid var(--brd);
+  border-radius:6px;font-size:16px;outline:none;font-family:inherit;
+}
+.fi:focus,.fs:focus{border-color:var(--blue);}
+.fi-sm{width:auto;min-width:80px;padding:6px 8px;border:1px solid var(--brd);border-radius:4px;font-size:14px;font-family:inherit;}
+.fta{width:100%;padding:8px;border:1px solid var(--brd);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+
+/* ── Checkbox inline ── */
+.cb-row{display:flex;gap:16px;flex-wrap:wrap;margin:4px 0;}
+.cb-item{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;}
+.cb-item input{width:16px;height:16px;accent-color:var(--blue);}
+
+/* ── Boutons ── */
+.btn{
+  padding:9px 16px;border:1px solid var(--brd);background:#fff;
+  border-radius:6px;cursor:pointer;font-size:12px;color:var(--txt);
+  font-family:inherit;transition:all .15s;
+}
+.btn.pri{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn.ok{background:var(--ok);color:#fff;border-color:var(--ok);}
+.btn.dan{background:#c00;color:#fff;border-color:#c00;}
+.btn.sml{padding:5px 10px;font-size:11px;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+
+/* ── Séparateurs de sections ── */
+.sh{
+  font-size:11px;font-weight:700;color:#fff;
+  background:var(--tp);padding:5px 10px;
+  border-radius:5px;margin:12px 0 6px;
+  display:flex;align-items:center;gap:6px;
+}
+
+/* ── Bon liste ── */
+.bon-item{
+  background:#fff;border-radius:8px;box-shadow:var(--shad);
+  margin-bottom:8px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+}
+.bon-item:hover{background:var(--blue-lt);}
+.bon-info{flex:1;}
+.bon-date{font-size:10px;color:var(--muted);}
+.bon-title{font-size:12px;font-weight:600;}
+
+/* ── Tableau heures ── */
+.heures-table{width:100%;font-size:11px;border-collapse:collapse;}
+.heures-table th,.heures-table td{
+  border:1px solid var(--brd);padding:4px 5px;text-align:center;
+}
+.heures-table th{background:#f1f5f9;font-size:10px;}
+.heures-table td input{
+  width:38px;padding:3px;border:1px solid #ddd;border-radius:3px;
+  font-size:12px;text-align:center;font-family:inherit;
+}
+.heures-table td:first-child input{width:90px;text-align:left;}
+.heures-table td select{
+  padding:2px;border:1px solid #ddd;border-radius:3px;font-size:11px;
+}
+
+/* ── Matériels table ── */
+.mat-table{width:100%;font-size:11px;border-collapse:collapse;margin-top:4px;}
+.mat-table th,.mat-table td{border:1px solid var(--brd);padding:4px 5px;}
+.mat-table th{background:#f1f5f9;font-size:10px;}
+.mat-table td input{width:100%;border:none;font-size:11px;font-family:inherit;padding:2px;}
+
+/* ── Consignation ── */
+.consign-table{width:100%;font-size:11px;border-collapse:collapse;}
+.consign-table th,.consign-table td{border:1px solid var(--brd);padding:5px 7px;}
+.consign-table th{background:#1a1a2e;color:#fff;font-size:10px;}
+.consign-table td input{width:100%;border:none;font-size:11px;font-family:inherit;}
+
+/* ── Print ── */
+@media print{
+  body{background:#fff;}
+  .window{width:100%;height:auto;border-radius:0;box-shadow:none;}
+  .nav,.syncbar,.hd,.no-print{display:none!important;}
+  .cont{overflow:visible!important;}
+  .view{display:block!important;padding:0;}
+  .card{box-shadow:none;break-inside:avoid;}
+}
+
+/* ── Notif toast ── */
+.notif{
+  position:fixed;bottom:80px;right:12px;
+  background:var(--ok);color:#fff;
+  padding:8px 14px;border-radius:6px;
+  font-size:12px;font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+  transform:translateY(80px);opacity:0;
+  transition:all .3s;z-index:9999;
+}
+.notif.show{transform:translateY(0);opacity:1;}
+.notif.err{background:#c00;}
+
+/* ── Modal ── */
+.moverlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.55);z-index:1000;
+  align-items:flex-end;justify-content:center;
+}
+.moverlay.show{display:flex;}
+.modal{
+  background:#fff;width:100%;max-width:480px;
+  max-height:90dvh;overflow-y:auto;
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -4px 32px rgba(0,0,0,.3);
+}
+.mhd{
+  background:var(--tb,var(--tp));color:#fff;
+  padding:12px 14px;font-size:13px;font-weight:700;
+  display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;z-index:1;
+  border-radius:16px 16px 0 0;
+}
+.mcl{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;}
+.mbdy{padding:14px;}
+.mft{padding:10px 14px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end;}
+
+/* ── Splash ── */
+#splashScreen{
+  position:fixed;inset:0;background:#1e3a5f;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity .4s ease;
+}
+
+/* ── Mobile full ── */
+@media (max-width:500px){
+  body{background:#1e2530;align-items:flex-start;}
+  .window{
+    width:100vw;height:100dvh;
+    border-radius:0;box-shadow:none;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Splash -->
+<div id="splashScreen">
+  <div style="font-size:72px;margin-bottom:16px">⚡</div>
+  <div style="color:#fff;font-size:22px;font-weight:700">MELEC</div>
+  <div style="color:#90caf9;font-size:13px;margin-top:6px">Espace Élève</div>
+  <div style="margin-top:28px;width:48px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden">
+    <div id="splashBar" style="height:100%;width:0;background:#90caf9;transition:width .8s ease;border-radius:2px"></div>
+  </div>
+</div>
+
+<div class="window">
+
+  <!-- Header -->
+  <div class="hd">
+    <div class="logo">⚡</div>
+    <div style="flex:1">
+      <div class="title">MELEC — Espace Élève</div>
+      <div class="sub" id="hdEleve">Non connecté</div>
+    </div>
+    <button class="btn sml" id="btnLogout" onclick="logout()" style="display:none;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:10px">Déconnexion</button>
+  </div>
+
+  <!-- Syncbar -->
+  <div class="syncbar">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncMsg">Connexion…</span>
+  </div>
+
+  <!-- Contenu -->
+  <div class="cont" id="mainCont">
+
+    <!-- LOGIN -->
+    <div class="view act" id="view-login">
+      <div class="login-wrap">
+        <div class="login-logo">🎓</div>
+        <div class="login-title">Connexion élève</div>
+        <div class="login-sub">Utilisez les identifiants fournis par votre enseignant</div>
+        <div class="login-card">
+          <label>NOM (en majuscules)</label>
+          <input type="text" id="loginNom" placeholder="DUPONT" oninput="this.value=this.value.toUpperCase()" autocomplete="username">
+          <label>Prénom</label>
+          <input type="text" id="loginPrenom" placeholder="Lucas" autocomplete="given-name">
+          <label>Mot de passe</label>
+          <input type="password" id="loginPass" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          <div class="login-err" id="loginErr">Identifiants incorrects.</div>
+          <button class="btn-login" onclick="doLogin()">Se connecter</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLEAU DE BORD -->
+    <div class="view" id="view-dashboard">
+      <div class="ph"><div><div class="pt">Tableau de bord</div><div class="ps" id="dashSub"></div></div></div>
+      <div class="kpi-row" id="dashKpis"></div>
+      <div id="dashContent"></div>
+    </div>
+
+    <!-- MES TP -->
+    <div class="view" id="view-tp">
+      <div class="ph"><div class="pt">Mes Travaux Pratiques</div></div>
+      <div id="tpContent"></div>
+    </div>
+
+    <!-- MES COURS -->
+    <div class="view" id="view-cours">
+      <div class="ph"><div class="pt">Mes Cours</div></div>
+      <div id="coursContent"></div>
+    </div>
+
+    <!-- MES NOTES -->
+    <div class="view" id="view-notes">
+      <div class="ph"><div class="pt">Mes Notes</div></div>
+      <div id="notesContent"></div>
+    </div>
+
+    <!-- BONS D'INTERVENTION -->
+    <div class="view" id="view-bons">
+      <div class="ph">
+        <div class="pt">Bons d'intervention</div>
+        <button class="btn pri sml" onclick="openNewBon()">+ Nouveau</button>
+      </div>
+      <div id="bonsContent"></div>
+    </div>
+
+  </div><!-- /cont -->
+
+  <!-- Bottom nav (masqué si non connecté) -->
+  <div class="nav" id="bottomNav" style="display:none">
+    <div class="nav-item act" data-view="dashboard" onclick="showView('dashboard')">
+      <span class="ic">🏠</span>Accueil
+    </div>
+    <div class="nav-item" data-view="tp" onclick="showView('tp')">
+      <span class="ic">🔧</span>TP
+    </div>
+    <div class="nav-item" data-view="cours" onclick="showView('cours')">
+      <span class="ic">📖</span>Cours
+    </div>
+    <div class="nav-item" data-view="notes" onclick="showView('notes')">
+      <span class="ic">📊</span>Notes
+    </div>
+    <div class="nav-item" data-view="bons" onclick="showView('bons')">
+      <span class="ic">📋</span>Bons
+    </div>
+  </div>
+
+</div><!-- /window -->
+
+<!-- Modal détail TP -->
+<div class="moverlay" id="tpModal">
+  <div class="modal">
+    <div class="mhd">🔧 <span id="tpModalTitle">TP</span>
+      <button class="mcl" onclick="closeModal('tpModal')">✕</button>
+    </div>
+    <div class="mbdy" id="tpModalBody"></div>
+    <div class="mft">
+      <button class="btn" onclick="closeModal('tpModal')">Fermer</button>
+      <button class="btn ok" onclick="saveTpObs()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal bon d'intervention -->
+<div class="moverlay" id="bonModal">
+  <div class="modal" style="max-width:600px">
+    <div class="mhd" style="--tb:#1a1a2e">
+      📋 <span id="bonModalTitle">Bon d'intervention</span>
+      <button class="mcl" onclick="closeModal('bonModal')">✕</button>
+    </div>
+    <div class="mbdy" id="bonModalBody"></div>
+    <div class="mft no-print">
+      <button class="btn" onclick="closeModal('bonModal')">Fermer</button>
+      <button class="btn pri" onclick="saveBon()">💾 Enregistrer</button>
+      <button class="btn ok" onclick="printBon()">🖨️ PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notif -->
+<div class="notif" id="notif"></div>
+
+<script>
+// ═══ CONFIG GIST (identique à l'app enseignant) ════════════════════════════
+var GIST_ID   = 'a953954f369f7fad1597e2a6da38578c';
+var _t=['ghp_qEznNZ','A1uDLc87PX','Yjjrt9dT0M','3g4D20Oeli'];
+var GIST_TOKEN = _t[0]+_t[1]+_t[2]+_t[3];
+var GIST_FILE  = 'melec-data.json';
+var GIST_API   = 'https://api.github.com/gists/' + GIST_ID;
+var LS_BACKUP  = 'melec_eleve_backup';
+var LS_SESSION = 'melec_eleve_session';
+
+// ═══ CONSTANTES ════════════════════════════════════════════════════════════
+var LEVELS = {
+  '2MELEC':  {label:'2nde MELEC',     cls:'s1', short:'2nde'},
+  '1MELEC':  {label:'1ère MELEC',     cls:'s2', short:'1ère'},
+  'T-MELEC': {label:'Terminale MELEC',cls:'s3', short:'Term.'}
+};
+var TP_PHASES = {
+  prep: {label:'Préparation',    cls:'prep'},
+  real: {label:'Réalisation',    cls:'real'},
+  mise: {label:'Mise en service',cls:'mise'},
+  main: {label:'Maintenance',    cls:'main'}
+};
+var COURS_STATUS = {todo:'À faire', prog:'En cours', done:'Terminé'};
+var PHASE_ORDER  = ['prep','real','mise','main'];
+
+// ═══ ÉTAT ════════════════════════════════════════════════════════════════════
+var data     = null;   // données complètes du Gist
+var curEleve = null;   // objet élève connecté
+var curBonId = null;   // bon en cours d'édition
+var curTpId  = null;   // TP en cours d'édition
+
+// ═══ GIST I/O ════════════════════════════════════════════════════════════════
+function gistHeaders() {
+  return {
+    'Authorization': 'Bearer ' + GIST_TOKEN,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+}
+
+async function loadData() {
+  setSyncState('pulse','Chargement…');
+  try {
+    var r = await fetch(GIST_API + '?t=' + Date.now(), {
+      method:'GET', headers:gistHeaders(), cache:'no-store'
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var j = await r.json();
+    var file = j.files && j.files[GIST_FILE];
+    if (!file || !file.content) throw new Error('Fichier vide');
+    data = JSON.parse(file.content);
+    fixData();
+    try { localStorage.setItem(LS_BACKUP, file.content); } catch(e){}
+    setSyncState('ok','Connecté');
+    return true;
+  } catch(e) {
+    // Fallback backup local
+    try {
+      var bk = localStorage.getItem(LS_BACKUP);
+      if (bk) { data = JSON.parse(bk); fixData(); setSyncState('warn','Mode hors-ligne'); return true; }
+    } catch(ex){}
+    setSyncState('err','Erreur : ' + e.message);
+    return false;
+  }
+}
+
+async function saveData() {
+  if (!data) return;
+  setSyncState('pulse','Sauvegarde…');
+  try {
+    var body = {files:{}};
+    body.files[GIST_FILE] = {content: JSON.stringify(data)};
+    var r = await fetch(GIST_API, {
+      method:'PATCH', headers:gistHeaders(), body:JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
+    setSyncState('ok','Sauvegardé');
+  } catch(e) {
+    setSyncState('err','Erreur sauvegarde');
+    notify('Erreur sauvegarde : ' + e.message, true);
+  }
+}
+
+function fixData() {
+  if (!data.eleves)       data.eleves       = [];
+  if (!data.tp)           data.tp           = [];
+  if (!data.cours)        data.cours        = [];
+  if (!data.notes)        data.notes        = {};
+  if (!data.notesEns)     data.notesEns     = {};
+  if (!data.pfmp)         data.pfmp         = [];
+  if (!data.habilitations) data.habilitations = {};
+  if (!data.appel)        data.appel        = [];
+  if (!data.bonsIntervention) data.bonsIntervention = [];
+  if (!data.tpEleve)      data.tpEleve      = {}; // {eleveId: {tpId: {phases:{}, obs:''}}}
+}
+
+// ═══ SYNC STATE ══════════════════════════════════════════════════════════════
+function setSyncState(state, msg) {
+  var dot = document.getElementById('syncDot');
+  var txt = document.getElementById('syncMsg');
+  if (dot) { dot.className = 'sync-dot' + (state==='pulse'?' pulse':state==='warn'?' warn':state==='err'?' err':''); }
+  if (txt) txt.textContent = msg;
+}
+
+// ═══ AUTH ÉLÈVE ══════════════════════════════════════════════════════════════
+function hashPass(p) {
+  var h = 0;
+  for (var i = 0; i < p.length; i++) { h = ((h<<5)-h)+p.charCodeAt(i); h|=0; }
+  return String(h);
+}
+
+function doLogin() {
+  var nom    = (document.getElementById('loginNom')||{}).value.trim().toUpperCase();
+  var prenom = (document.getElementById('loginPrenom')||{}).value.trim();
+  var pass   = (document.getElementById('loginPass')||{}).value;
+  var err    = document.getElementById('loginErr');
+  if (!data) { if(err) err.style.display='block', err.textContent='Données non chargées.'; return; }
+
+  var eleve = data.eleves.find(function(e) {
+    return e.name === nom
+      && e.prenom.toLowerCase() === prenom.toLowerCase()
+      && e.elevePass && hashPass(pass) === e.elevePass;
+  });
+
+  if (!eleve) {
+    if (err) { err.style.display='block'; err.textContent='Identifiants incorrects.'; }
+    return;
+  }
+  if (err) err.style.display='none';
+  curEleve = eleve;
+  // Mémoriser session
+  try { localStorage.setItem(LS_SESSION, JSON.stringify({id:eleve.id,pass:hashPass(pass)})); } catch(e){}
+  onLoggedIn();
+}
+
+function tryRestoreSession() {
+  try {
+    var s = localStorage.getItem(LS_SESSION);
+    if (!s || !data) return false;
+    var sess = JSON.parse(s);
+    var eleve = data.eleves.find(function(e) {
+      return e.id === sess.id && e.elevePass && e.elevePass === sess.pass;
+    });
+    if (!eleve) return false;
+    curEleve = eleve;
+    onLoggedIn();
+    return true;
+  } catch(e) { return false; }
+}
+
+function onLoggedIn() {
+  document.getElementById('hdEleve').textContent = curEleve.name + ' ' + curEleve.prenom;
+  document.getElementById('btnLogout').style.display = '';
+  document.getElementById('bottomNav').style.display = 'flex';
+  showView('dashboard');
+  renderAll();
+}
+
+function logout() {
+  curEleve = null;
+  try { localStorage.removeItem(LS_SESSION); } catch(e) {}
+  document.getElementById('hdEleve').textContent = 'Non connecté';
+  document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'none';
+  showView('login');
+}
+
+// ═══ NAVIGATION ══════════════════════════════════════════════════════════════
+function showView(v) {
+  document.querySelectorAll('.view').forEach(function(x){ x.classList.remove('act'); });
+  var vEl = document.getElementById('view-' + v);
+  if (vEl) vEl.classList.add('act');
+  document.querySelectorAll('.nav-item').forEach(function(x){ x.classList.remove('act'); });
+  var nEl = document.querySelector('[data-view="' + v + '"]');
+  if (nEl) nEl.classList.add('act');
+  // Scroll haut
+  var cont = document.getElementById('mainCont');
+  if (cont) cont.scrollTop = 0;
+  renderView(v);
+}
+
+function renderAll() {
+  renderView('dashboard');
+  renderView('tp');
+  renderView('cours');
+  renderView('notes');
+  renderView('bons');
+}
+
+function renderView(v) {
+  if (!curEleve) return;
+  if (v==='dashboard') renderDashboard();
+  if (v==='tp')        renderTP();
+  if (v==='cours')     renderCours();
+  if (v==='notes')     renderNotes();
+  if (v==='bons')      renderBons();
+}
+
+// ═══ RENDER DASHBOARD ════════════════════════════════════════════════════════
+function renderDashboard() {
+  var el = curEleve;
+  var sub = document.getElementById('dashSub');
+  if (sub) sub.textContent = (LEVELS[el.level]||{}).label || el.level;
+
+  var myTp    = getMyTp();
+  var myCours = getMyCours();
+  var myNotes = getAllNoteVals();
+
+  var tpDone   = myTp.filter(function(t){ return t.phase==='main'; }).length;
+  var coursDone= myCours.filter(function(c){ return c.status==='done'; }).length;
+  var moy      = myNotes.length ? (myNotes.reduce(function(a,b){return a+b;},0)/myNotes.length).toFixed(1) : '—';
+  var myBons   = getMyBons();
+
+  var kpis = document.getElementById('dashKpis');
+  if (kpis) kpis.innerHTML =
+    '<div class="kpi"><div class="kv">'+tpDone+'/'+myTp.length+'</div><div class="kl">TP avancés</div></div>' +
+    '<div class="kpi"><div class="kv">'+coursDone+'/'+myCours.length+'</div><div class="kl">Cours terminés</div></div>' +
+    '<div class="kpi"><div class="kv" style="color:'+(myNotes.length?(parseFloat(moy)>=12?'var(--ok)':parseFloat(moy)>=8?'#7a5900':'#c00'):'#888')+'">'+moy+(myNotes.length?'/20':'')+'</div><div class="kl">Moyenne générale</div></div>' +
+    '<div class="kpi"><div class="kv">'+myBons.length+'</div><div class="kl">Bons saisis</div></div>';
+
+  // Dernière feuille d'appel
+  var seances = (data.appel||[]).filter(function(a){ return a.level===el.level; })
+    .sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var html = '';
+  if (seances.length) {
+    var s = seances[0];
+    var v = (s.presences||{})[el.id] || 'P';
+    var lbl = v==='P'?'✅ Présent':v==='A'?'❌ Absent':'⚠️ Retard';
+    var col = v==='P'?'var(--ok)':v==='A'?'#c00':'#7a5900';
+    html += '<div class="sh">📋 Dernière séance</div>';
+    html += '<div class="card"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:12px;color:var(--muted)">'+fmtD(s.date)+'</span>';
+    html += '<span style="font-size:14px;font-weight:700;color:'+col+'">'+lbl+'</span></div></div>';
+  }
+
+  // TP en cours
+  var tpEnCours = myTp.filter(function(t){ return t.phase !== 'main'; });
+  if (tpEnCours.length) {
+    html += '<div class="sh">🔧 TP en cours</div>';
+    tpEnCours.forEach(function(tp) {
+      var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+      var ph  = TP_PHASES[tp.phase] || TP_PHASES.prep;
+      html += '<div class="card" onclick="openTpModal(\''+tp.id+'\')" style="cursor:pointer">';
+      html += '<div class="card-hd">'+tp.title+'<span class="bdg '+tp.phase+'">'+ph.label+'</span></div>';
+      html += '<div class="card-body"><div class="pb"><div class="pf" style="width:'+pct+'%"></div></div>';
+      html += '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+pct+'% — '+(tp.seancesDone||0)+'/'+tp.seances+' séances</div></div></div>';
+    });
+  }
+
+  var dc = document.getElementById('dashContent');
+  if (dc) dc.innerHTML = html;
+}
+
+// ═══ RENDER TP ═══════════════════════════════════════════════════════════════
+function getMyTp() {
+  if (!curEleve) return [];
+  return (data.tp||[]).filter(function(t){
+    return t.level===curEleve.level &&
+      (!t.assignedTo||!t.assignedTo.length||t.assignedTo.includes(curEleve.id));
+  });
+}
+
+function getMyCours() {
+  if (!curEleve) return [];
+  return (data.cours||[]).filter(function(c){
+    return c.level===curEleve.level &&
+      (!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(curEleve.id));
+  });
+}
+
+function getAllNoteVals() {
+  if (!curEleve) return [];
+  var id   = curEleve.id;
+  var vals = [];
+  var eN   = (data.notes||{})[id] || {};
+  Object.values(eN).forEach(function(v){ var n=parseFloat(v); if(!isNaN(n)) vals.push(n); });
+  Object.values(data.notesEns||{}).forEach(function(tNotes){
+    tNotes.forEach(function(ev){
+      var v=(ev.notes||{})[id];
+      if(v!==undefined){ var n=parseFloat(v); if(!isNaN(n)) vals.push(n); }
+    });
+  });
+  return vals;
+}
+
+function getMyBons() {
+  if (!curEleve) return [];
+  return (data.bonsIntervention||[]).filter(function(b){ return b.eleveId===curEleve.id; })
+    .sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
+}
+
+function getTpEleve(tpId) {
+  if (!curEleve) return {phases:{},obs:''};
+  var te = (data.tpEleve||{})[curEleve.id] || {};
+  return te[tpId] || {phases:{},obs:''};
+}
+
+function renderTP() {
+  var c = document.getElementById('tpContent');
+  if (!c) return;
+  var myTp = getMyTp();
+  if (!myTp.length) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucun TP affecté.</p>'; return; }
+  var html = '';
+  myTp.forEach(function(tp) {
+    var ph   = TP_PHASES[tp.phase]||TP_PHASES.prep;
+    var pct  = Math.round((tp.seancesDone||0)/tp.seances*100);
+    var te   = getTpEleve(tp.id);
+    var donePhases = PHASE_ORDER.filter(function(p){ return te.phases[p]; }).length;
+    html += '<div class="card">';
+    html += '<div class="card-hd" onclick="openTpModal(\''+tp.id+'\')" style="cursor:pointer">';
+    html += tp.title+'<span class="bdg '+tp.phase+'">'+ph.label+'</span></div>';
+    html += '<div class="card-body">';
+    if (tp.desc) html += '<p style="font-size:11px;color:var(--muted);margin-bottom:6px">'+tp.desc+'</p>';
+    html += '<div class="pb"><div class="pf" style="width:'+pct+'%"></div></div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin:3px 0 6px">Séances : '+(tp.seancesDone||0)+'/'+tp.seances+'</div>';
+    html += '<div style="font-size:11px;color:var(--blue)">'+donePhases+'/4 étapes validées par vous</div>';
+    if (te.obs) html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">💬 '+te.obs+'</div>';
+    html += '<button class="btn pri sml" onclick="openTpModal(\''+tp.id+'\')" style="margin-top:8px">Voir / Modifier</button>';
+    html += '</div></div>';
+  });
+  c.innerHTML = html;
+}
+
+function openTpModal(tpId) {
+  var tp = (data.tp||[]).find(function(t){ return t.id===tpId; });
+  if (!tp) return;
+  curTpId = tpId;
+  var te  = getTpEleve(tpId);
+  var ph  = TP_PHASES[tp.phase]||TP_PHASES.prep;
+  var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+
+  document.getElementById('tpModalTitle').textContent = tp.title;
+
+  var html = '<p style="font-size:11px;color:var(--muted);margin-bottom:10px">'+
+    (tp.desc||'')+'<br>Phase enseignant : <span class="bdg '+tp.phase+'">'+ph.label+'</span> — '+
+    pct+'% ('+(tp.seancesDone||0)+'/'+tp.seances+' séances)</p>';
+
+  html += '<div class="sh">📌 Mes étapes</div>';
+  PHASE_ORDER.forEach(function(pk) {
+    var pl    = TP_PHASES[pk].label;
+    var done  = !!te.phases[pk];
+    var phIdx = PHASE_ORDER.indexOf(tp.phase);
+    var myIdx = PHASE_ORDER.indexOf(pk);
+    var disabled = myIdx > phIdx ? 'disabled' : '';
+    html += '<div class="step-row">';
+    html += '<input type="checkbox" class="step-cb" id="step_'+pk+'" '+
+            (done?'checked':'')+' '+disabled+
+            ' onchange="toggleStep(\''+pk+'\')">';
+    html += '<label for="step_'+pk+'" class="step-label'+(done?' done':'')+'">'+pl+'</label>';
+    if (myIdx > phIdx) html += '<span style="font-size:10px;color:#bbb">Non démarré</span>';
+    html += '</div>';
+  });
+
+  html += '<div class="sh">💬 Mes observations</div>';
+  html += '<textarea class="obs-input" id="tpObs" placeholder="Vos observations, difficultés, remarques…">'+
+          (te.obs||'')+'</textarea>';
+
+  document.getElementById('tpModalBody').innerHTML = html;
+  openModal('tpModal');
+}
+
+function toggleStep(phaseKey) {
+  var cb = document.getElementById('step_'+phaseKey);
+  if (!curEleve || !curTpId || !cb) return;
+  if (!data.tpEleve) data.tpEleve = {};
+  if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
+  if (!data.tpEleve[curEleve.id][curTpId]) data.tpEleve[curEleve.id][curTpId] = {phases:{},obs:''};
+  data.tpEleve[curEleve.id][curTpId].phases[phaseKey] = cb.checked;
+  // Mise à jour visuelle du label
+  var lbl = cb.nextElementSibling;
+  if (lbl) { lbl.className = 'step-label' + (cb.checked?' done':''); }
+}
+
+function saveTpObs() {
+  if (!curEleve || !curTpId) return;
+  var obs = document.getElementById('tpObs');
+  if (!data.tpEleve) data.tpEleve = {};
+  if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
+  if (!data.tpEleve[curEleve.id][curTpId]) data.tpEleve[curEleve.id][curTpId] = {phases:{},obs:''};
+  // Récupérer les checkboxes
+  PHASE_ORDER.forEach(function(pk) {
+    var cb = document.getElementById('step_'+pk);
+    if (cb) data.tpEleve[curEleve.id][curTpId].phases[pk] = cb.checked;
+  });
+  data.tpEleve[curEleve.id][curTpId].obs = obs ? obs.value.trim() : '';
+  saveData().then(function(){ renderTP(); renderDashboard(); });
+  closeModal('tpModal');
+  notify('Observations enregistrées.');
+}
+
+// ═══ RENDER COURS ════════════════════════════════════════════════════════════
+function renderCours() {
+  var c = document.getElementById('coursContent');
+  if (!c) return;
+  var myCours = getMyCours();
+  if (!myCours.length) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucun cours affecté.</p>'; return; }
+  var html = '';
+  myCours.forEach(function(cours) {
+    var st = COURS_STATUS[cours.status]||cours.status;
+    var eN = (data.notes||{})[curEleve.id]||{};
+    var n  = eN[cours.id];
+    var nDisp = n!==undefined?n:'—';
+    var ncls  = n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
+    html += '<div class="card">';
+    html += '<div class="card-hd">'+cours.title+'<span class="bdg '+cours.status+'">'+st+'</span></div>';
+    html += '<div class="card-body" style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:11px;color:var(--muted)">'+fmtD(cours.date)+'</span>';
+    html += '<span class="note-val '+ncls+'">'+nDisp+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span>';
+    html += '</div></div>';
+  });
+  c.innerHTML = html;
+}
+
+// ═══ RENDER NOTES ════════════════════════════════════════════════════════════
+function renderNotes() {
+  var c = document.getElementById('notesContent');
+  if (!c || !curEleve) return;
+  var id   = curEleve.id;
+  var eN   = (data.notes||{})[id]||{};
+  var html = '';
+  var allVals = [];
+
+  // Notes TP
+  var myTp = getMyTp();
+  if (myTp.length) {
+    html += '<div class="sh">🔧 TP</div>';
+    html += '<table class="dt"><thead><tr><th>TP</th><th>Phase</th><th>Note</th></tr></thead><tbody>';
+    myTp.forEach(function(tp){
+      var n=eN[tp.id]; var nD=n!==undefined?n:'—';
+      var nc=n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
+      if(n!==undefined&&!isNaN(parseFloat(n)))allVals.push(parseFloat(n));
+      var ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
+      html+='<tr><td>'+tp.title+'</td><td><span class="bdg '+tp.phase+'">'+ph.label+'</span></td>';
+      html+='<td><span class="note-val '+nc+'" style="font-size:13px">'+nD+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span></td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  // Notes Cours
+  var myCours = getMyCours();
+  if (myCours.length) {
+    html += '<div class="sh">📖 Cours</div>';
+    html += '<table class="dt"><thead><tr><th>Cours</th><th>Note</th></tr></thead><tbody>';
+    myCours.forEach(function(c){
+      var n=eN[c.id]; var nD=n!==undefined?n:'—';
+      var nc=n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
+      if(n!==undefined&&!isNaN(parseFloat(n)))allVals.push(parseFloat(n));
+      html+='<tr><td>'+c.title+'</td>';
+      html+='<td><span class="note-val '+nc+'" style="font-size:13px">'+nD+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span></td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  // Notes enseignants
+  var hasEns = false;
+  data.teachers && data.teachers.forEach(function(t){
+    var tNotes=((data.notesEns||{})[t.id]||[]).filter(function(n){return n.level===curEleve.level;});
+    if(!tNotes.length)return;
+    var evs=tNotes.filter(function(ev){return (ev.notes||{})[id]!==undefined;});
+    if(!evs.length)return;
+    if(!hasEns){html+='<div class="sh">🗒️ Évaluations</div>';hasEns=true;}
+    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);margin:6px 0 3px">'+t.name+'</div>';
+    html+='<table class="dt"><thead><tr><th>Évaluation</th><th>Date</th><th>Note</th></tr></thead><tbody>';
+    evs.forEach(function(ev){
+      var v=(ev.notes||{})[id]; var nc=isNaN(parseFloat(v))?'na':parseFloat(v)>=12?'bon':parseFloat(v)>=8?'moy':'fai';
+      if(!isNaN(parseFloat(v)))allVals.push(parseFloat(v));
+      html+='<tr><td>'+ev.title+'</td><td>'+fmtD(ev.date)+'</td>';
+      html+='<td><span class="note-val '+nc+'" style="font-size:13px">'+v+(!isNaN(parseFloat(v))?'/20':'')+'</span></td></tr>';
+    });
+    html+='</tbody></table>';
+  });
+
+  if (!html) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucune note saisie.</p>'; return; }
+
+  // Moyenne générale
+  if (allVals.length) {
+    var moy = (allVals.reduce(function(a,b){return a+b;},0)/allVals.length).toFixed(1);
+    var mc  = parseFloat(moy)>=12?'var(--ok)':parseFloat(moy)>=8?'#7a5900':'#c00';
+    html = '<div style="background:#fff;border-radius:8px;box-shadow:var(--shad);padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">'
+         + '<span style="font-size:13px;font-weight:600">Moyenne générale</span>'
+         + '<span style="font-size:24px;font-weight:700;color:'+mc+'">'+moy+'/20</span></div>'
+         + html;
+  }
+  c.innerHTML = html;
+}
+
+// ═══ BONS D'INTERVENTION ════════════════════════════════════════════════════
+function renderBons() {
+  var c = document.getElementById('bonsContent');
+  if (!c || !curEleve) return;
+  var bons = getMyBons();
+  if (!bons.length) {
+    c.innerHTML = '<p style="color:#aaa;padding:16px;text-align:center">Aucun bon saisi.<br><button class="btn pri" onclick="openNewBon()" style="margin-top:10px">+ Créer le premier bon</button></p>';
+    return;
+  }
+  var html = '';
+  bons.forEach(function(b) {
+    html += '<div class="bon-item" onclick="openBon(\''+b.id+'\')">';
+    html += '<div style="font-size:24px">📋</div>';
+    html += '<div class="bon-info">';
+    html += '<div class="bon-title">Bon N° '+b.numero+(b.client?' — '+b.client:'')+'</div>';
+    html += '<div class="bon-date">'+fmtD(b.createdAt ? b.createdAt.slice(0,10) : '')+'</div>';
+    html += '</div><div style="color:#bbb;font-size:18px">›</div></div>';
+  });
+  c.innerHTML = html;
+}
+
+function buildBonForm(bon) {
+  bon = bon || {};
+  var rows = '';
+  for (var i = 0; i < 6; i++) {
+    var r = (bon.heures||[])[i]||{};
+    rows += '<tr>'
+      + '<td><input class="fi-sm" id="hDate_'+i+'" type="date" value="'+(r.date||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hMatin_'+i+'" placeholder="—h—" value="'+(r.matin||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hApm_'+i+'" placeholder="—h—" value="'+(r.apm||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hTps_'+i+'" placeholder="0h00" value="'+(r.tps||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hNAR_'+i+'" type="number" min="0" value="'+(r.nar||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hPrep_'+i+'" placeholder="0h00" value="'+(r.prep||'')+'"></td>'
+      + '</tr>';
+  }
+  var matRows = '';
+  for (var j = 0; j < 6; j++) {
+    var m = (bon.materiels||[])[j]||{};
+    matRows += '<tr>'
+      + '<td><input id="mConst_'+j+'" value="'+(m.const||'')+'"></td>'
+      + '<td><input id="mRef_'+j+'" value="'+(m.ref||'')+'"></td>'
+      + '<td><input id="mDes_'+j+'" value="'+(m.des||'')+'"></td>'
+      + '<td><input id="mQty_'+j+'" value="'+(m.qty||'')+'"></td>'
+      + '</tr>';
+  }
+  var typeCheck = function(t) {
+    return '<label class="cb-item"><input type="checkbox" id="type_'+t+'" '+(((bon.types||{})[t])?'checked':'')+'> '+t+'</label>';
+  };
+
+  return '<div style="background:#1a1a2e;color:#fff;padding:10px 12px;border-radius:6px 6px 0 0;margin:-14px -14px 12px">'
+    + '<div style="font-size:13px;font-weight:700">▼ SEB</div>'
+    + '<div style="font-size:11px;opacity:.7">Société d\'électricité du Blavet</div>'
+    + '<div style="font-size:10px;opacity:.6">43 Rue Charles Gounod, 56300 Pontivy — 02 97 25 35 40</div>'
+    + '</div>'
+    + '<div class="row2"><div class="fg"><label class="fl">N° Bon</label><input class="fi" id="bonNum" value="'+(bon.numero||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Client</label><input class="fi" id="bonClient" value="'+(bon.client||'')+'"></div></div>'
+    + '<div class="row2"><div class="fg"><label class="fl">Ville</label><input class="fi" id="bonVille" value="'+(bon.ville||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Projet</label><input class="fi" id="bonProjet" value="'+(bon.projet||'')+'"></div></div>'
+    + '<div class="row2"><div class="fg"><label class="fl">Maître d\'œuvre</label><input class="fi" id="bonMoe" value="'+(bon.moe||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Interlocuteur</label><input class="fi" id="bonInterlo" value="'+(bon.interlo||'')+'"></div></div>'
+    + '<div class="fg"><label class="fl">Nom de l\'intervenant</label><input class="fi" id="bonIntervenant" value="'+(bon.intervenant||curEleve.name+' '+curEleve.prenom)+'"></div>'
+    + '<div class="sh">Détail de l\'intervention</div>'
+    + '<div class="cb-row">'+['Commande','Régie','Dépannage','Complément','Autre'].map(typeCheck).join('')+'</div>'
+    + '<div class="sh">Temps de travail</div>'
+    + '<div style="overflow-x:auto"><table class="heures-table"><thead><tr>'
+    + '<th>Date</th><th>Matin</th><th>Après-midi</th><th>Trajet A/R</th><th>Nbre A/R</th><th>Préparation</th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div class="sh">Descriptif</div>'
+    + '<textarea class="fta" id="bonDesc" style="min-height:80px">'+(bon.desc||'')+'</textarea>'
+    + '<div class="fg" style="margin-top:8px"><label class="fl">Action terminée</label>'
+    + '<div class="cb-row">'
+    + '<label class="cb-item"><input type="radio" name="bonTermine" id="bonTermOui" '+(bon.termine==='oui'?'checked':'')+' value="oui"> Oui</label>'
+    + '<label class="cb-item"><input type="radio" name="bonTermine" id="bonTermNon" '+(bon.termine==='non'?'checked':'')+' value="non"> Non</label>'
+    + '</div></div>'
+    + '<div class="fg"><label class="fl">Si non, reste à faire / réserves</label><textarea class="fta" id="bonRestes">'+(bon.restes||'')+'</textarea></div>'
+    + '<div class="sh">Matériels</div>'
+    + '<div style="overflow-x:auto"><table class="mat-table"><thead><tr><th>Const</th><th>Référence</th><th>Désignation</th><th>Qté</th></tr></thead><tbody>'+matRows+'</tbody></table></div>'
+    + '<div class="sh">Consignation</div>'
+    + '<table class="consign-table"><thead><tr><th>CONSIGNATION</th><th>Nom Prénom</th><th>Signature</th></tr></thead><tbody>'
+    + '<tr><td>Mise hors tension</td><td><input id="cMhtNom" value="'+(bon.cMhtNom||'')+'"></td><td><input id="cMhtSig" value="'+(bon.cMhtSig||'')+'"></td></tr>'
+    + '<tr><td>Autorisation arrêt de production</td><td><input id="cAapNom" value="'+(bon.cAapNom||'')+'"></td><td><input id="cAapSig" value="'+(bon.cAapSig||'')+'"></td></tr>'
+    + '</tbody></table>'
+    + '<div class="row2" style="margin-top:10px">'
+    + '<div class="fg"><label class="fl">À :</label><input class="fi" id="bonA" value="'+(bon.bonA||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Le :</label><input class="fi" type="date" id="bonLe" value="'+(bon.bonLe||today())+'"></div></div>'
+    + '<div class="fg"><label class="fl">Signature et cachet du client</label><input class="fi" id="bonSig" value="'+(bon.sig||'')+'"></div>';
+}
+
+function collectBon() {
+  var types = {};
+  ['Commande','Régie','Dépannage','Complément','Autre'].forEach(function(t){
+    var cb = document.getElementById('type_'+t);
+    if (cb) types[t] = cb.checked;
+  });
+  var heures = [];
+  for (var i=0;i<6;i++) {
+    heures.push({
+      date: v('hDate_'+i), matin:v('hMatin_'+i), apm:v('hApm_'+i),
+      tps:v('hTps_'+i), nar:v('hNAR_'+i), prep:v('hPrep_'+i)
+    });
+  }
+  var materiels = [];
+  for (var j=0;j<6;j++) {
+    materiels.push({const:v('mConst_'+j),ref:v('mRef_'+j),des:v('mDes_'+j),qty:v('mQty_'+j)});
+  }
+  var terOui = document.getElementById('bonTermOui');
+  var terNon = document.getElementById('bonTermNon');
+  return {
+    numero:v('bonNum'), client:v('bonClient'), ville:v('bonVille'),
+    projet:v('bonProjet'), moe:v('bonMoe'), interlo:v('bonInterlo'),
+    intervenant:v('bonIntervenant'), types:types, heures:heures,
+    desc:v('bonDesc'), restes:v('bonRestes'), materiels:materiels,
+    cMhtNom:v('cMhtNom'),cMhtSig:v('cMhtSig'),cAapNom:v('cAapNom'),cAapSig:v('cAapSig'),
+    bonA:v('bonA'), bonLe:v('bonLe'), sig:v('bonSig'),
+    termine: terOui&&terOui.checked?'oui':terNon&&terNon.checked?'non':''
+  };
+}
+function v(id){ var el=document.getElementById(id); return el?el.value:''; }
+
+function openNewBon() {
+  curBonId = null;
+  document.getElementById('bonModalTitle').textContent = 'Nouveau bon d\'intervention';
+  document.getElementById('bonModalBody').innerHTML = buildBonForm(null);
+  openModal('bonModal');
+}
+
+function openBon(id) {
+  var bon = (data.bonsIntervention||[]).find(function(b){ return b.id===id; });
+  if (!bon) return;
+  curBonId = id;
+  document.getElementById('bonModalTitle').textContent = 'Bon N° ' + (bon.numero||id);
+  document.getElementById('bonModalBody').innerHTML = buildBonForm(bon);
+  openModal('bonModal');
+}
+
+function saveBon() {
+  if (!curEleve) return;
+  var bon = collectBon();
+  bon.eleveId    = curEleve.id;
+  bon.eleveLevel = curEleve.level;
+  if (!data.bonsIntervention) data.bonsIntervention = [];
+  if (curBonId) {
+    var idx = data.bonsIntervention.findIndex(function(b){ return b.id===curBonId; });
+    if (idx>=0) { bon.id=curBonId; bon.createdAt=data.bonsIntervention[idx].createdAt; data.bonsIntervention[idx]=bon; }
+  } else {
+    bon.id = 'BI'+Date.now();
+    bon.createdAt = new Date().toISOString();
+    data.bonsIntervention.push(bon);
+    curBonId = bon.id;
+  }
+  saveData().then(function(){ renderBons(); });
+  notify('Bon enregistré.');
+}
+
+function printBon() {
+  saveBon();
+  setTimeout(function(){
+    // Générer un HTML propre pour l'impression
+    var bon = (data.bonsIntervention||[]).find(function(b){ return b.id===curBonId; });
+    if (!bon) return;
+    var w = window.open('','_blank');
+    var rows='';
+    for(var i=0;i<6;i++){
+      var r=(bon.heures||[])[i]||{};
+      rows+='<tr><td>'+(r.date?fmtD(r.date):'')+'</td><td>'+(r.matin||'')+'</td><td>'+(r.apm||'')+'</td><td>'+(r.tps||'')+'</td><td>'+(r.nar||'')+'</td><td>'+(r.prep||'')+'</td></tr>';
+    }
+    var matRows='';
+    for(var j=0;j<6;j++){
+      var m=(bon.materiels||[])[j]||{};
+      matRows+='<tr><td>'+(m.const||'')+'</td><td>'+(m.ref||'')+'</td><td>'+(m.des||'')+'</td><td>'+(m.qty||'')+'</td></tr>';
+    }
+    var types=Object.entries(bon.types||{}).filter(function(e){return e[1];}).map(function(e){return e[0];}).join(' · ');
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bon N°'+bon.numero+'</title><style>'
+      +'body{font-family:Arial,sans-serif;font-size:11px;margin:20px;color:#000}'
+      +'table{width:100%;border-collapse:collapse;margin-bottom:10px}'
+      +'th,td{border:1px solid #999;padding:4px 6px;}'
+      +'th{background:#eee;font-weight:bold}'
+      +'.hd{display:flex;justify-content:space-between;margin-bottom:12px}'
+      +'.logo{font-size:18px;font-weight:900}'
+      +'.sh{font-weight:700;margin:10px 0 4px;border-bottom:1px solid #999;padding-bottom:2px}'
+      +'h1{font-size:16px;text-align:center;margin-bottom:6px}'
+      +'@media print{@page{size:A4;margin:15mm}}'
+      +'</style></head><body>'
+      +'<div class="hd"><div><div class="logo">▼ SEB</div><div>Société d\'électricité du Blavet</div>'
+      +'<div>43 Rue Charles Gounod, 56300 Pontivy — 02 97 25 35 40</div>'
+      +'<div>Mail : SEB.pro.56300@gmail.com</div>'
+      +'<div><strong>Nom de l\'intervenant :</strong> '+(bon.intervenant||'')+'</div></div>'
+      +'<div><h1>Bon d\'intervention N° '+(bon.numero||'')+'</h1>'
+      +'<div><strong>Client :</strong> '+(bon.client||'')+'</div>'
+      +'<div><strong>Ville :</strong> '+(bon.ville||'')+'</div>'
+      +'<div><strong>Projet :</strong> '+(bon.projet||'')+'</div>'
+      +'<div><strong>Maître d\'œuvre :</strong> '+(bon.moe||'')+'</div>'
+      +'<div><strong>Interlocuteur :</strong> '+(bon.interlo||'')+'</div></div></div>'
+      +'<div class="sh">Détail de l\'intervention</div>'
+      +'<div>'+(['Commande','Régie','Dépannage','Complément','Autre'].map(function(t){return (bon.types&&bon.types[t]?'☑':'☐')+' '+t;}).join('  '))+'</div>'
+      +'<div class="sh">Temps de travail</div>'
+      +'<table><thead><tr><th>Date</th><th>Matin</th><th>Après-midi</th><th>Trajet A/R</th><th>Nbre A/R</th><th>Préparation</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      +'<div class="sh">Descriptif de l\'intervention</div>'
+      +'<p>'+(bon.desc||'').replace(/\n/g,'<br>')+'</p>'
+      +'<div>Action terminée : '+(bon.termine==='oui'?'☑ Oui  ☐ Non':'☐ Oui  '+(bon.termine==='non'?'☑':'☐')+' Non')
+      +'&nbsp;&nbsp;&nbsp;<em style="font-size:10px">si terminée, ce bon équivaut à un PV de réception</em></div>'
+      +(bon.restes?'<div><strong>Reste à faire / réserves :</strong> '+bon.restes+'</div>':'')
+      +'<div class="sh">Matériels</div>'
+      +'<table><thead><tr><th>Const</th><th>Référence</th><th>Désignation</th><th>Quantité</th></tr></thead><tbody>'+matRows+'</tbody></table>'
+      +'<p style="font-size:9px;text-align:center">nous nous réservons la propriété du matériel jusqu\'au paiement intégral de notre facture (loi N°8033S du 12 mai 1980)</p>'
+      +'<table><thead><tr><th>CONSIGNATION</th><th>Nom Prénom</th><th>Signature</th></tr></thead><tbody>'
+      +'<tr><td>Mise hors tension</td><td>'+(bon.cMhtNom||'')+'</td><td>'+(bon.cMhtSig||'')+'</td></tr>'
+      +'<tr><td>Autorisation arrêt de production</td><td>'+(bon.cAapNom||'')+'</td><td>'+(bon.cAapSig||'')+'</td></tr>'
+      +'</tbody></table>'
+      +'<p style="font-size:9px">La remise en production est de la responsabilité du client</p>'
+      +'<div style="display:flex;justify-content:space-between;margin-top:16px">'
+      +'<div>A : '+(bon.bonA||'')+'<br>Le : '+(bon.bonLe?fmtD(bon.bonLe):'  /  /')+'</div>'
+      +'<div style="text-align:right"><strong>Signature et cachet du client :</strong><br><br>'+(bon.sig||'&nbsp;')+'</div>'
+      +'</div>'
+      +'</body></html>');
+    w.document.close();
+    w.focus();
+    setTimeout(function(){ w.print(); }, 400);
+  }, 200);
+}
+
+// ═══ UTILITAIRES ═════════════════════════════════════════════════════════════
+function fmtD(d){ if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;} }
+function today(){ return new Date().toISOString().slice(0,10); }
+function openModal(id){ var el=document.getElementById(id);if(el)el.classList.add('show'); }
+function closeModal(id){ var el=document.getElementById(id);if(el)el.classList.remove('show'); }
+document.addEventListener('click',function(e){
+  if(e.target.classList&&e.target.classList.contains('moverlay'))e.target.classList.remove('show');
+});
+function notify(msg,err){
+  var n=document.getElementById('notif');
+  if(!n)return;
+  n.textContent=(err?'⚠ ':'✓ ')+msg;
+  n.className='notif'+(err?' err':'');
+  n.classList.add('show');
+  setTimeout(function(){n.classList.remove('show');},3000);
+}
+function hideSplash(){
+  var sp=document.getElementById('splashScreen');if(!sp)return;
+  var bar=document.getElementById('splashBar');if(bar)bar.style.width='100%';
+  setTimeout(function(){sp.style.opacity='0';setTimeout(function(){sp.style.display='none';},420);},300);
+}
+
+// ═══ START ════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async function() {
+  var ok = await loadData();
+  hideSplash();
+  if (ok) {
+    if (!tryRestoreSession()) {
+      showView('login');
+    }
+  } else {
+    showView('login');
+  }
+});
+</script>
+</body>
+</html>
