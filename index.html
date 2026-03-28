@@ -735,6 +735,8 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
     </div>
     <div class="fg"><label class="fl">Date de naissance (JJMMAAAA)</label><input class="fi" id="eDdn" placeholder="15032008" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)"></div>
   </div>
+    <div style="background:#e8f4fd;border:1px solid #b3d9f7;border-radius:4px;padding:8px 10px;margin:8px 0;font-size:11px">🔐 <strong>Accès espace élève</strong> — identifiant : NOM + Prénom</div>
+    <div class="fg"><label class="fl">Mot de passe élève</label><input class="fi" type="password" id="ePass" placeholder="Laisser vide = pas d'accès"></div>
   <div class="mft"><button class="btn bsec" onclick="closeModal('eleveModal')">Annuler</button><button class="btn bpri" onclick="addEleve()">Ajouter</button></div>
 </div></div>
 
@@ -758,6 +760,8 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
     </div>
     <div class="fg"><label class="fl">Date de naissance (JJMMAAAA)</label><input class="fi" id="eeDdn" maxlength="8" oninput="this.value=this.value.replace(/\D/g,'').slice(0,8)"></div>
   </div>
+    <div style="background:#e8f4fd;border:1px solid #b3d9f7;border-radius:4px;padding:8px 10px;margin:8px 0;font-size:11px">🔐 <strong>Accès espace élève</strong> — identifiant : NOM + Prénom</div>
+    <div class="fg"><label class="fl">Mot de passe élève (laisser vide pour conserver)</label><input class="fi" type="password" id="eePass" placeholder="••••••"></div>
   <div class="mft"><button class="btn bsec" onclick="closeModal('editEleveModal')">Annuler</button><button class="btn bpri" onclick="saveEditEleve()">Enregistrer</button></div>
 </div></div>
 
@@ -1080,6 +1084,8 @@ function fixData(){
   if(!data.notes) data.notes = {};
   if(!data.appel) data.appel = [];
   if(!data.notesEns) data.notesEns = {};
+  if(!data.bonsIntervention) data.bonsIntervention = [];
+  if(!data.tpEleve) data.tpEleve = {};
   if(!data._version) data._version = 0;
   if(!data._ts) data._ts = 0;
 }
@@ -1440,9 +1446,13 @@ function addEleve(){
   const mail=document.getElementById('eMail').value.trim();
   const ddn=document.getElementById('eDdn').value.trim();
   if(!name||!prenom){alert('Nom et prénom requis.');return;}
-  data.eleves.push({id:'E'+Date.now(),name,prenom,level,tel,mail,ddn});
+  var ePassEl = document.getElementById('ePass');
+  var ePassVal = ePassEl ? ePassEl.value : '';
+  var eleveObj = {id:'E'+Date.now(),name,prenom,level,tel,mail,ddn};
+  if (ePassVal) eleveObj.elevePass = hashPass(ePassVal);
+  data.eleves.push(eleveObj);
   serverSave();closeModal('eleveModal');
-  ['eName','ePrenom','eTel','eMail','eDdn'].forEach(id=>document.getElementById(id).value='');
+  ['eName','ePrenom','eTel','eMail','eDdn','ePass'].forEach(id=>{var el=document.getElementById(id);if(el)el.value='';});
   refreshPfmpEleveSelect();renderAll();notify('Élève ajouté !');
 }
 function deleteEleve(id){if(!curTeacher){notify('Connectez-vous pour supprimer.',true);return;}if(!confirm('Supprimer cet élève ?'))return;data.eleves=data.eleves.filter(e=>e.id!==id);serverSave();refreshPfmpEleveSelect();renderAll();notify('Élève supprimé.');}
@@ -1456,6 +1466,8 @@ function openEditEleve(id){if(!curTeacher){notify('Connectez-vous pour modifier.
   document.getElementById('eeTel').value=e.tel||'';
   document.getElementById('eeMail').value=e.mail||'';
   document.getElementById('eeDdn').value=e.ddn||'';
+  var eeP = document.getElementById('eePass');
+  if (eeP) { eeP.value=''; eeP.placeholder = e.elevePass ? '(défini — laisser vide pour conserver)' : 'Aucun accès — saisir pour activer'; }
   openModal('editEleveModal');
 }
 function openEditFromFiche(){if(!curTeacher){notify('Connectez-vous pour modifier.',true);return;}closeModal('ficheModal');openEditEleve(ficheEleveId);}
@@ -1468,6 +1480,9 @@ function saveEditEleve(){
   e.name=name;e.prenom=prenom;e.level=document.getElementById('eeLevel').value;
   e.tel=document.getElementById('eeTel').value.trim();e.mail=document.getElementById('eeMail').value.trim();
   e.ddn=document.getElementById('eeDdn').value.trim();
+  var eePassEl=document.getElementById('eePass');
+  if(eePassEl&&eePassEl.value.trim()) e.elevePass=hashPass(eePassEl.value.trim());
+  if(eePassEl) eePassEl.value='';
   serverSave();closeModal('editEleveModal');refreshPfmpEleveSelect();renderAll();notify('Fiche mise à jour !');
   openFiche(id);
 }
@@ -1585,6 +1600,26 @@ function openFiche(id){
     <td style="text-align:center">${h.theo?'✅':'⬜'}</td><td style="text-align:center">${h.prat?'✅':'⬜'}</td>
     <td style="text-align:center"><span class="hbdg ${cls}">${lbl}</span></td></tr>`;}).join('')}
   </tbody></table>`;
+
+  // Accès espace élève
+  html += '<div class="sh" style="background:#1e3a5f;color:#90caf9;border-color:#2d5f9e">🎓 Espace élève</div>';
+  if (e.elevePass) {
+    var myBons = (data.bonsIntervention||[]).filter(function(b){return b.eleveId===e.id;});
+    html += '<div style="background:#e8f4fd;border-radius:4px;padding:8px 10px;font-size:11px">';
+    html += '✅ Accès activé — identifiant : <strong>'+e.name+' / '+e.prenom+'</strong><br>';
+    html += '📋 Bons d\'intervention : <strong>'+myBons.length+'</strong>';
+    if (myBons.length) {
+      html += '<br><div style="margin-top:6px">';
+      myBons.slice(0,3).forEach(function(b){
+        html += '<div style="font-size:10px;color:#555;padding:2px 0">• Bon N°'+(b.numero||'?')+' — '+(b.client||'')+ ' ('+fmtD((b.createdAt||'').slice(0,10))+')</div>';
+      });
+      if(myBons.length>3) html += '<div style="font-size:10px;color:#888">…et '+(myBons.length-3)+' autre(s)</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  } else {
+    html += '<div style="background:#fff4ce;border-radius:4px;padding:8px 10px;font-size:11px">⚠️ Aucun accès — définir un mot de passe dans <em>Modifier</em></div>';
+  }
 
   document.getElementById('ficheContent').innerHTML=html;
   openModal('ficheModal');
@@ -2554,6 +2589,15 @@ function _doExportXLSX() {
       addSheet('Appel_'+lvl.label.replace(/ /g,'_').slice(0,25), rows);
     });
 
+    // Bons d'intervention
+    if ((data.bonsIntervention||[]).length) {
+      var rB=[['N° Bon','Élève','Niveau','Client','Ville','Projet','Date création','Action terminée','Descriptif']];
+      data.bonsIntervention.forEach(function(b){
+        var el=data.eleves.find(function(e){return e.id===b.eleveId;});
+        rB.push([b.numero||'',el?el.name+' '+el.prenom:'?',el?LEVELS[el.level]?LEVELS[el.level].label:el.level:'?',b.client||'',b.ville||'',b.projet||'',b.createdAt?(b.createdAt.slice(0,10)):'',b.termine||'',b.desc||'']);
+      });
+      addSheet('Bons intervention', rB);
+    }
     XLSX.writeFile(wb, 'MELEC_Export_' + today() + '.xlsx');
     notify('Export XLSX téléchargé !');
   } catch(e) {
