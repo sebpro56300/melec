@@ -349,7 +349,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
     border-radius:0;box-shadow:none;
   }
   .abody{flex-direction:column;overflow:hidden;}
-  .sb{display:none;}           /* sidebar masquée, remplacée par bottom nav */
+  .sb{display:none!important;} /* sidebar masquée, remplacée par bottom nav */
   .cont{padding:10px 10px 80px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
   .nav{display:flex!important;}
   .moverlay{align-items:flex-end;}
@@ -398,7 +398,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
   <div class="abody">
 
   <!-- Sidebar desktop (masquée sur mobile) -->
-  <div class="sb" id="sidebarDesk" style="display:flex;flex-direction:column">
+  <div class="sb" id="sidebarDesk">
     <div class="sb-logo">
       <div class="ic">🎓</div>
       <div><div class="ttl">Espace Élève</div><div class="sub" id="sbEleve">—</div></div>
