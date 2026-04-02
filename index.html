@@ -402,6 +402,13 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
 .ni { width:58px; padding:3px; border:1px solid #ccc; border-radius:3px; font-size:12px; text-align:center; }
 .ni:disabled { background:#f5f5f5; color:#888; border-color:#ddd; }
 
+
+@media print {
+  body.printing-bon *{visibility:hidden;}
+  body.printing-bon #bonPreviewBody,
+  body.printing-bon #bonPreviewBody *{visibility:visible;}
+  body.printing-bon #bonPreviewBody{position:fixed;inset:0;background:#fff;padding:10mm;z-index:99999;}
+}
 </style>
 </head>
 <body>
@@ -949,6 +956,21 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;display:flex;al
   </div>
 </div>
 
+
+<!-- Modal aperçu bon (Capacitor-compatible) -->
+<div class="moverlay" id="bonPreviewModal">
+  <div class="modal xl" style="width:860px;max-width:98vw">
+    <div class="mhd" style="background:#1a1a2e">
+      📋 <span id="bonPreviewTitle">Bon</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="rb" onclick="printFromPreview()" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:11px">🖨️ Imprimer</button>
+        <button class="mcl" onclick="closeModal('bonPreviewModal')">✕</button>
+      </div>
+    </div>
+    <div class="mbdy" id="bonPreviewBody" style="padding:16px;font-family:Arial,sans-serif;font-size:11px;color:#000"></div>
+  </div>
+</div>
+
 <div class="notif" id="notif"></div>
 
 <!-- ═══════════════ SCRIPT ═══════════════ -->
@@ -1213,11 +1235,10 @@ async function init(){
 
   try{ updateTeacherSelect(); }catch(e){}
   try{ setLockState(); }catch(e){}
-  try{ renderAll();
-      hideSplash(); }catch(e){ console.error('renderAll:', e); }
+  try{ renderAll(); }catch(e){ console.error('renderAll error:', e); }
+  try{ hideSplash(); }catch(e){}
   try{ updateTeacherSelect(); }catch(e){}
   try{ setLockState(); }catch(e){}
-  try{ renderAll(); }catch(e){ console.error('renderAll:', e); }
   try{
     var stDate = document.getElementById('stDate');
     if(stDate) stDate.textContent = new Date().toLocaleDateString('fr-FR',{weekday:'short',year:'numeric',month:'long',day:'numeric'});
@@ -1612,7 +1633,7 @@ function openFiche(id){
       const v    = (ev.notes||{})[id];
       const disp = v !== undefined ? v : '—';
       const col  = v === undefined ? '#aaa' : isNaN(parseFloat(v)) ? '#555' : 'inherit';
-      return `<tr><td>${ev.title}</td><td style="font-size:10px;color:#888">${fmtD(ev.date)}</td>
+      const row=`<tr><td>${ev.title}</td><td style="font-size:10px;color:#888">${fmtD(ev.date)}</td>
         <td style="text-align:center;color:${col}">${disp}</td></tr>`;
     }).join('');
     return `<div style="margin-bottom:10px">
@@ -1889,7 +1910,7 @@ function renderDashboard(){
     lCours.map(c=>{
       const t=data.teachers.find(x=>x.id===c.teacher);
       const pct=c.status==='done'?100:c.status==='prog'?50:0;
-      return `<tr><td><strong>${c.title}</strong></td><td>${t?t.name:'—'}</td>
+      const row=`<tr><td><strong>${c.title}</strong></td><td>${t?t.name:'—'}</td>
         <td><div style="display:flex;align-items:center;gap:6px">
           <div class="mpb" style="width:70px"><div class="mpf" style="width:${pct}%;background:${c.status==='done'?'var(--ok)':c.status==='prog'?'var(--yel)':'#ccc'}"></div></div>
           <span class="bdg ${c.status}">${COURS_STATUS[c.status]||c.status}</span></div></td>
@@ -1929,7 +1950,7 @@ function renderVue3Classes(){
         const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
         const t=data.teachers.find(x=>x.id===tp.teacher);
         const lvl=LEVELS[tp.level]||{label:tp.level,cls:'s1'};
-        return `<tr><td><span class="lbdg ${lvl.cls}">${lvl.short||lvl.label}</span></td>
+        const row=`<tr><td><span class="lbdg ${lvl.cls}">${lvl.short||lvl.label}</span></td>
           <td><strong>${tp.title}</strong></td>
           <td>${t?t.name:'—'}</td>
           <td><span class="bdg ${tp.phase}">${ph.label}</span></td>
@@ -1946,7 +1967,7 @@ function renderVue3Classes(){
       allCoursBody.innerHTML=data.cours.map(c=>{
         const t=data.teachers.find(x=>x.id===c.teacher);
         const lvl=LEVELS[c.level]||{label:c.level,cls:'s1'};
-        return `<tr><td><span class="lbdg ${lvl.cls}">${lvl.short||lvl.label}</span></td>
+        const row=`<tr><td><span class="lbdg ${lvl.cls}">${lvl.short||lvl.label}</span></td>
           <td><strong>${c.title}</strong></td>
           <td>${t?t.name:'—'}</td>
           <td><span class="bdg ${c.status}">${COURS_STATUS[c.status]||c.status}</span></td>
@@ -1984,47 +2005,50 @@ function renderTP(){
   const lEleves=data.eleves.filter(e=>e.level===curLevel);
   const c=document.getElementById('tpContent');if(!c)return;
   if(!lTp.length){c.innerHTML='<div class="empty"><div class="eic">🔧</div><div>Aucun TP pour cette classe.</div></div>';return;}
-  // Une ligne par (TP × élève) : Nom TP | Date | Avancement | Terminé | Élève | Actions
-  const rows=lTp.flatMap(tp=>{
+  var rows=[];
+  lTp.forEach(function(tp){
     const termine=tp.phase==='main'||tp.termineParEnseignant;
     const ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
     const pct=Math.round((tp.seancesDone||0)/tp.seances*100);
     const elevesTP=lEleves.filter(e=>!tp.assignedTo||!tp.assignedTo.length||tp.assignedTo.includes(e.id));
+    const actionsCell=termine
+      ?`<button class="rb" onclick="rappelerTP('${tp.id}')" style="font-size:10px;color:#7a5900;border-color:#7a5900">↩</button> `
+      :`<button class="rb pri" onclick="marquerTPTermine('${tp.id}')" style="font-size:10px;background:#107c10;border-color:#107c10">✅</button> `;
+    const delBtn=`<button class="rb" style="color:#c00" onclick="deleteTP('${tp.id}')">🗑</button>`;
+    const avancement=`<div class="mp"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${ph.label}</span></div>`;
+    const termineTd=termine?'<span style="color:var(--ok);font-weight:700">✅</span>':'—';
     if(!elevesTP.length){
-      // TP sans élève affecté : une seule ligne sans colonne élève
-      return [`<tr>
+      rows.push(`<tr>
         <td><strong>${tp.title}</strong></td>
         <td style="font-size:10px;color:var(--muted)">${fmtD(tp.date)}</td>
-        <td><div class="mp"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${ph.label}</span></div></td>
-        <td style="text-align:center">${termine?'<span style="color:var(--ok);font-weight:700">✅</span>':'—'}</td>
+        <td>${avancement}</td>
+        <td style="text-align:center">${termineTd}</td>
         <td style="color:var(--muted);font-size:11px">—</td>
-        <td style="white-space:nowrap">
-          ${termine
-            ?`<button class="rb" onclick="rappelerTP('${tp.id}')" style="font-size:10px;color:#7a5900;border-color:#7a5900">↩</button>`
-            :`<button class="rb pri" onclick="marquerTPTermine('${tp.id}')" style="font-size:10px;background:#107c10;border-color:#107c10">✅</button>`}
-          <button class="rb" style="color:#c00" onclick="deleteTP('${tp.id}')">🗑</button>
-        </td>
-      </tr>`];
+        <td style="white-space:nowrap">${actionsCell}${delBtn}</td>
+      </tr>`);
+    } else {
+      elevesTP.forEach(function(e,idx){
+        const te=((data.tpEleve||{})[e.id]||{})[tp.id]||{phases:{},obs:''};
+        const doneP=Object.values(te.phases||{}).filter(Boolean).length;
+        const termE=te.termineParEleve;
+        const eleveCell=`<td style="font-size:11px">${e.name} ${e.prenom}`
+          +(doneP?` <span style="color:var(--muted);font-size:9px">(${doneP}/4)</span>`:'')
+          +(termE?' <span style="color:var(--ok);font-size:10px">✅élève</span>':'')
+          +'</td>';
+        if(idx===0){
+          rows.push(`<tr>
+            <td rowspan="${elevesTP.length}" style="border-right:2px solid #e2e8f0"><strong>${tp.title}</strong></td>
+            <td rowspan="${elevesTP.length}" style="font-size:10px;color:var(--muted);border-right:2px solid #e2e8f0">${fmtD(tp.date)}</td>
+            <td rowspan="${elevesTP.length}" style="border-right:2px solid #e2e8f0">${avancement}</td>
+            <td rowspan="${elevesTP.length}" style="text-align:center;border-right:2px solid #e2e8f0">${termineTd}</td>
+            ${eleveCell}
+            <td rowspan="${elevesTP.length}" style="white-space:nowrap">${actionsCell}${delBtn}</td>
+          </tr>`);
+        } else {
+          rows.push(`<tr>${eleveCell}</tr>`);
+        }
+      });
     }
-    return elevesTP.map((e,idx)=>{
-      const te=((data.tpEleve||{})[e.id]||{})[tp.id]||{phases:{},obs:''};
-      const doneP=Object.values(te.phases||{}).filter(Boolean).length;
-      const termE=te.termineParEleve;
-      const termineLigne=termine||termE;
-      return `<tr>
-        ${idx===0?`<td rowspan="${elevesTP.length}" style="border-right:2px solid #e2e8f0"><strong>${tp.title}</strong></td>
-        <td rowspan="${elevesTP.length}" style="font-size:10px;color:var(--muted);border-right:2px solid #e2e8f0">${fmtD(tp.date)}</td>
-        <td rowspan="${elevesTP.length}" style="border-right:2px solid #e2e8f0"><div class="mp"><div class="mpb"><div class="mpf" style="width:${pct}%"></div></div><span class="mpt">${ph.label}</span></div></td>
-        <td rowspan="${elevesTP.length}" style="text-align:center;border-right:2px solid #e2e8f0">${termine?'<span style="color:var(--ok);font-weight:700">✅</span>':'—'}</td>`:''}
-        <td style="font-size:11px">${e.name} ${e.prenom}${doneP?` <span style="color:var(--muted);font-size:9px">(${doneP}/4)</span>`:''}${termE?' <span style="color:var(--ok);font-size:10px">✅élève</span>':''}</td>
-        ${idx===0?`<td rowspan="${elevesTP.length}" style="white-space:nowrap">
-          ${termine
-            ?`<button class="rb" onclick="rappelerTP('${tp.id}')" style="font-size:10px;color:#7a5900;border-color:#7a5900">↩</button>`
-            :`<button class="rb pri" onclick="marquerTPTermine('${tp.id}')" style="font-size:10px;background:#107c10;border-color:#107c10">✅</button>`}
-          <button class="rb" style="color:#c00" onclick="deleteTP('${tp.id}')">🗑</button>
-        </td>`:''}
-      </tr>`;
-    });
   });
   c.innerHTML=`<table class="dt"><thead><tr>
     <th>Nom du TP</th><th>Date</th><th>Avancement</th>
@@ -2199,7 +2223,7 @@ function renderHabilitations(){
                 <td style="text-align:center"><input type="checkbox" ${h.prat?'checked':''} onchange="toggleHab('${eleve.id}','${niv}','prat')" style="width:15px;height:15px;accent-color:#b45309;cursor:pointer"></td>`;}).join('');
       const valid=HAB_NIV.filter(niv=>{const h=eHab[niv]||{};return h.theo&&h.prat;});
       const bilan=valid.length?valid.map(niv=>`<span class="hbdg ok" style="margin:1px">${niv} ✓</span>`).join(''):'<span style="color:#bbb;font-size:10px">Aucune</span>';
-      return `<tr><td><strong>${eleve.name}</strong> ${eleve.prenom}</td>${cells}<td style="text-align:center">${bilan}</td></tr>`;
+      const row=`<tr><td><strong>${eleve.name}</strong> ${eleve.prenom}</td>${cells}<td style="text-align:center">${bilan}</td></tr>`;
     }).join('')}
     </tbody></table></div>
   <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:9px 13px;font-size:11px;color:#78350f;margin-top:10px">
@@ -2767,7 +2791,7 @@ if ('serviceWorker' in navigator) {
 function renderBonsEns() {
   var c = document.getElementById('bonsContent');
   if (!c) return;
-  var elevesClasse = (data.eleves||[]).filter(function(e){return e.level===curLevel;}).map(function(e){return e.id;});
+  var elevesClasse=(data.eleves||[]).filter(function(e){return e.level===curLevel;}).map(function(e){return e.id;});
   var bons = (data.bonsIntervention || [])
     .filter(function(b){return elevesClasse.indexOf(b.eleveId)>=0;})
     .slice().sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
@@ -2840,101 +2864,63 @@ function printBonEns(id) {
 }
 
 function buildBonHtml(bon) {
-  var eleve = (data.eleves||[]).find(function(e){return e.id===bon.eleveId;});
+  var eleve=(data.eleves||[]).find(function(e){return e.id===bon.eleveId;});
   var rows='';
-  for(var i=0;i<6;i++){
-    var r=(bon.heures||[])[i]||{};
-    var rd=r.date?new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR'):'';
-    rows+='<tr><td>'+rd+'</td><td>'+(r.matin||'')+'</td><td>'+(r.apm||'')+'</td><td>'+(r.tps||'')+'</td><td>'+(r.nar||'')+'</td><td>'+(r.prep||'')+'</td></tr>';
-  }
+  for(var i=0;i<6;i++){var r=(bon.heures||[])[i]||{};var rd=r.date?new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR'):'';rows+='<tr><td>'+rd+'</td><td>'+(r.matin||'')+'</td><td>'+(r.apm||'')+'</td><td>'+(r.tps||'')+'</td><td>'+(r.nar||'')+'</td><td>'+(r.prep||'')+'</td></tr>';}
   var matRows='';
-  for(var j=0;j<6;j++){
-    var m=(bon.materiels||[])[j]||{};
-    matRows+='<tr><td>'+(m.const||'')+'</td><td>'+(m.ref||'')+'</td><td>'+(m.des||'')+'</td><td>'+(m.qty||'')+'</td></tr>';
-  }
-  var types=['Commande','\u0052\u00e9gie','D\u00e9pannage','Compl\u00e9ment','Autre'];
+  for(var j=0;j<6;j++){var m=(bon.materiels||[])[j]||{};matRows+='<tr><td>'+(m.const||'')+'</td><td>'+(m.ref||'')+'</td><td>'+(m.des||'')+'</td><td>'+(m.qty||'')+'</td></tr>';}
+  var types=['Commande','R\u00e9gie','D\u00e9pannage','Compl\u00e9ment','Autre'];
   var typeStr=types.map(function(t){return (bon.types&&bon.types[t]?'\u2611':'\u2610')+' '+t;}).join('  ');
-  var fmtDLocal=function(d){if(!d)return'';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e2){return d;}};
-  var sigBlock='<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px">'
-    +'<div><div>A : '+(bon.bonA||'')+'</div><div style="margin-top:6px">Le : '+fmtDLocal(bon.bonLe||'')+'</div></div>'
-    +'<div style="border:1px solid #999;border-radius:4px;padding:8px;min-height:60px">'
-    +'<div style="font-size:9px;color:#666;margin-bottom:4px">Signature et cachet du client</div>'
-    +'<div style="font-size:13px;font-weight:700;color:#1a1a2e">'+(bon.sig||'')+'</div></div>'
-    +'</div>';
-  if(bon.sigEnseignant){
-    sigBlock+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px">'
-      +'<div style="border:1px solid #999;border-radius:4px;padding:8px;min-height:60px">'
-      +'<div style="font-size:9px;color:#666;margin-bottom:4px">Visa enseignant</div>'
-      +'<div style="font-size:13px;font-weight:700;color:#1a1a2e">'+bon.sigEnseignant+'</div>'
-      +'<div style="font-size:9px;color:#666">Le '+fmtDLocal(bon.sigEnseignantDate||'')+'</div></div>'
-      +'<div></div></div>';
-  }
-  return '<style>table{width:100%;border-collapse:collapse;margin-bottom:8px;}th,td{border:1px solid #999;padding:4px 6px;}th{background:#eee;font-weight:700;font-size:10px;}.sh{font-weight:700;margin:10px 0 4px;padding-bottom:2px;border-bottom:2px solid #1a1a2e;font-size:11px;}@media print{@page{size:A4 portrait;margin:10mm}}</style>'
+  var fd=function(d){if(!d)return'';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(ex){return d;}};
+  var sig='<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px">'
+    +'<div><div>A\u00a0: '+(bon.bonA||'')+'</div><div style="margin-top:6px">Le\u00a0: '+fd(bon.bonLe||'')+'</div></div>'
+    +'<div style="border:1px solid #999;padding:8px;min-height:60px"><div style="font-size:9px;color:#666">Signature et cachet du client</div>'
+    +'<div style="font-size:13px;font-weight:700;color:#1a1a2e">'+(bon.sig||'')+'</div></div></div>';
+  if(bon.sigEnseignant){sig+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:10px"><div style="border:1px solid #999;padding:8px;min-height:60px"><div style="font-size:9px;color:#666">Visa enseignant</div><div style="font-size:13px;font-weight:700;color:#1a1a2e">'+bon.sigEnseignant+'</div><div style="font-size:9px;color:#666">Le '+fd(bon.sigEnseignantDate||'')+'</div></div><div></div></div>';}
+  return '<style>table{width:100%;border-collapse:collapse;margin-bottom:8px;}th,td{border:1px solid #999;padding:4px 6px;}th{background:#eee;font-weight:700;font-size:10px;}.sh2{font-weight:700;margin:10px 0 4px;padding-bottom:2px;border-bottom:2px solid #1a1a2e;font-size:11px;}@media print{@page{size:A4 portrait;margin:10mm}}<\/style>'
     +'<div style="display:flex;justify-content:space-between;margin-bottom:14px;gap:20px">'
-    +'<div><div style="font-size:16px;font-weight:900;color:#1a1a2e">\u25bc SEB</div>'
-    +'<div style="font-size:12px;font-weight:700">Soci\u00e9t\u00e9 d\'électricité du Blavet</div>'
-    +'<div>43 Rue Charles Gounod, 56300 Pontivy</div>'
-    +'<div>02 97 25 35 40</div>'
-    +'<div style="margin-top:4px"><strong>Intervenant :</strong> '+(bon.intervenant||'')+'</div>'
-    +(eleve?'<div><strong>\u00c9l\u00e8ve :</strong> '+eleve.name+' '+eleve.prenom+'</div>':'')
-    +'</div>'
-    +'<div style="text-align:right">'
-    +'<h1 style="font-size:15px;text-align:center;margin-bottom:8px">Bon d\'intervention N\u00b0 '+(bon.numero||'')+'</h1>'
-    +'<table style="width:240px"><tbody>'
-    +'<tr><td style="font-weight:700">Client</td><td>'+(bon.client||'')+'</td></tr>'
+    +'<div><div style="font-size:16px;font-weight:900">\u25bc SEB</div><div style="font-size:12px;font-weight:700">Soci\u00e9t\u00e9 d\'électricité du Blavet</div>'
+    +'<div>43 Rue Charles Gounod, 56300 Pontivy \u2014 02 97 25 35 40</div>'
+    +'<div style="margin-top:4px"><strong>Intervenant\u00a0:</strong> '+(bon.intervenant||'')+'</div>'
+    +(eleve?'<div><strong>\u00c9l\u00e8ve\u00a0:</strong> '+eleve.name+' '+eleve.prenom+'</div>':'')
+    +'</div><div style="text-align:right">'
+    +'<h1 style="font-size:15px;margin-bottom:8px">Bon d\'intervention N\u00b0 '+(bon.numero||'')+'</h1>'
+    +'<table style="width:240px"><tbody><tr><td style="font-weight:700">Client</td><td>'+(bon.client||'')+'</td></tr>'
     +'<tr><td style="font-weight:700">Ville</td><td>'+(bon.ville||'')+'</td></tr>'
     +'<tr><td style="font-weight:700">Projet</td><td>'+(bon.projet||'')+'</td></tr>'
     +'<tr><td style="font-weight:700">Ma\u00eetre d\'oeuvre</td><td>'+(bon.moe||'')+'</td></tr>'
     +'<tr><td style="font-weight:700">Interlocuteur</td><td>'+(bon.interlo||'')+'</td></tr>'
     +'</tbody></table></div></div>'
-    +'<div class="sh">D\u00e9tail de l\'intervention</div><div style="margin-bottom:8px">'+typeStr+'</div>'
-    +'<div class="sh">Temps de travail</div>'
-    +'<table><thead><tr><th>Date</th><th>Matin</th><th>Apr\u00e8s-midi</th><th>Trajet A/R</th><th>Nbre A/R</th><th>Pr\u00e9paration</th></tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<div class="sh">Descriptif</div>'
-    +'<div style="border:1px solid #ccc;padding:8px;min-height:50px;margin-bottom:8px">'+(bon.desc||'').replace(/\n/g,'<br>')+'</div>'
-    +'<div style="margin-bottom:6px">Action termin\u00e9e : '+(bon.termine==='oui'?'\u2611 Oui  \u2610 Non':'\u2610 Oui  '+(bon.termine==='non'?'\u2611':'\u2610')+' Non')+'</div>'
-    +(bon.restes?'<div style="margin-bottom:8px"><strong>Reste \u00e0 faire :</strong> '+bon.restes+'</div>':'')
-    +'<div class="sh">Mat\u00e9riels</div>'
-    +'<table><thead><tr><th>Const</th><th>R\u00e9f\u00e9rence</th><th>D\u00e9signation</th><th>Qt\u00e9</th></tr></thead><tbody>'+matRows+'</tbody></table>'
-    +'<div style="font-size:9px;text-align:center;margin-bottom:8px">nous nous r\u00e9servons la propri\u00e9t\u00e9 du mat\u00e9riel jusqu\'au paiement int\u00e9gral (loi N\u00b08033S 12/05/1980)</div>'
-    +'<div class="sh">Consignation</div>'
-    +'<table><thead><tr><th style="background:#1a1a2e;color:#fff">CONSIGNATION</th><th>Nom Pr\u00e9nom</th><th>Signature</th></tr></thead><tbody>'
+    +'<div class="sh2">D\u00e9tail de l\'intervention</div><div style="margin-bottom:8px">'+typeStr+'</div>'
+    +'<div class="sh2">Temps de travail</div><table><thead><tr><th>Date</th><th>Matin</th><th>Apr\u00e8s-midi</th><th>Trajet A/R</th><th>Nbre A/R</th><th>Pr\u00e9paration</th></tr></thead><tbody>'+rows+'</tbody></table>'
+    +'<div class="sh2">Descriptif</div><div style="border:1px solid #ccc;padding:8px;min-height:50px;margin-bottom:8px">'+(bon.desc||'').replace(/\n/g,'<br>')+'</div>'
+    +'<div style="margin-bottom:6px">Action termin\u00e9e\u00a0: '+(bon.termine==='oui'?'\u2611 Oui  \u2610 Non':'\u2610 Oui  '+(bon.termine==='non'?'\u2611':'\u2610')+' Non')+'</div>'
+    +(bon.restes?'<div style="margin-bottom:8px"><strong>Reste \u00e0 faire\u00a0:</strong> '+bon.restes+'</div>':'')
+    +'<div class="sh2">Mat\u00e9riels</div><table><thead><tr><th>Const</th><th>R\u00e9f\u00e9rence</th><th>D\u00e9signation</th><th>Qté</th></tr></thead><tbody>'+matRows+'</tbody></table>'
+    +'<div style="font-size:9px;text-align:center;margin-bottom:8px">nous nous r\u00e9servons la propri\u00e9t\u00e9 du mat\u00e9riel jusqu\'au paiement int\u00e9gral de notre facture (loi N\u00b08033S du 12 mai 1980)</div>'
+    +'<div class="sh2">Consignation</div><table><thead><tr><th style="background:#1a1a2e;color:#fff">CONSIGNATION</th><th>Nom Pr\u00e9nom</th><th>Signature</th></tr></thead><tbody>'
     +'<tr><td>Mise hors tension</td><td>'+(bon.cMhtNom||'')+'</td><td>'+(bon.cMhtSig||'')+'</td></tr>'
     +'<tr><td>Autorisation arr\u00eat production</td><td>'+(bon.cAapNom||'')+'</td><td>'+(bon.cAapSig||'')+'</td></tr>'
-    +'</tbody></table>'
-    +'<div style="font-size:9px;margin:3px 0 10px">La remise en production est de la responsabilit\u00e9 du client</div>'
-    +sigBlock;
+    +'</tbody></table><div style="font-size:9px;margin:3px 0 10px">La remise en production est de la responsabilit\u00e9 du client</div>'
+    +sig;
 }
-
-var _bonPrintCurrent = null;
-
-function printBonHtml(bon, doPrint) {
-  _bonPrintCurrent = bon;
-  var titleEl = document.getElementById('bonPreviewTitle');
-  var bodyEl  = document.getElementById('bonPreviewBody');
-  if (titleEl) titleEl.textContent = 'Bon N\u00b0 '+(bon.numero||'')+(bon.sigEnseignant?' \u2705':'');
-  if (bodyEl)  bodyEl.innerHTML = buildBonHtml(bon);
+var _bonCur=null;
+function printBonHtml(bon,doPrint){
+  _bonCur=bon;
+  var tEl=document.getElementById('bonPreviewTitle');
+  var bEl=document.getElementById('bonPreviewBody');
+  if(tEl)tEl.textContent='Bon N\u00b0'+(bon.numero||'')+(bon.sigEnseignant?' \u2705':'');
+  if(bEl)bEl.innerHTML=buildBonHtml(bon);
   openModal('bonPreviewModal');
-  if (doPrint) setTimeout(function(){ printFromPreview(); }, 400);
+  if(doPrint)setTimeout(function(){printFromPreview();},400);
 }
-
-function printFromPreview() {
-  var body = document.getElementById('bonPreviewBody');
-  if (!body) return;
-  var pw = window.open('','_blank','width=800,height=1000');
-  if (!pw) {
-    document.body.classList.add('printing-bon');
-    window.print();
-    setTimeout(function(){ document.body.classList.remove('printing-bon'); }, 1000);
-    return;
-  }
-  pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'+body.innerHTML+'</body></html>');
-  pw.document.close();
-  pw.focus();
-  setTimeout(function(){ pw.print(); }, 400);
+function printFromPreview(){
+  var b=document.getElementById('bonPreviewBody');if(!b)return;
+  var pw=window.open('','_blank','width=800,height=1000');
+  if(!pw){document.body.classList.add('printing-bon');window.print();setTimeout(function(){document.body.classList.remove('printing-bon');},1000);return;}
+  pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'+b.innerHTML+'</body></html>');
+  pw.document.close();pw.focus();setTimeout(function(){pw.print();},400);
 }
-
-
 
 // ═══ START ═══════════════════════════════════════════════════════════════════
 if(document.readyState==='loading'){
