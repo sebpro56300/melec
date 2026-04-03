@@ -1305,7 +1305,7 @@ function printBon() {
       +'<div>A : '+(bon.bonA||'')+'<br>Le : '+(bon.bonLe?fmtD(bon.bonLe):'  /  /')+'</div>'
       +'<div style="text-align:right"><strong>Signature et cachet du client :</strong><br><br>'+(bon.sig||'&nbsp;')+'</div>'
       +'</div>'
-      +'</body></html>');
+      +'</body>\n</html>');
     w.document.close();
     w.focus();
     setTimeout(function(){ w.print(); }, 400);
@@ -1313,16 +1313,15 @@ function printBon() {
 }
 
 // ═══ UTILITAIRES ═════════════════════════════════════════════════════════════
-function fmtD(d){ if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;} }
-function today(){ return new Date().toISOString().slice(0,10); }
-function openModal(id){ var el=document.getElementById(id);if(el)el.classList.add('show'); }
-function closeModal(id){ var el=document.getElementById(id);if(el)el.classList.remove('show'); }
+function fmtD(d){if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;}}
+function today(){return new Date().toISOString().slice(0,10);}
+function openModal(id){var el=document.getElementById(id);if(el)el.classList.add('show');}
+function closeModal(id){var el=document.getElementById(id);if(el)el.classList.remove('show');}
 document.addEventListener('click',function(e){
   if(e.target.classList&&e.target.classList.contains('moverlay'))e.target.classList.remove('show');
 });
 function notify(msg,err){
-  var n=document.getElementById('notif');
-  if(!n)return;
+  var n=document.getElementById('notif');if(!n)return;
   n.textContent=(err?'⚠ ':'✓ ')+msg;
   n.className='notif'+(err?' err':'');
   n.classList.add('show');
@@ -1339,13 +1338,51 @@ document.addEventListener('DOMContentLoaded', async function() {
   var ok = await loadData();
   hideSplash();
   if (ok) {
-    if (!tryRestoreSession()) {
-      showView('login');
-    }
+    if (!tryRestoreSession()) { showView('login'); }
   } else {
     showView('login');
   }
 });
 </script>
+
+<script>
+// ── PWA manifest + SW + bouton install ───────────────────────────────────────
+(function() {
+  var m = {name:"MELEC \u2014 Espace \u00c9l\u00e8ve",short_name:"MELEC \u00c9l\u00e8ve",
+    description:"Espace \u00e9l\u00e8ve MELEC",start_url:".",display:"standalone",
+    orientation:"any",background_color:"#1e3a5f",theme_color:"#1e3a5f",
+    icons:[
+      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='24' fill='%231e3a5f'/%3E%3Ctext y='130' x='96' text-anchor='middle' font-size='110' font-family='sans-serif'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E",
+        sizes:"192x192",type:"image/svg+xml",purpose:"any maskable"},
+      {src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='64' fill='%231e3a5f'/%3E%3Ctext y='360' x='256' text-anchor='middle' font-size='300' font-family='sans-serif'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E",
+        sizes:"512x512",type:"image/svg+xml",purpose:"any maskable"}
+    ]};
+  var b=new Blob([JSON.stringify(m)],{type:'application/json'});
+  var l=document.createElement('link');l.rel='manifest';l.href=URL.createObjectURL(b);
+  document.head.appendChild(l);
+})();
+if('serviceWorker' in navigator){
+  var sw=["const CACHE='melec-eleve-v1';",
+    "self.addEventListener('install',e=>self.skipWaiting());",
+    "self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));",
+    "self.addEventListener('fetch',e=>{if(e.request.url.includes('api.github.com'))return;e.respondWith(caches.open(CACHE).then(c=>c.match(e.request).then(h=>h||fetch(e.request).then(r=>{if(r.ok)c.put(e.request,r.clone());return r;}))));});"].join('\n');
+  var sb=new Blob([sw],{type:'application/javascript'});
+  var su=URL.createObjectURL(sb);
+  navigator.serviceWorker.register(su,{scope:'/'}).catch(function(){navigator.serviceWorker.register(su).catch(function(){});});
+}
+var _dp=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();_dp=e;
+  if(document.getElementById('btnPwa'))return;
+  var b=document.createElement('button');b.id='btnPwa';
+  b.style.cssText='background:#1a6b2e;color:#fff;border:1px solid #1a6b2e;border-radius:4px;font-size:10px;padding:3px 8px;margin-left:6px;cursor:pointer';
+  b.textContent='📲 Installer';
+  b.onclick=function(){_dp.prompt();_dp.userChoice.then(function(r){if(r.outcome==='accepted')b.remove();_dp=null;});};
+  var dot=document.getElementById('syncDot');
+  if(dot&&dot.parentNode)dot.parentNode.appendChild(b);
+});
+window.addEventListener('appinstalled',function(){var b=document.getElementById('btnPwa');if(b)b.remove();_dp=null;});
+</script>
+
 </body>
 </html>
