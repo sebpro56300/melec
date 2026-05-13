@@ -1,0 +1,1538 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0f1e">
+<title>MELEC · Inventaire</title>
+<link rel="manifest" id="pwa-manifest">
+
+<!-- QR Scanner -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<!-- QR Generator -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- Excel export (SheetJS) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+/* ============================================================
+   DESIGN SYSTEM — Industrial / Atelier électrique
+   Palette : navy profond + ambre électrique + blanc cassé
+   Typo : Bebas Neue (titres) + DM Sans (corps)
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --navy:    #0a0f1e;
+  --navy2:   #111827;
+  --navy3:   #1c2333;
+  --navy4:   #263045;
+  --amber:   #f59e0b;
+  --amber2:  #fbbf24;
+  --amber-d: #b45309;
+  --teal:    #0d9488;
+  --teal2:   #14b8a6;
+  --red:     #ef4444;
+  --green:   #22c55e;
+  --white:   #f8f7f2;
+  --grey:    #94a3b8;
+  --grey2:   #64748b;
+  --border:  rgba(248,247,242,0.08);
+  --glass:   rgba(248,247,242,0.04);
+  --radius:  10px;
+  --shadow:  0 4px 24px rgba(0,0,0,0.4);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--navy); color: var(--white); font-family: 'DM Sans', sans-serif; overflow: hidden; }
+
+/* ── LAYOUT ── */
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+
+/* ── HEADER ── */
+header {
+  background: var(--navy2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
+  flex-shrink: 0;
+}
+.logo { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: var(--amber); line-height: 1; }
+.logo span { color: var(--white); opacity: 0.5; font-size: 14px; display: block; letter-spacing: 3px; }
+header .spacer { flex: 1; }
+.conn-badge {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  padding: 4px 10px; border-radius: 20px;
+  background: var(--glass); border: 1px solid var(--border);
+  color: var(--grey);
+}
+.conn-badge.ok { border-color: var(--green); color: var(--green); }
+.conn-badge.admin { border-color: var(--amber); color: var(--amber); }
+
+/* ── NAV ── */
+nav {
+  background: var(--navy2);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-shrink: 0;
+  order: 999;
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 4px;
+  background: none; border: none; cursor: pointer;
+  color: var(--grey2); font-family: 'DM Sans', sans-serif; font-size: 10px;
+  transition: color 0.2s; position: relative; overflow: hidden;
+}
+.nav-btn svg { width: 20px; height: 20px; }
+.nav-btn.active { color: var(--amber); }
+.nav-btn.active::before {
+  content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 2px;
+  background: var(--amber); border-radius: 0 0 2px 2px;
+}
+
+/* ── PAGES ── */
+.page { display: none; flex: 1; overflow-y: auto; padding: 16px; flex-direction: column; gap: 14px; }
+.page.active { display: flex; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--navy3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+}
+.card-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 13px;
+  letter-spacing: 2px; color: var(--amber); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ── INPUTS ── */
+input, select, textarea {
+  width: 100%; background: var(--navy4); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; color: var(--white);
+  font-family: 'DM Sans', sans-serif; font-size: 14px;
+  outline: none; transition: border-color 0.2s;
+}
+input:focus, select:focus { border-color: var(--amber); }
+select option { background: var(--navy2); }
+label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block; letter-spacing: 0.5px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── BUTTONS ── */
+.btn {
+  border: none; border-radius: 8px; padding: 11px 18px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; letter-spacing: 0.3px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-primary { background: var(--amber); color: var(--navy); }
+.btn-primary:active { background: var(--amber2); transform: scale(0.97); }
+.btn-secondary { background: var(--glass); border: 1px solid var(--border); color: var(--white); }
+.btn-secondary:active { background: var(--navy4); }
+.btn-danger { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+.btn-teal { background: var(--teal); color: white; }
+.btn-full { width: 100%; }
+.btn-sm { padding: 7px 12px; font-size: 12px; }
+
+/* ── BADGES / TAGS ── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500;
+}
+.badge-cat {
+  background: rgba(245,158,11,0.12); color: var(--amber);
+  border: 1px solid rgba(245,158,11,0.25);
+}
+.badge-stock-ok { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+.badge-stock-low { background: rgba(245,158,11,0.12); color: var(--amber); border: 1px solid rgba(245,158,11,0.25); }
+.badge-stock-zero { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.badge-out { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+.badge-in { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
+
+/* ── ITEM CARD ── */
+.item-card {
+  background: var(--navy3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px;
+  display: flex; gap: 12px; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.item-card:active, .item-card:hover { border-color: rgba(245,158,11,0.3); }
+.item-icon {
+  width: 42px; height: 42px; border-radius: 8px;
+  background: var(--navy4); display: flex; align-items: center;
+  justify-content: center; font-size: 20px; flex-shrink: 0;
+}
+.item-info { flex: 1; min-width: 0; }
+.item-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-meta { font-size: 11px; color: var(--grey); margin-top: 2px; }
+.item-stock { text-align: right; flex-shrink: 0; }
+.item-qty { font-family: 'Bebas Neue', sans-serif; font-size: 22px; line-height: 1; }
+.item-qty-label { font-size: 10px; color: var(--grey); }
+
+/* ── SCANNER ── */
+#scanner-view {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--navy); display: none; flex-direction: column;
+}
+#scanner-view.open { display: flex; }
+#scanner-video-wrap {
+  flex: 1; position: relative; overflow: hidden;
+  background: #000;
+}
+#scanner-video { width: 100%; height: 100%; object-fit: cover; }
+#scanner-canvas { display: none; }
+.scanner-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.scanner-frame {
+  width: 240px; height: 240px; position: relative;
+}
+.scanner-frame::before, .scanner-frame::after,
+.scanner-frame > span::before, .scanner-frame > span::after {
+  content: ''; position: absolute; width: 36px; height: 36px; border-color: var(--amber); border-style: solid;
+}
+.scanner-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.scanner-frame::after  { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.scanner-frame > span::before { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.scanner-frame > span::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+.scanner-line {
+  position: absolute; left: 6px; right: 6px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--amber), transparent);
+  animation: scanLine 2s ease-in-out infinite;
+  top: 50%;
+}
+@keyframes scanLine { 0%,100% { top: 10%; opacity: 0.5; } 50% { top: 90%; opacity: 1; } }
+.scanner-label {
+  position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%);
+  color: var(--white); font-size: 13px; white-space: nowrap; opacity: 0.7;
+}
+.scanner-bar {
+  background: var(--navy2); border-top: 1px solid var(--border);
+  padding: 16px; display: flex; gap: 10px; align-items: center;
+}
+.scanner-status {
+  flex: 1; font-size: 13px; color: var(--grey);
+}
+#manual-code-input { font-family: 'DM Mono', monospace; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+  display: none; align-items: flex-end;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  width: 100%; background: var(--navy2);
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid var(--border);
+  padding: 20px; padding-bottom: max(20px, env(safe-area-inset-bottom));
+  max-height: 90vh; overflow-y: auto;
+  animation: slideUp 0.25s cubic-bezier(.32,.72,0,1);
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle {
+  width: 40px; height: 4px; background: var(--navy4);
+  border-radius: 2px; margin: 0 auto 16px;
+}
+.modal-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+  letter-spacing: 2px; margin-bottom: 16px; color: var(--amber);
+}
+
+/* ── MOUVEMENT MODAL ── */
+.mv-item-banner {
+  background: var(--navy4); border-radius: 10px; padding: 14px;
+  display: flex; gap: 12px; align-items: center; margin-bottom: 16px;
+}
+.mv-icon { font-size: 28px; }
+.mv-type-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.mv-type-btn {
+  padding: 14px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--glass); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+  color: var(--grey); transition: all 0.15s;
+}
+.mv-type-btn.selected-out { border-color: var(--red); color: var(--red); background: rgba(239,68,68,0.1); }
+.mv-type-btn.selected-in  { border-color: var(--green); color: var(--green); background: rgba(34,197,94,0.1); }
+.mv-type-btn svg { width: 22px; height: 22px; }
+
+/* ── SEARCH BAR ── */
+.search-wrap { position: relative; }
+.search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--grey); pointer-events: none; }
+.search-wrap input { padding-left: 36px; }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.stat-card {
+  background: var(--navy3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px;
+}
+.stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--amber); line-height: 1; }
+.stat-lbl { font-size: 11px; color: var(--grey); margin-top: 2px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* ── HISTORY ── */
+.mv-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.mv-row:last-child { border-bottom: none; }
+.mv-dot {
+  width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+}
+.mv-dot.out { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.mv-dot.in  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.mv-content { flex: 1; }
+.mv-title { font-size: 13px; font-weight: 500; }
+.mv-detail { font-size: 11px; color: var(--grey); margin-top: 2px; }
+.mv-right { text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; }
+
+/* ── SETUP SCREEN ── */
+#setup-screen {
+  position: fixed; inset: 0; z-index: 300;
+  background: var(--navy); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 32px;
+  gap: 20px; text-align: center;
+}
+.setup-logo { font-family: 'Bebas Neue', sans-serif; font-size: 48px; color: var(--amber); letter-spacing: 4px; }
+.setup-sub { font-size: 13px; color: var(--grey); letter-spacing: 2px; text-transform: uppercase; }
+.setup-card {
+  background: var(--navy3); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px; width: 100%; max-width: 380px;
+  text-align: left;
+}
+
+/* ── QR PRINT ── */
+.qr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.qr-label-card {
+  background: var(--navy4); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px; text-align: center;
+}
+.qr-label-card canvas, .qr-label-card img { width: 100% !important; height: auto !important; }
+.qr-label-name { font-size: 10px; color: var(--grey); margin-top: 6px; word-break: break-word; }
+.qr-label-id   { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--amber); }
+
+/* ── MISC ── */
+.sep { height: 1px; background: var(--border); }
+.empty-state { text-align: center; padding: 40px 16px; color: var(--grey); font-size: 14px; }
+.empty-state svg { width: 40px; height: 40px; opacity: 0.3; margin-bottom: 10px; }
+.pill-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill-tab {
+  padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer;
+  background: var(--glass); border: 1px solid var(--border); color: var(--grey);
+  transition: all 0.15s;
+}
+.pill-tab.active { background: rgba(245,158,11,0.15); border-color: var(--amber); color: var(--amber); }
+.toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  background: var(--navy2); border: 1px solid var(--border);
+  border-radius: 30px; padding: 10px 20px; font-size: 13px;
+  box-shadow: var(--shadow); z-index: 500; white-space: nowrap;
+  animation: toastIn 0.2s ease;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.chip {
+  padding: 4px 10px; border-radius: 6px; font-size: 11px;
+  background: var(--glass); border: 1px solid var(--border); color: var(--grey);
+  cursor: pointer;
+}
+.chip.active { background: rgba(245,158,11,0.15); border-color: var(--amber); color: var(--amber); }
+.section-header {
+  font-family: 'Bebas Neue', sans-serif; font-size: 11px;
+  letter-spacing: 3px; color: var(--grey2); padding: 4px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SETUP SCREEN ═══════════════ -->
+<div id="setup-screen">
+  <div>
+    <div class="setup-logo">MELEC</div>
+    <div class="setup-sub">Gestion d'Inventaire</div>
+  </div>
+  <div class="setup-card">
+    <div class="card-title" style="margin-bottom:16px">⚙ CONFIGURATION GIST</div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>GIST ID (depuis github.com/gist)</label>
+      <input id="cfg-gist-id" type="text" placeholder="abc123def456..." autocomplete="off" spellcheck="false">
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label>TOKEN ADMIN (lecture+écriture)</label>
+      <input id="cfg-token-admin" type="password" placeholder="ghp_xxxxxxxxxxxx">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>TOKEN LECTEUR (optionnel — lecture seule)</label>
+      <input id="cfg-token-reader" type="password" placeholder="ghp_xxxxxxxxxxxx (optionnel)">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveConfig()">CONNECTER →</button>
+    <div style="margin-top:12px; font-size:11px; color:var(--grey); text-align:center">
+      Pas encore de Gist ?
+      <a href="https://gist.github.com/new" target="_blank" style="color:var(--amber)">Créer sur gist.github.com</a>
+    </div>
+  </div>
+  <button class="btn btn-secondary btn-sm" onclick="loadDemo()">▶ MODE DÉMO (sans Gist)</button>
+</div>
+
+<!-- ═══════════════ APP ═══════════════ -->
+<div id="app" style="display:none">
+  <header>
+    <div>
+      <div class="logo">MELEC <span>INVENTAIRE</span></div>
+    </div>
+    <div class="spacer"></div>
+    <div id="conn-badge" class="conn-badge">···</div>
+  </header>
+
+  <!-- PAGE : INVENTAIRE -->
+  <div class="page active" id="page-inventory">
+    <div class="search-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="search" id="search-input" placeholder="Rechercher un article…" oninput="renderInventory()">
+    </div>
+    <div class="chip-row" id="cat-chips"></div>
+    <div id="inventory-list"></div>
+    <div style="height:16px"></div>
+  </div>
+
+  <!-- PAGE : SCANNER -->
+  <div class="page" id="page-scanner">
+    <div class="card">
+      <div class="card-title">📷 SCAN QR / BARCODE</div>
+      <p style="font-size:13px; color:var(--grey); margin-bottom:14px">Scannez un QR code pour enregistrer une entrée ou sortie de matériel.</p>
+      <button class="btn btn-primary btn-full" onclick="openScanner()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="7" x="7" y="7" rx="1"/></svg>
+        OUVRIR CAMÉRA
+      </button>
+    </div>
+    <div class="card">
+      <div class="card-title">⌨ SAISIE MANUELLE</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>CODE ARTICLE</label>
+        <input id="manual-code-input" type="text" placeholder="MELEC-001" autocomplete="off" spellcheck="false">
+      </div>
+      <button class="btn btn-teal btn-full" onclick="manualLookup()">RECHERCHER</button>
+    </div>
+    <div class="card" id="last-scans-card">
+      <div class="card-title">🕐 DERNIERS SCANS</div>
+      <div id="last-scans-list"></div>
+    </div>
+  </div>
+
+  <!-- PAGE : TABLEAU DE BORD -->
+  <div class="page" id="page-dashboard">
+    <div class="card-title" style="padding:0">📊 TABLEAU DE BORD</div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="card">
+      <div class="card-title">⚠ STOCKS BAS</div>
+      <div id="low-stock-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🕐 HISTORIQUE RÉCENT</div>
+      <div id="recent-history"></div>
+    </div>
+  </div>
+
+  <!-- PAGE : ADMIN -->
+  <div class="page" id="page-admin">
+    <div id="admin-locked" class="card" style="text-align:center; padding:32px">
+      <div style="font-size:36px; margin-bottom:12px">🔒</div>
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:2px; margin-bottom:16px">ACCÈS ADMIN</div>
+      <input type="password" id="admin-pin" placeholder="Token admin" style="margin-bottom:12px; text-align:center">
+      <button class="btn btn-primary btn-full" onclick="unlockAdmin()">DÉVERROUILLER</button>
+    </div>
+    <div id="admin-panel" style="display:none; display:flex; flex-direction:column; gap:14px">
+      <div class="card">
+        <div class="card-title">➕ NOUVEL ARTICLE</div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>NOM</label>
+          <input id="new-name" type="text" placeholder="Multimètre Fluke 115">
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>CATÉGORIE</label>
+            <select id="new-cat">
+              <option>Appareils de mesure</option>
+              <option>Systèmes didactiques</option>
+              <option>Outils</option>
+              <option>Consommable</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>ICÔNE</label>
+            <input id="new-icon" type="text" placeholder="🔌" maxlength="4">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>QTÉ TOTALE</label>
+            <input id="new-qty" type="number" min="0" value="1">
+          </div>
+          <div class="form-group">
+            <label>SEUIL ALERTE</label>
+            <input id="new-threshold" type="number" min="0" value="2">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>LOCALISATION</label>
+          <input id="new-loc" type="text" placeholder="Armoire A — Étagère 2">
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>EMPRUNT NOMINATIF ?</label>
+          <select id="new-nominatif">
+            <option value="0">Non — juste quantités</option>
+            <option value="1">Oui — nom requis</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="addItem()">CRÉER L'ARTICLE</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🏷 GÉNÉRER ÉTIQUETTES QR</div>
+        <p style="font-size:12px; color:var(--grey); margin-bottom:12px">Sélectionner les articles à étiqueter :</p>
+        <div id="qr-select-list" style="max-height:200px; overflow-y:auto; margin-bottom:12px"></div>
+        <button class="btn btn-secondary btn-full" onclick="printQR()">GÉNÉRER PLANCHE PDF</button>
+      </div>
+      <div class="card">
+        <div class="card-title">💾 DONNÉES</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" onclick="syncGist()">↑ SAUVEGARDER</button>
+          <button class="btn btn-secondary btn-sm" onclick="loadFromGist()">↓ RECHARGER</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportJSON()">📥 JSON</button>
+          <button class="btn btn-teal btn-sm" onclick="exportXLSX()">📊 EXCEL</button>
+          <button class="btn btn-secondary btn-sm" onclick="showResetConfig()">⚙ CONFIG</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav>
+    <button class="nav-btn active" onclick="showPage('inventory',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect width="6" height="4" x="9" y="3" rx="1"/><path d="m9 12 2 2 4-4"/></svg>
+      Inventaire
+    </button>
+    <button class="nav-btn" onclick="showPage('scanner',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="7" x="7" y="7" rx="1"/></svg>
+      Scanner
+    </button>
+    <button class="nav-btn" onclick="showPage('dashboard',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+      Tableau
+    </button>
+    <button class="nav-btn" onclick="showPage('admin',this)">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      Admin
+    </button>
+  </nav>
+</div>
+
+<!-- ═══════════════ SCANNER OVERLAY ═══════════════ -->
+<div id="scanner-view">
+  <div id="scanner-video-wrap">
+    <video id="scanner-video" playsinline autoplay muted></video>
+    <canvas id="scanner-canvas"></canvas>
+    <div class="scanner-overlay">
+      <div class="scanner-frame">
+        <span></span>
+        <div class="scanner-line"></div>
+        <div class="scanner-label">Pointez vers un QR code</div>
+      </div>
+    </div>
+  </div>
+  <div class="scanner-bar">
+    <div class="scanner-status" id="scanner-status">En attente de scan…</div>
+    <button class="btn btn-secondary btn-sm" onclick="closeScanner()">✕ Fermer</button>
+  </div>
+</div>
+
+<!-- ═══════════════ MOUVEMENT MODAL ═══════════════ -->
+<div class="modal-overlay" id="mv-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="mv-modal-title">MOUVEMENT</div>
+    <div class="mv-item-banner" id="mv-item-banner"></div>
+    <div class="mv-type-selector">
+      <div class="mv-type-btn" id="mv-btn-out" onclick="selectMvType('out')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        SORTIE
+      </div>
+      <div class="mv-type-btn" id="mv-btn-in" onclick="selectMvType('in')">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        RETOUR / ENTRÉE
+      </div>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group">
+        <label>QUANTITÉ</label>
+        <input id="mv-qty" type="number" min="1" value="1">
+      </div>
+      <div class="form-group" id="mv-user-wrap">
+        <label>NOM (emprunteur)</label>
+        <input id="mv-user" type="text" placeholder="Dupont / 2A">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label>COMMENTAIRE (optionnel)</label>
+      <input id="mv-comment" type="text" placeholder="TP mesures, 1ère pro…">
+    </div>
+    <div style="display:flex; gap:8px">
+      <button class="btn btn-secondary" style="flex:0 0 auto" onclick="closeMvModal()">Annuler</button>
+      <button class="btn btn-primary" style="flex:1" onclick="confirmMouvement()">VALIDER</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ITEM DETAIL MODAL ═══════════════ -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ QR PRINT MODAL ═══════════════ -->
+<div class="modal-overlay" id="qr-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">ÉTIQUETTES QR</div>
+    <div class="qr-grid" id="qr-print-grid"></div>
+    <div style="margin-top:16px; display:flex; gap:8px">
+      <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('qr-modal').classList.remove('open')">Fermer</button>
+      <button class="btn btn-primary" style="flex:1" onclick="window.print()">🖨 Imprimer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const CFG_KEY = 'melec_inv_cfg';
+let cfg = {};
+let db = { items: [], mouvements: [] };
+let isAdmin = false;
+let activeCat = 'Tous';
+let currentMvItem = null;
+let currentMvType = 'out';
+let scannerStream = null;
+let scannerRAF = null;
+let lastScans = [];
+let syncTimer = null;
+
+const CATS = ['Tous','Appareils de mesure','Systèmes didactiques','Outils','Consommable'];
+const CAT_ICONS = {
+  'Appareils de mesure': '📏',
+  'Systèmes didactiques': '🖥',
+  'Outils': '🔧',
+  'Consommable': '🔩',
+};
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(CFG_KEY);
+  if (saved) {
+    cfg = JSON.parse(saved);
+    startApp();
+  }
+  renderCatChips();
+});
+
+function saveConfig() {
+  cfg = {
+    gistId: document.getElementById('cfg-gist-id').value.trim(),
+    tokenAdmin: document.getElementById('cfg-token-admin').value.trim(),
+    tokenReader: document.getElementById('cfg-token-reader').value.trim(),
+  };
+  if (!cfg.gistId || !cfg.tokenAdmin) { toast('⚠ Gist ID et Token Admin requis'); return; }
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  startApp();
+}
+
+function showResetConfig() {
+  if (!confirm('Réinitialiser la configuration ?')) return;
+  localStorage.removeItem(CFG_KEY);
+  location.reload();
+}
+
+async function startApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  await loadFromGist();
+  renderAll();
+  updateBadge();
+}
+
+function loadDemo() {
+  cfg = { demo: true };
+  db = getDemoData();
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  renderAll();
+  updateBadge();
+  toast('▶ Mode démo activé');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GIST API
+// ═══════════════════════════════════════════════════════════
+function gistHeaders(write = false) {
+  const token = (write || isAdmin) ? cfg.tokenAdmin : (cfg.tokenReader || cfg.tokenAdmin);
+  return {
+    'Authorization': `token ${token}`,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+  };
+}
+
+async function loadFromGist() {
+  if (cfg.demo) return;
+  try {
+    const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, { headers: gistHeaders(false) });
+    if (!r.ok) { toast('❌ Erreur lecture Gist'); return; }
+    const gist = await r.json();
+    const file = Object.values(gist.files)[0];
+    if (!file) { db = { items: [], mouvements: [] }; return; }
+    const content = file.truncated
+      ? await (await fetch(file.raw_url)).text()
+      : file.content;
+    db = JSON.parse(content);
+    if (!db.items) db.items = [];
+    if (!db.mouvements) db.mouvements = [];
+    setConnBadge(true);
+    renderAll();
+  } catch(e) { toast('❌ Connexion échouée'); setConnBadge(false); }
+}
+
+async function syncGist() {
+  if (cfg.demo) { toast('Mode démo — pas de sauvegarde'); return; }
+  try {
+    const fname = 'melec-inventaire.json';
+    const body = { files: { [fname]: { content: JSON.stringify(db, null, 2) } } };
+    const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
+      method: 'PATCH', headers: gistHeaders(true), body: JSON.stringify(body)
+    });
+    if (r.ok) { toast('✅ Sauvegardé sur Gist'); setConnBadge(true); }
+    else toast('❌ Erreur sauvegarde');
+  } catch(e) { toast('❌ Connexion échouée'); }
+}
+
+function scheduleSave() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncGist(), 2000);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════════════
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'admin') renderQrSelectList();
+}
+
+function setConnBadge(ok) {
+  const b = document.getElementById('conn-badge');
+  b.textContent = isAdmin ? 'ADMIN' : (ok ? 'CONNECTÉ' : 'HORS LIGNE');
+  b.className = 'conn-badge ' + (isAdmin ? 'admin' : (ok ? 'ok' : ''));
+}
+function updateBadge() { setConnBadge(!cfg.demo); }
+
+function toast(msg, duration = 2500) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), duration);
+}
+
+function renderAll() {
+  renderCatChips();
+  renderInventory();
+  renderLastScans();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INVENTORY
+// ═══════════════════════════════════════════════════════════
+function renderCatChips() {
+  const wrap = document.getElementById('cat-chips');
+  if (!wrap) return;
+  wrap.innerHTML = CATS.map(c =>
+    `<div class="chip ${activeCat===c?'active':''}" onclick="setCat('${c}')">${c}</div>`
+  ).join('');
+}
+
+function setCat(c) { activeCat = c; renderCatChips(); renderInventory(); }
+
+function renderInventory() {
+  const search = (document.getElementById('search-input')?.value || '').toLowerCase();
+  let items = db.items.filter(item => {
+    const catOk = activeCat === 'Tous' || item.categorie === activeCat;
+    const searchOk = !search || item.nom.toLowerCase().includes(search) || item.id.toLowerCase().includes(search);
+    return catOk && searchOk;
+  });
+
+  const list = document.getElementById('inventory-list');
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = `<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg><br>Aucun article trouvé</div>`;
+    return;
+  }
+
+  // Group by category
+  const bycat = {};
+  items.forEach(item => {
+    const k = item.categorie || 'Autre';
+    if (!bycat[k]) bycat[k] = [];
+    bycat[k].push(item);
+  });
+
+  list.innerHTML = Object.entries(bycat).map(([cat, its]) => `
+    <div class="section-header" style="margin-bottom:8px;margin-top:4px">${CAT_ICONS[cat]||'📦'} ${cat.toUpperCase()}</div>
+    ${its.map(item => itemCard(item)).join('')}
+  `).join('<div style="height:8px"></div>');
+}
+
+function stockBadge(item) {
+  const pct = item.quantite_totale > 0 ? item.quantite_dispo / item.quantite_totale : 0;
+  if (item.quantite_dispo <= 0) return `<span class="badge badge-stock-zero">0 dispo</span>`;
+  if (item.quantite_dispo <= (item.seuil || 2)) return `<span class="badge badge-stock-low">⚠ stock bas</span>`;
+  return `<span class="badge badge-stock-ok">✓ dispo</span>`;
+}
+
+function itemCard(item) {
+  const color = item.quantite_dispo <= 0 ? 'var(--red)' :
+                item.quantite_dispo <= (item.seuil || 2) ? 'var(--amber)' : 'var(--green)';
+  return `
+  <div class="item-card" onclick="openItemDetail('${item.id}')" style="margin-bottom:8px">
+    <div class="item-icon">${item.icon || CAT_ICONS[item.categorie] || '📦'}</div>
+    <div class="item-info">
+      <div class="item-name">${item.nom}</div>
+      <div class="item-meta">${item.id} ${item.localisation ? '· ' + item.localisation : ''}</div>
+      <div style="margin-top:4px">${stockBadge(item)}</div>
+    </div>
+    <div class="item-stock">
+      <div class="item-qty" style="color:${color}">${item.quantite_dispo}</div>
+      <div class="item-qty-label">/ ${item.quantite_totale}</div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ITEM DETAIL
+// ═══════════════════════════════════════════════════════════
+function openItemDetail(id) {
+  const item = db.items.find(i => i.id === id);
+  if (!item) return;
+  const history = db.mouvements.filter(m => m.item_id === id).slice(-5).reverse();
+  document.getElementById('detail-content').innerHTML = `
+    <div style="display:flex; gap:14px; align-items:center; margin-bottom:16px">
+      <div style="font-size:40px">${item.icon || CAT_ICONS[item.categorie] || '📦'}</div>
+      <div>
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1px">${item.nom}</div>
+        <div style="font-family:'DM Mono',monospace; font-size:11px; color:var(--amber)">${item.id}</div>
+        <div style="font-size:11px; color:var(--grey); margin-top:2px"><span class="badge badge-cat">${item.categorie}</span></div>
+      </div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:16px">
+      <div class="stat-card"><div class="stat-val" style="font-size:26px">${item.quantite_dispo}</div><div class="stat-lbl">Disponible</div></div>
+      <div class="stat-card"><div class="stat-val" style="font-size:26px">${item.quantite_totale}</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-card"><div class="stat-val" style="font-size:26px">${item.quantite_totale - item.quantite_dispo}</div><div class="stat-lbl">Sorti</div></div>
+    </div>
+    ${item.localisation ? `<div style="font-size:12px; color:var(--grey); margin-bottom:12px">📍 ${item.localisation}</div>` : ''}
+    <div style="display:flex; gap:8px; margin-bottom:16px">
+      <button class="btn btn-danger" style="flex:1" onclick="closeMvModal();openMvModal('${item.id}','out');document.getElementById('detail-modal').classList.remove('open')">↗ SORTIE</button>
+      <button class="btn btn-teal" style="flex:1" onclick="closeMvModal();openMvModal('${item.id}','in');document.getElementById('detail-modal').classList.remove('open')">↙ RETOUR</button>
+    </div>
+    ${history.length ? `
+    <div class="card-title">Historique récent</div>
+    ${history.map(m => `
+      <div class="mv-row">
+        <div class="mv-dot ${m.type}"></div>
+        <div class="mv-content">
+          <div class="mv-title">${m.type==='out'?'Sortie':'Retour'} — ${m.quantite} u.</div>
+          <div class="mv-detail">${m.utilisateur||'—'} ${m.commentaire ? '· ' + m.commentaire : ''}</div>
+        </div>
+        <div class="mv-right" style="color:var(--grey)">${fmtDate(m.date)}</div>
+      </div>`).join('')}` : ''}
+    ${isAdmin ? `
+    <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="editItem('${item.id}')">✏ Modifier / Réajuster stock</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}')">🗑 Supprimer</button>
+    </div>` : ''}
+  `;
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+document.getElementById('detail-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('detail-modal'))
+    document.getElementById('detail-modal').classList.remove('open');
+});
+
+// ═══════════════════════════════════════════════════════════
+//  MOUVEMENT MODAL
+// ═══════════════════════════════════════════════════════════
+function openMvModal(id, type = 'out') {
+  const item = db.items.find(i => i.id === id);
+  if (!item) { toast('Article introuvable : ' + id); return; }
+  currentMvItem = item;
+  currentMvType = type;
+
+  document.getElementById('mv-modal-title').textContent = item.nom;
+  document.getElementById('mv-item-banner').innerHTML = `
+    <div class="mv-icon">${item.icon || CAT_ICONS[item.categorie] || '📦'}</div>
+    <div>
+      <div style="font-weight:600; font-size:13px">${item.nom}</div>
+      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--amber)">${item.id}</div>
+      <div style="font-size:11px; color:var(--grey); margin-top:2px">Disponible : <strong style="color:var(--white)">${item.quantite_dispo}</strong> / ${item.quantite_totale}</div>
+    </div>`;
+
+  document.getElementById('mv-qty').value = 1;
+  document.getElementById('mv-user').value = '';
+  document.getElementById('mv-comment').value = '';
+
+  // Show/hide user field based on nominatif setting
+  const wrap = document.getElementById('mv-user-wrap');
+  wrap.style.display = item.nominatif ? 'flex' : 'none';
+
+  selectMvType(type);
+  document.getElementById('mv-modal').classList.add('open');
+}
+
+function selectMvType(type) {
+  currentMvType = type;
+  document.getElementById('mv-btn-out').className = 'mv-type-btn' + (type === 'out' ? ' selected-out' : '');
+  document.getElementById('mv-btn-in').className  = 'mv-type-btn' + (type === 'in'  ? ' selected-in'  : '');
+}
+
+function closeMvModal() {
+  document.getElementById('mv-modal').classList.remove('open');
+}
+
+function confirmMouvement() {
+  const qty = parseInt(document.getElementById('mv-qty').value) || 1;
+  const user = document.getElementById('mv-user').value.trim();
+  const comment = document.getElementById('mv-comment').value.trim();
+
+  if (currentMvItem.nominatif && currentMvType === 'out' && !user) {
+    toast('⚠ Nom de l\'emprunteur requis'); return;
+  }
+  if (currentMvType === 'out' && qty > currentMvItem.quantite_dispo) {
+    toast('⚠ Stock insuffisant (' + currentMvItem.quantite_dispo + ' dispo)'); return;
+  }
+  if (currentMvType === 'in' && qty > (currentMvItem.quantite_totale - currentMvItem.quantite_dispo)) {
+    toast('⚠ Retour supérieur aux sorties'); return;
+  }
+
+  const mv = {
+    id: 'mv_' + Date.now(),
+    item_id: currentMvItem.id,
+    type: currentMvType,
+    quantite: qty,
+    date: new Date().toISOString(),
+    utilisateur: user || null,
+    commentaire: comment || null,
+  };
+
+  db.mouvements.push(mv);
+  const item = db.items.find(i => i.id === currentMvItem.id);
+  if (currentMvType === 'out') item.quantite_dispo -= qty;
+  else item.quantite_dispo += qty;
+
+  lastScans.unshift({ id: item.id, nom: item.nom, type: currentMvType, qty, time: new Date() });
+  if (lastScans.length > 5) lastScans.pop();
+
+  closeMvModal();
+  renderInventory();
+  renderLastScans();
+  renderDashboard();
+  scheduleSave();
+  toast(currentMvType === 'out' ? `↗ Sortie enregistrée (${qty})` : `↙ Retour enregistré (${qty})`);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCANNER
+// ═══════════════════════════════════════════════════════════
+async function openScanner() {
+  const view = document.getElementById('scanner-view');
+  view.classList.add('open');
+  document.getElementById('scanner-status').textContent = 'Démarrage caméra…';
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('scanner-video');
+    video.srcObject = scannerStream;
+    await video.play();
+    document.getElementById('scanner-status').textContent = 'En attente de scan…';
+    scanLoop();
+  } catch(e) {
+    document.getElementById('scanner-status').textContent = '❌ Caméra indisponible';
+    toast('❌ Accès caméra refusé');
+  }
+}
+
+function scanLoop() {
+  const video = document.getElementById('scanner-video');
+  const canvas = document.getElementById('scanner-canvas');
+  const ctx = canvas.getContext('2d');
+  function tick() {
+    if (!scannerStream) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+      if (code) {
+        handleScan(code.data);
+        return;
+      }
+    }
+    scannerRAF = requestAnimationFrame(tick);
+  }
+  scannerRAF = requestAnimationFrame(tick);
+}
+
+function closeScanner() {
+  document.getElementById('scanner-view').classList.remove('open');
+  if (scannerRAF) cancelAnimationFrame(scannerRAF);
+  if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
+}
+
+function handleScan(code) {
+  closeScanner();
+  document.getElementById('scanner-status').textContent = 'Scanné : ' + code;
+  const item = db.items.find(i => i.id === code || i.qr_code === code);
+  if (item) {
+    openMvModal(item.id, 'out');
+    showPage('scanner', document.querySelector('.nav-btn:nth-child(2)'));
+  } else {
+    toast('❓ Code inconnu : ' + code);
+    showPage('scanner', document.querySelector('.nav-btn:nth-child(2)'));
+  }
+}
+
+function manualLookup() {
+  const code = document.getElementById('manual-code-input').value.trim();
+  if (!code) return;
+  handleScan(code);
+}
+
+function renderLastScans() {
+  const list = document.getElementById('last-scans-list');
+  if (!list) return;
+  if (!lastScans.length) { list.innerHTML = '<div class="empty-state" style="padding:16px">Aucun scan récent</div>'; return; }
+  list.innerHTML = lastScans.map(s => `
+    <div class="mv-row">
+      <div class="mv-dot ${s.type}"></div>
+      <div class="mv-content">
+        <div class="mv-title">${s.nom}</div>
+        <div class="mv-detail">${s.type==='out'?'Sortie':'Retour'} — ${s.qty} u.</div>
+      </div>
+      <div class="mv-right" style="color:var(--grey)">${fmtTime(s.time)}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function renderDashboard() {
+  const grid = document.getElementById('stats-grid');
+  if (!grid) return;
+  const total = db.items.length;
+  const dispo = db.items.filter(i => i.quantite_dispo > 0).length;
+  const low = db.items.filter(i => i.quantite_dispo > 0 && i.quantite_dispo <= (i.seuil || 2)).length;
+  const zero = db.items.filter(i => i.quantite_dispo <= 0).length;
+  const mvToday = db.mouvements.filter(m => m.date?.startsWith(new Date().toISOString().slice(0,10))).length;
+
+  grid.innerHTML = [
+    { val: total, lbl: 'Articles' },
+    { val: dispo, lbl: 'Disponibles' },
+    { val: low, lbl: 'Stocks bas' },
+    { val: mvToday, lbl: "Mouvements aujourd'hui" },
+  ].map(s => `<div class="stat-card"><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+
+  const lowList = document.getElementById('low-stock-list');
+  const lowItems = db.items.filter(i => i.quantite_dispo <= (i.seuil || 2));
+  lowList.innerHTML = lowItems.length
+    ? lowItems.map(item => itemCard(item)).join('')
+    : '<div class="empty-state" style="padding:12px; color:var(--green)">✓ Tous les stocks sont OK</div>';
+
+  const hist = document.getElementById('recent-history');
+  const recent = [...db.mouvements].reverse().slice(0, 8);
+  hist.innerHTML = recent.length
+    ? recent.map(m => {
+        const item = db.items.find(i => i.id === m.item_id);
+        return `<div class="mv-row">
+          <div class="mv-dot ${m.type}"></div>
+          <div class="mv-content">
+            <div class="mv-title">${item?.nom || m.item_id} — ${m.quantite} u.</div>
+            <div class="mv-detail">${m.utilisateur||'—'} ${m.commentaire ? '· ' + m.commentaire : ''}</div>
+          </div>
+          <div class="mv-right" style="color:var(--grey)">${fmtDate(m.date)}</div>
+        </div>`;
+      }).join('')
+    : '<div class="empty-state" style="padding:12px">Aucun mouvement</div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ADMIN
+// ═══════════════════════════════════════════════════════════
+function unlockAdmin() {
+  const pin = document.getElementById('admin-pin').value.trim();
+  if (cfg.demo || pin === cfg.tokenAdmin || pin === 'demo') {
+    isAdmin = true;
+    document.getElementById('admin-locked').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'flex';
+    document.getElementById('admin-panel').style.flexDirection = 'column';
+    document.getElementById('admin-panel').style.gap = '14px';
+    setConnBadge(true);
+    renderQrSelectList();
+    toast('🔓 Accès admin activé');
+  } else toast('❌ Token incorrect');
+}
+
+function nextId() {
+  if (!db.items.length) return 'MELEC-001';
+  const nums = db.items.map(i => parseInt(i.id.replace('MELEC-','')) || 0);
+  return 'MELEC-' + String(Math.max(...nums) + 1).padStart(3, '0');
+}
+
+function addItem() {
+  const nom = document.getElementById('new-name').value.trim();
+  if (!nom) { toast('⚠ Nom requis'); return; }
+  const id = nextId();
+  const item = {
+    id,
+    qr_code: id,
+    nom,
+    categorie: document.getElementById('new-cat').value,
+    icon: document.getElementById('new-icon').value || CAT_ICONS[document.getElementById('new-cat').value] || '📦',
+    quantite_totale: parseInt(document.getElementById('new-qty').value) || 1,
+    quantite_dispo: parseInt(document.getElementById('new-qty').value) || 1,
+    seuil: parseInt(document.getElementById('new-threshold').value) || 2,
+    localisation: document.getElementById('new-loc').value.trim(),
+    nominatif: document.getElementById('new-nominatif').value === '1',
+  };
+  db.items.push(item);
+  renderInventory();
+  renderQrSelectList();
+  ['new-name','new-icon','new-loc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('new-qty').value = 1;
+  scheduleSave();
+  toast(`✅ ${item.nom} ajouté — ${item.id}`);
+}
+
+function deleteItem(id) {
+  const item = db.items.find(i => i.id === id);
+  if (!item) return;
+  // Custom confirm via modal to avoid iOS issues with confirm()
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:24px';
+  overlay.innerHTML = `
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center">
+      <div style="font-size:32px;margin-bottom:10px">🗑</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:8px">SUPPRIMER</div>
+      <div style="font-size:13px;color:var(--grey);margin-bottom:6px">${item.nom}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);margin-bottom:18px">${item.id}</div>
+      <div style="font-size:12px;color:var(--red);margin-bottom:20px">
+        ⚠ L'historique des mouvements sera conservé, mais l'article sera retiré de l'inventaire.
+      </div>
+      <div style="display:flex;gap:8px">
+        <button id="del-cancel" class="btn btn-secondary" style="flex:1">Annuler</button>
+        <button id="del-confirm" class="btn btn-danger" style="flex:1">SUPPRIMER</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('del-cancel').onclick = () => overlay.remove();
+  document.getElementById('del-confirm').onclick = () => {
+    db.items = db.items.filter(i => i.id !== id);
+    overlay.remove();
+    document.getElementById('detail-modal').classList.remove('open');
+    renderInventory();
+    renderQrSelectList();
+    renderDashboard();
+    scheduleSave();
+    toast('🗑 ' + item.nom + ' supprimé');
+  };
+}
+
+function editItem(id) {
+  const item = db.items.find(i => i.id === id);
+  if (!item) return;
+
+  const sorties = item.quantite_totale - item.quantite_dispo;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'edit-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:flex;align-items:flex-end';
+  overlay.innerHTML = `
+    <div style="width:100%;background:var(--navy2);border-radius:20px 20px 0 0;border-top:1px solid var(--border);padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.32,.72,0,1)">
+      <div style="width:40px;height:4px;background:var(--navy4);border-radius:2px;margin:0 auto 16px"></div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--amber);margin-bottom:16px">✏ MODIFIER L'ARTICLE</div>
+
+      <div style="background:var(--navy4);border-radius:10px;padding:12px;margin-bottom:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--amber)">${item.id}</div>
+
+      <div class="form-group" style="margin-bottom:10px">
+        <label>NOM</label>
+        <input id="edit-nom" type="text" value="${item.nom}">
+      </div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group">
+          <label>CATÉGORIE</label>
+          <select id="edit-cat">
+            ${['Appareils de mesure','Systèmes didactiques','Outils','Consommable'].map(c =>
+              `<option ${item.categorie===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ICÔNE</label>
+          <input id="edit-icon" type="text" value="${item.icon||''}" maxlength="4">
+        </div>
+      </div>
+
+      <div style="background:var(--navy4);border-radius:10px;padding:14px;margin-bottom:10px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--amber);margin-bottom:12px">📦 GESTION DU STOCK</div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>QTÉ TOTALE</label>
+            <input id="edit-qty-total" type="number" min="${sorties}" value="${item.quantite_totale}"
+              oninput="updateEditDispo()">
+          </div>
+          <div class="form-group">
+            <label>SEUIL ALERTE</label>
+            <input id="edit-seuil" type="number" min="0" value="${item.seuil||2}">
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--grey);margin-bottom:4px">
+          <span>Actuellement sorti : <strong style="color:var(--white)">${sorties}</strong></span>
+          <span>→ Disponible recalculé : <strong id="edit-dispo-preview" style="color:var(--green)">${item.quantite_dispo}</strong></span>
+        </div>
+        <div style="font-size:11px;color:var(--grey2)">
+          La quantité disponible = total − sorties en cours (${sorties}).
+          ${sorties > 0 ? `Minimum autorisé : <strong style="color:var(--amber)">${sorties}</strong>.` : ''}
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px">
+        <label>LOCALISATION</label>
+        <input id="edit-loc" type="text" value="${item.localisation||''}">
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>EMPRUNT NOMINATIF ?</label>
+        <select id="edit-nominatif">
+          <option value="0" ${!item.nominatif?'selected':''}>Non — juste quantités</option>
+          <option value="1" ${item.nominatif?'selected':''}>Oui — nom requis</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="flex:0 0 auto" onclick="document.getElementById('edit-overlay').remove()">Annuler</button>
+        <button class="btn btn-primary" style="flex:1" onclick="saveEditItem('${id}')">ENREGISTRER</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+function updateEditDispo() {
+  const item = db.items.find(i => i.id === document.querySelector('#edit-overlay .btn-primary')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1]);
+  if (!item) return;
+  const sorties = item.quantite_totale - item.quantite_dispo;
+  const newTotal = parseInt(document.getElementById('edit-qty-total').value) || 0;
+  const newDispo = Math.max(0, newTotal - sorties);
+  const el = document.getElementById('edit-dispo-preview');
+  if (el) {
+    el.textContent = newDispo;
+    el.style.color = newDispo <= 0 ? 'var(--red)' : newDispo <= (parseInt(document.getElementById('edit-seuil')?.value)||2) ? 'var(--amber)' : 'var(--green)';
+  }
+}
+
+function saveEditItem(id) {
+  const item = db.items.find(i => i.id === id);
+  if (!item) return;
+
+  const nom = document.getElementById('edit-nom').value.trim();
+  if (!nom) { toast('⚠ Nom requis'); return; }
+
+  const sorties = item.quantite_totale - item.quantite_dispo;
+  const newTotal = parseInt(document.getElementById('edit-qty-total').value);
+  if (isNaN(newTotal) || newTotal < 0) { toast('⚠ Quantité invalide'); return; }
+  if (newTotal < sorties) { toast(`⚠ Total ne peut pas être < sorties en cours (${sorties})`); return; }
+
+  item.nom       = nom;
+  item.categorie = document.getElementById('edit-cat').value;
+  item.icon      = document.getElementById('edit-icon').value || CAT_ICONS[item.categorie] || '📦';
+  item.localisation = document.getElementById('edit-loc').value.trim();
+  item.nominatif = document.getElementById('edit-nominatif').value === '1';
+  item.seuil     = parseInt(document.getElementById('edit-seuil').value) || 2;
+  item.quantite_totale = newTotal;
+  item.quantite_dispo  = newTotal - sorties;   // recalcul propre
+
+  document.getElementById('edit-overlay').remove();
+  document.getElementById('detail-modal').classList.remove('open');
+  renderInventory();
+  renderQrSelectList();
+  renderDashboard();
+  scheduleSave();
+  toast('✅ ' + item.nom + ' mis à jour');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  QR CODE GENERATION
+// ═══════════════════════════════════════════════════════════
+function renderQrSelectList() {
+  const wrap = document.getElementById('qr-select-list');
+  if (!wrap) return;
+  wrap.innerHTML = db.items.map(item => `
+    <label style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); cursor:pointer">
+      <input type="checkbox" value="${item.id}" style="width:auto; accent-color:var(--amber)">
+      <span style="font-size:13px">${item.icon||'📦'} ${item.nom}</span>
+      <span style="font-family:'DM Mono',monospace; font-size:10px; color:var(--amber); margin-left:auto">${item.id}</span>
+    </label>`).join('');
+}
+
+function printQR() {
+  const checks = document.querySelectorAll('#qr-select-list input:checked');
+  if (!checks.length) { toast('⚠ Sélectionner au moins un article'); return; }
+  const grid = document.getElementById('qr-print-grid');
+  grid.innerHTML = '';
+  checks.forEach(cb => {
+    const item = db.items.find(i => i.id === cb.value);
+    if (!item) return;
+    const cell = document.createElement('div');
+    cell.className = 'qr-label-card';
+    const qrWrap = document.createElement('div');
+    cell.appendChild(qrWrap);
+    cell.innerHTML += `<div class="qr-label-name">${item.nom}</div><div class="qr-label-id">${item.id}</div>`;
+    grid.appendChild(cell);
+    new QRCode(qrWrap, { text: item.id, width: 128, height: 128, colorDark: '#0a0f1e', colorLight: '#f8f7f2' });
+  });
+  document.getElementById('qr-modal').classList.add('open');
+}
+
+document.getElementById('qr-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('qr-modal'))
+    document.getElementById('qr-modal').classList.remove('open');
+});
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'melec-inventaire-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function exportXLSX() {
+  if (typeof XLSX === 'undefined') { toast('❌ SheetJS non chargé'); return; }
+  const wb = XLSX.utils.book_new();
+
+  // ── FEUILLE 1 : INVENTAIRE ──────────────────────────────
+  const invHeaders = ['Code', 'Nom', 'Catégorie', 'Qté totale', 'Qté disponible', 'Qtés sorties', 'Seuil alerte', 'Localisation', 'Emprunt nominatif'];
+  const invRows = db.items.map(i => [
+    i.id,
+    i.nom,
+    i.categorie,
+    i.quantite_totale,
+    i.quantite_dispo,
+    i.quantite_totale - i.quantite_dispo,
+    i.seuil || 2,
+    i.localisation || '',
+    i.nominatif ? 'Oui' : 'Non',
+  ]);
+  const wsInv = XLSX.utils.aoa_to_sheet([invHeaders, ...invRows]);
+
+  // Colonnes largeurs
+  wsInv['!cols'] = [
+    {wch:12},{wch:36},{wch:22},{wch:12},{wch:16},{wch:14},{wch:13},{wch:28},{wch:18}
+  ];
+
+  // Mise en forme entête (fond ambre, texte blanc, gras)
+  const invRange = XLSX.utils.decode_range(wsInv['!ref']);
+  for (let C = invRange.s.c; C <= invRange.e.c; C++) {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!wsInv[cellRef]) continue;
+    wsInv[cellRef].s = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: 'B45309' } },
+      alignment: { horizontal: 'center' },
+    };
+  }
+  // Colorier les lignes stock zéro en rouge clair
+  db.items.forEach((item, idx) => {
+    const rowIdx = idx + 1;
+    const fillColor = item.quantite_dispo <= 0 ? 'FEE2E2'
+                    : item.quantite_dispo <= (item.seuil || 2) ? 'FEF3C7'
+                    : null;
+    if (fillColor) {
+      for (let C = 0; C <= 8; C++) {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
+        if (!wsInv[ref]) wsInv[ref] = { v: '', t: 's' };
+        wsInv[ref].s = { fill: { fgColor: { rgb: fillColor } } };
+      }
+    }
+  });
+
+  XLSX.utils.book_append_sheet(wb, wsInv, 'Inventaire');
+
+  // ── FEUILLE 2 : HISTORIQUE MOUVEMENTS ──────────────────
+  const mvHeaders = ['Date', 'Heure', 'Code article', 'Nom article', 'Catégorie', 'Type', 'Quantité', 'Emprunteur / Utilisateur', 'Commentaire'];
+  const mvRows = [...db.mouvements].reverse().map(m => {
+    const item = db.items.find(i => i.id === m.item_id);
+    const dt = m.date ? new Date(m.date) : null;
+    return [
+      dt ? dt.toLocaleDateString('fr-FR') : '',
+      dt ? dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '',
+      m.item_id,
+      item?.nom || '(article supprimé)',
+      item?.categorie || '',
+      m.type === 'out' ? 'Sortie' : 'Retour / Entrée',
+      m.quantite,
+      m.utilisateur || '',
+      m.commentaire || '',
+    ];
+  });
+  const wsMv = XLSX.utils.aoa_to_sheet([mvHeaders, ...mvRows]);
+  wsMv['!cols'] = [
+    {wch:12},{wch:8},{wch:13},{wch:36},{wch:22},{wch:16},{wch:10},{wch:26},{wch:30}
+  ];
+  for (let C = 0; C <= 8; C++) {
+    const cellRef = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!wsMv[cellRef]) continue;
+    wsMv[cellRef].s = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '0D9488' } },
+      alignment: { horizontal: 'center' },
+    };
+  }
+  // Colorier sorties en rouge pâle, retours en vert pâle
+  mvRows.forEach((row, idx) => {
+    const isOut = row[5] === 'Sortie';
+    const fillColor = isOut ? 'FEE2E2' : 'DCFCE7';
+    const ref6 = XLSX.utils.encode_cell({ r: idx + 1, c: 5 });
+    if (!wsMv[ref6]) wsMv[ref6] = { v: row[5], t: 's' };
+    wsMv[ref6].s = { fill: { fgColor: { rgb: fillColor } }, font: { color: { rgb: isOut ? 'B91C1C' : '15803D' }, bold: true } };
+  });
+
+  XLSX.utils.book_append_sheet(wb, wsMv, 'Historique');
+
+  // ── FEUILLE 3 : RÉSUMÉ PAR CATÉGORIE ───────────────────
+  const cats = [...new Set(db.items.map(i => i.categorie))];
+  const sumHeaders = ['Catégorie', 'Nb articles', 'Qtés totales', 'Qtés dispos', 'Articles stock 0', 'Articles stock bas'];
+  const sumRows = cats.map(cat => {
+    const its = db.items.filter(i => i.categorie === cat);
+    return [
+      cat,
+      its.length,
+      its.reduce((s, i) => s + i.quantite_totale, 0),
+      its.reduce((s, i) => s + i.quantite_dispo, 0),
+      its.filter(i => i.quantite_dispo <= 0).length,
+      its.filter(i => i.quantite_dispo > 0 && i.quantite_dispo <= (i.seuil || 2)).length,
+    ];
+  });
+  const wsSum = XLSX.utils.aoa_to_sheet([sumHeaders, ...sumRows]);
+  wsSum['!cols'] = [{wch:24},{wch:12},{wch:14},{wch:13},{wch:17},{wch:17}];
+  for (let C = 0; C <= 5; C++) {
+    const ref = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!wsSum[ref]) continue;
+    wsSum[ref].s = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '1C2333' } },
+      alignment: { horizontal: 'center' },
+    };
+  }
+  XLSX.utils.book_append_sheet(wb, wsSum, 'Résumé');
+
+  const fname = 'MELEC-Inventaire-' + new Date().toISOString().slice(0,10) + '.xlsx';
+  XLSX.writeFile(wb, fname);
+  toast('📊 Export Excel téléchargé');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DEMO DATA
+// ═══════════════════════════════════════════════════════════
+function getDemoData() {
+  return {
+    items: [
+      { id:'MELEC-001', qr_code:'MELEC-001', nom:'Multimètre Fluke 115', categorie:'Appareils de mesure', icon:'📏', quantite_totale:10, quantite_dispo:7, seuil:3, localisation:'Armoire A — Étagère 1', nominatif:true },
+      { id:'MELEC-002', qr_code:'MELEC-002', nom:'Oscilloscope Rigol DS1054Z', categorie:'Appareils de mesure', icon:'📡', quantite_totale:6, quantite_dispo:4, seuil:2, localisation:'Armoire A — Étagère 2', nominatif:true },
+      { id:'MELEC-003', qr_code:'MELEC-003', nom:'Clamp ampèremétrique', categorie:'Appareils de mesure', icon:'🔌', quantite_totale:8, quantite_dispo:8, seuil:2, localisation:'Armoire A — Étagère 1', nominatif:false },
+      { id:'MELEC-004', qr_code:'MELEC-004', nom:'Système didactique Automatismes', categorie:'Systèmes didactiques', icon:'🖥', quantite_totale:4, quantite_dispo:2, seuil:1, localisation:'Salle B — Paillasse', nominatif:true },
+      { id:'MELEC-005', qr_code:'MELEC-005', nom:'Kit câblage basse tension', categorie:'Systèmes didactiques', icon:'⚡', quantite_totale:8, quantite_dispo:6, seuil:2, localisation:'Salle B — Armoire', nominatif:false },
+      { id:'MELEC-006', qr_code:'MELEC-006', nom:'Tournevis isolé 1000V (jeu)', categorie:'Outils', icon:'🔧', quantite_totale:15, quantite_dispo:12, seuil:4, localisation:'Armoire C', nominatif:false },
+      { id:'MELEC-007', qr_code:'MELEC-007', nom:'Pince à dénuder', categorie:'Outils', icon:'🔩', quantite_totale:10, quantite_dispo:1, seuil:3, localisation:'Armoire C', nominatif:false },
+      { id:'MELEC-008', qr_code:'MELEC-008', nom:'Câble H07V-U 1.5mm² (rouleau)', categorie:'Consommable', icon:'🧵', quantite_totale:20, quantite_dispo:14, seuil:5, localisation:'Stock consommables', nominatif:false },
+      { id:'MELEC-009', qr_code:'MELEC-009', nom:'Gaines thermorétractables (sachet)', categorie:'Consommable', icon:'📦', quantite_totale:30, quantite_dispo:22, seuil:8, localisation:'Stock consommables', nominatif:false },
+      { id:'MELEC-010', qr_code:'MELEC-010', nom:'Disjoncteur bipolaire 16A', categorie:'Consommable', icon:'⚙', quantite_totale:25, quantite_dispo:0, seuil:5, localisation:'Stock consommables', nominatif:false },
+    ],
+    mouvements: [
+      { id:'mv_1', item_id:'MELEC-001', type:'out', quantite:3, date:new Date(Date.now()-86400000).toISOString(), utilisateur:'Martin / 1A', commentaire:'TP mesures tension' },
+      { id:'mv_2', item_id:'MELEC-004', type:'out', quantite:2, date:new Date(Date.now()-3600000).toISOString(), utilisateur:'Durand / Tle', commentaire:'Projet automatismes' },
+      { id:'mv_3', item_id:'MELEC-007', type:'out', quantite:9, date:new Date(Date.now()-7200000).toISOString(), utilisateur:null, commentaire:'TP câblage 2de' },
+      { id:'mv_4', item_id:'MELEC-010', type:'out', quantite:25, date:new Date(Date.now()-172800000).toISOString(), utilisateur:null, commentaire:'Consommé TP installation' },
+    ]
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════════
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' });
+}
+function fmtTime(d) {
+  return new Date(d).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PWA MANIFEST
+// ═══════════════════════════════════════════════════════════
+const manifest = {
+  name: 'MELEC Inventaire',
+  short_name: 'Inventaire',
+  start_url: '.',
+  display: 'standalone',
+  background_color: '#0a0f1e',
+  theme_color: '#0a0f1e',
+  icons: [{ src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%230a0f1e"/><text y=".9em" font-size="80" x="10">📦</text></svg>', sizes: '192x192', type: 'image/svg+xml' }]
+};
+const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+document.getElementById('pwa-manifest').href = URL.createObjectURL(blob);
+
+// ── close mv modal on backdrop tap ──
+document.getElementById('mv-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('mv-modal')) closeMvModal();
+});
+</script>
+
+<style>
+@media print {
+  header, nav, #page-inventory, #page-scanner, #page-dashboard, #page-admin, #scanner-view { display: none !important; }
+  .modal-overlay { position: static !important; background: white !important; display: flex !important; }
+  .modal { border-radius: 0 !important; max-height: none !important; background: white !important; color: black !important; }
+  .modal-title, .modal-handle, .btn { display: none !important; }
+  .qr-grid { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; }
+  .qr-label-card { border: 1px solid #ccc !important; background: white !important; }
+  .qr-label-name, .qr-label-id { color: black !important; }
+}
+</style>
+</body>
+</html>
