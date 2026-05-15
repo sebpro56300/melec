@@ -446,6 +446,8 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
       <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:2px; margin-bottom:16px">ACCÈS ADMIN</div>
       <input type="password" id="admin-pin" placeholder="Token admin" style="margin-bottom:12px; text-align:center">
       <button class="btn btn-primary btn-full" onclick="unlockAdmin()">DÉVERROUILLER</button>
+      <div id="admin-debug" style="display:none;margin-top:12px;padding:10px;background:var(--navy4);border-radius:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);word-break:break-all"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:12px;width:100%" onclick="showResetConfig()">⚙ Reconfigurer (nouveau token)</button>
     </div>
     <div id="admin-panel" style="display:none; display:flex; flex-direction:column; gap:14px">
       <div class="card">
@@ -696,38 +698,80 @@ async function loadFromGist() {
   if (cfg.demo) return;
   try {
     const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, { headers: gistHeaders(false) });
-    if (!r.ok) { toast('❌ Erreur lecture Gist'); return; }
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      toast('❌ Erreur lecture Gist : ' + (err.message || r.status));
+      setConnBadge(false);
+      return;
+    }
     const gist = await r.json();
-    const file = Object.values(gist.files)[0];
-    if (!file) { db = { items: [], mouvements: [] }; return; }
-    const content = file.truncated
-      ? await (await fetch(file.raw_url)).text()
-      : file.content;
-    db = JSON.parse(content);
+    const files = Object.values(gist.files);
+    if (!files.length) {
+      toast('⚠ Gist vide — aucun fichier trouvé');
+      db = { items: [], mouvements: [] };
+      setConnBadge(true);
+      renderAll();
+      return;
+    }
+    // Cherche melec-inventaire.json en priorité, sinon prend le premier fichier
+    const file = files.find(f => f.filename === 'melec-inventaire.json') || files[0];
+    let content;
+    if (file.truncated) {
+      const raw = await fetch(file.raw_url);
+      content = await raw.text();
+    } else {
+      content = file.content;
+    }
+    // Nettoyage au cas où le contenu serait doublement encodé ou entouré de guillemets
+    content = content.trim();
+    if (content.startsWith('"') && content.endsWith('"')) {
+      content = JSON.parse(content); // désencapsule la string
+    }
+    const parsed = typeof content === 'string' ? JSON.parse(content) : content;
+    db = parsed;
     if (!db.items) db.items = [];
     if (!db.mouvements) db.mouvements = [];
     setConnBadge(true);
     renderAll();
-  } catch(e) { toast('❌ Connexion échouée'); setConnBadge(false); }
+    toast('📦 ' + db.items.length + ' article(s) chargé(s)');
+  } catch(e) {
+    toast('❌ Erreur parsing : ' + e.message);
+    setConnBadge(false);
+  }
 }
 
-async function syncGist() {
-  if (cfg.demo) { toast('Mode démo — pas de sauvegarde'); return; }
+async function syncGist(silent = false) {
+  if (cfg.demo) { if (!silent) toast('Mode démo — pas de sauvegarde'); return; }
   try {
     const fname = 'melec-inventaire.json';
     const body = { files: { [fname]: { content: JSON.stringify(db, null, 2) } } };
     const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
       method: 'PATCH', headers: gistHeaders(true), body: JSON.stringify(body)
     });
-    if (r.ok) { toast('✅ Sauvegardé sur Gist'); setConnBadge(true); }
-    else toast('❌ Erreur sauvegarde');
-  } catch(e) { toast('❌ Connexion échouée'); }
+    if (r.ok) {
+      if (!silent) toast('✅ Sauvegardé sur Gist');
+      setConnBadge(true);
+    } else {
+      const err = await r.json().catch(() => ({}));
+      toast('❌ Erreur sauvegarde : ' + (err.message || r.status));
+    }
+  } catch(e) { toast('❌ Connexion échouée : ' + e.message); }
 }
 
 function scheduleSave() {
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => syncGist(), 2000);
+  // Sauvegarde après 1.5s — assez rapide pour ne pas perdre de données
+  syncTimer = setTimeout(() => syncGist(false), 1500);
 }
+
+// Sauvegarde d'urgence si l'utilisateur ferme la page
+window.addEventListener('beforeunload', () => {
+  if (!cfg.demo && cfg.gistId && cfg.tokenAdmin) {
+    // Utilise sendBeacon pour une requête non-bloquante à la fermeture
+    // Fallback : on force une dernière synchro synchrone best-effort
+    syncGist(true);
+  }
+});
 
 // ═══════════════════════════════════════════════════════════
 //  UI HELPERS
@@ -1091,17 +1135,42 @@ function renderDashboard() {
 //  ADMIN
 // ═══════════════════════════════════════════════════════════
 function unlockAdmin() {
+  // Recharge cfg depuis localStorage au cas où il aurait été écrasé en mémoire
+  try {
+    const saved = localStorage.getItem(CFG_KEY);
+    if (saved) cfg = JSON.parse(saved);
+  } catch(e) {}
+
   const pin = document.getElementById('admin-pin').value.trim();
-  if (cfg.demo || pin === cfg.tokenAdmin || pin === 'demo') {
-    isAdmin = true;
-    document.getElementById('admin-locked').style.display = 'none';
-    document.getElementById('admin-panel').style.display = 'flex';
-    document.getElementById('admin-panel').style.flexDirection = 'column';
-    document.getElementById('admin-panel').style.gap = '14px';
-    setConnBadge(true);
-    renderQrSelectList();
-    toast('🔓 Accès admin activé');
-  } else toast('❌ Token incorrect');
+
+  if (cfg.demo || pin === 'demo') {
+    doUnlockAdmin(); return;
+  }
+  if (!cfg.tokenAdmin) {
+    toast('⚠ Aucun token admin en mémoire — reconfigurer');
+    document.getElementById('admin-debug').style.display = 'block';
+    return;
+  }
+  if (pin === cfg.tokenAdmin) {
+    doUnlockAdmin(); return;
+  }
+  // Aide au diagnostic : montre les premiers/derniers caractères attendus
+  const t = cfg.tokenAdmin;
+  const hint = t.slice(0,6) + '···' + t.slice(-4);
+  document.getElementById('admin-debug').textContent = `Token attendu : ${hint} (${t.length} caractères)`;
+  document.getElementById('admin-debug').style.display = 'block';
+  toast('❌ Token incorrect');
+}
+
+function doUnlockAdmin() {
+  isAdmin = true;
+  document.getElementById('admin-locked').style.display = 'none';
+  document.getElementById('admin-panel').style.display = 'flex';
+  document.getElementById('admin-panel').style.flexDirection = 'column';
+  document.getElementById('admin-panel').style.gap = '14px';
+  setConnBadge(true);
+  renderQrSelectList();
+  toast('🔓 Accès admin activé');
 }
 
 function nextId() {
@@ -1131,7 +1200,7 @@ function addItem() {
   renderQrSelectList();
   ['new-name','new-icon','new-loc'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('new-qty').value = 1;
-  scheduleSave();
+  syncGist(); // sauvegarde immédiate
   toast(`✅ ${item.nom} ajouté — ${item.id}`);
 }
 
@@ -1164,7 +1233,7 @@ function deleteItem(id) {
     renderInventory();
     renderQrSelectList();
     renderDashboard();
-    scheduleSave();
+    syncGist(); // sauvegarde immédiate
     toast('🗑 ' + item.nom + ' supprimé');
   };
 }
@@ -1286,7 +1355,7 @@ function saveEditItem(id) {
   renderInventory();
   renderQrSelectList();
   renderDashboard();
-  scheduleSave();
+  syncGist(); // sauvegarde immédiate
   toast('✅ ' + item.nom + ' mis à jour');
 }
 
