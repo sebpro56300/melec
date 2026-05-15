@@ -378,6 +378,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
     </div>
   </div>
   <button class="btn btn-secondary btn-sm" onclick="loadDemo()">▶ MODE DÉMO (sans Gist)</button>
+  <button class="btn btn-danger btn-sm" onclick="clearConfig()">🗑 VIDER LA CONFIG MÉMORISÉE</button>
 </div>
 
 <!-- ═══════════════ APP ═══════════════ -->
@@ -672,6 +673,15 @@ async function startApp() {
   updateBadge();
 }
 
+function clearConfig() {
+  localStorage.removeItem(CFG_KEY);
+  cfg = {};
+  document.getElementById('cfg-gist-id').value = '';
+  document.getElementById('cfg-token-admin').value = '';
+  document.getElementById('cfg-token-reader').value = '';
+  toast('🗑 Config effacée — resaisissez vos identifiants');
+}
+
 function loadDemo() {
   cfg = { demo: true };
   db = getDemoData();
@@ -685,10 +695,9 @@ function loadDemo() {
 // ═══════════════════════════════════════════════════════════
 //  GIST API
 // ═══════════════════════════════════════════════════════════
-function gistHeaders(write = false) {
-  const token = (write || isAdmin) ? cfg.tokenAdmin : (cfg.tokenReader || cfg.tokenAdmin);
+function gistHeaders() {
   return {
-    'Authorization': `token ${token}`,
+    'Authorization': 'token ' + cfg.tokenAdmin,
     'Accept': 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
   };
@@ -697,7 +706,7 @@ function gistHeaders(write = false) {
 async function loadFromGist() {
   if (cfg.demo) return;
   try {
-    const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, { headers: gistHeaders(false) });
+    const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, { headers: gistHeaders() });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       toast('❌ Erreur lecture Gist : ' + (err.message || r.status));
@@ -746,7 +755,7 @@ async function syncGist(silent = false) {
     const fname = 'melec-inventaire.json';
     const body = { files: { [fname]: { content: JSON.stringify(db, null, 2) } } };
     const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
-      method: 'PATCH', headers: gistHeaders(true), body: JSON.stringify(body)
+      method: 'PATCH', headers: gistHeaders(), body: JSON.stringify(body)
     });
     if (r.ok) {
       if (!silent) toast('✅ Sauvegardé sur Gist');
