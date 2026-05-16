@@ -730,22 +730,24 @@ const CAT_ICONS = {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  // Priorité 1 : config admin déjà mémorisée
+  // Priorité 1 : config admin mémorisée sur cet appareil → toujours admin
   const saved = localStorage.getItem(CFG_KEY);
   if (saved) {
     cfg = JSON.parse(saved);
+    cfg.readerMode = false; // cet appareil est admin, jamais lecteur seul
     if (localStorage.getItem('melec_inv_admin') === '1') isAdmin = true;
     startApp();
     return;
   }
-  // Priorité 2 : ?gist=GIST_ID dans l'URL → mode lecteur sans config
+  // Priorité 2 : ?gist=ID dans l'URL → mode lecteur (pas de token, pas d'écriture)
   const urlGist = new URLSearchParams(window.location.search).get('gist');
   if (urlGist) {
     cfg = { gistId: urlGist, tokenAdmin: null, readerMode: true };
+    isAdmin = false;
     startApp();
     return;
   }
-  // Sinon : afficher l'écran de configuration (admin)
+  // Sinon : écran de configuration admin
   renderCatChips();
 });
 
@@ -1357,7 +1359,7 @@ function unlockAdmin() {
 }
 
 function prefillAdminIfKnown() {
-  // Si le token est déjà en mémoire, on pré-remplit le champ et on déverrouille silencieusement
+  if (cfg.readerMode) return; // jamais d'auto-unlock en mode lecteur
   try {
     const saved = localStorage.getItem(CFG_KEY);
     if (saved) cfg = JSON.parse(saved);
@@ -1365,7 +1367,6 @@ function prefillAdminIfKnown() {
   if (cfg.tokenAdmin && !cfg.demo) {
     const pin = document.getElementById('admin-pin');
     if (pin) pin.value = cfg.tokenAdmin;
-    // Déverrouillage automatique discret
     doUnlockAdmin();
   } else if (cfg.demo) {
     doUnlockAdmin();
