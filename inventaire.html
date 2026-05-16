@@ -15,6 +15,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- Excel export (SheetJS) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- PDF export (jsPDF) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
 /* ============================================================
@@ -467,7 +469,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
       <div id="admin-debug" style="display:none;margin-top:12px;padding:10px;background:var(--navy4);border-radius:8px;font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);word-break:break-all"></div>
       <button class="btn btn-secondary btn-sm" style="margin-top:12px;width:100%" onclick="showResetConfig()">⚙ Reconfigurer (nouveau token)</button>
     </div>
-    <div id="admin-panel" style="display:none; display:flex; flex-direction:column; gap:14px">
+    <div id="admin-panel" style="display:none;flex-direction:column;gap:14px">
       <div class="card">
         <div class="card-title">➕ NOUVEL ARTICLE</div>
         <div class="form-group" style="margin-bottom:10px">
@@ -643,9 +645,10 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
     <div class="modal-handle"></div>
     <div class="modal-title">ÉTIQUETTES QR</div>
     <div class="qr-grid" id="qr-print-grid"></div>
-    <div style="margin-top:16px; display:flex; gap:8px">
+    <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
       <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('qr-modal').classList.remove('open')">Fermer</button>
-      <button class="btn btn-primary" style="flex:1" onclick="window.print()">🖨 Imprimer</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="window.print()">🖨 Imprimer</button>
+      <button class="btn btn-primary" style="flex:1" onclick="exportQRtoPDF()">📄 PDF 2×2cm</button>
     </div>
   </div>
 </div>
@@ -1293,13 +1296,16 @@ function prefillAdminIfKnown() {
 
 function doUnlockAdmin() {
   isAdmin = true;
-  localStorage.setItem('melec_inv_admin', '1'); // mémorisé sur cet appareil
+  localStorage.setItem('melec_inv_admin', '1');
   document.getElementById('admin-locked').style.display = 'none';
-  document.getElementById('admin-panel').style.display = 'flex';
-  document.getElementById('admin-panel').style.flexDirection = 'column';
-  document.getElementById('admin-panel').style.gap = '14px';
+  const panel = document.getElementById('admin-panel');
+  panel.style.display = 'flex';
+  panel.style.flexDirection = 'column';
+  panel.style.gap = '14px';
   setConnBadge(true);
   renderQrSelectList();
+  renderArmoiresList();
+  populateArmoireSelects();
   toast('🔓 Accès admin activé');
 }
 
@@ -1676,7 +1682,6 @@ function printQR() {
     const item = db.items.find(i => i.id === cb.value);
     if (!item) return;
 
-    // Construire la cellule sans innerHTML+= qui détruirait les noeuds enfants
     const cell = document.createElement('div');
     cell.className = 'qr-label-card';
 
@@ -1696,7 +1701,6 @@ function printQR() {
 
     grid.appendChild(cell);
 
-    // QRCode génère un <canvas> ou <img> dans qrWrap — le noeud doit être dans le DOM
     new QRCode(qrWrap, {
       text: item.id,
       width: 140,
@@ -1708,6 +1712,106 @@ function printQR() {
   });
 
   document.getElementById('qr-modal').classList.add('open');
+}
+
+async function exportQRtoPDF() {
+  if (typeof window.jspdf === 'undefined') { toast('❌ jsPDF non chargé'); return; }
+  const { jsPDF } = window.jspdf;
+
+  const checks = document.querySelectorAll('#qr-select-list input:checked');
+  if (!checks.length) { toast('⚠ Sélectionner au moins un article'); return; }
+
+  const items = [];
+  checks.forEach(cb => {
+    const item = db.items.find(i => i.id === cb.value);
+    if (item) items.push(item);
+  });
+
+  toast('⏳ Génération PDF…', 8000);
+
+  // Étiquette : 20mm × 20mm
+  // Grille sur A4 (210 × 297mm), marges 10mm, espacement 2mm
+  const LABEL_W = 20;   // mm
+  const LABEL_H = 20;   // mm
+  const GAP     = 2;    // mm entre étiquettes
+  const MARGIN  = 10;   // mm marges
+  const PAGE_W  = 210;
+  const PAGE_H  = 297;
+
+  const cols = Math.floor((PAGE_W - 2 * MARGIN + GAP) / (LABEL_W + GAP)); // 8 colonnes
+  const rows = Math.floor((PAGE_H - 2 * MARGIN + GAP) / (LABEL_H + GAP)); // 13 lignes
+  const perPage = cols * rows;
+
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  // Génère un QR code en canvas pour un item donné
+  function makeQRCanvas(text) {
+    return new Promise(resolve => {
+      const div = document.createElement('div');
+      div.style.cssText = 'position:absolute;left:-9999px;top:-9999px';
+      document.body.appendChild(div);
+      const qr = new QRCode(div, {
+        text,
+        width: 160, height: 160,
+        colorDark: '#000000', colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M,
+      });
+      // QRCode est synchrone sur canvas, légère attente pour le rendu img
+      setTimeout(() => {
+        const canvas = div.querySelector('canvas');
+        const img    = div.querySelector('img');
+        const dataUrl = canvas ? canvas.toDataURL('image/png')
+                       : img   ? img.src
+                       : null;
+        document.body.removeChild(div);
+        resolve(dataUrl);
+      }, 80);
+    });
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const pageIdx = Math.floor(i / perPage);
+    const posIdx  = i % perPage;
+
+    if (posIdx === 0 && i > 0) doc.addPage();
+
+    const col = posIdx % cols;
+    const row = Math.floor(posIdx / cols);
+    const x = MARGIN + col * (LABEL_W + GAP);
+    const y = MARGIN + row * (LABEL_H + GAP);
+
+    // Cadre de l'étiquette
+    doc.setDrawColor(180, 180, 180);
+    doc.setLineWidth(0.2);
+    doc.rect(x, y, LABEL_W, LABEL_H);
+
+    // QR code (15mm × 15mm, centré horizontalement, en haut)
+    const qrDataUrl = await makeQRCanvas(item.id);
+    if (qrDataUrl) {
+      const qrSize = 14;
+      const qrX = x + (LABEL_W - qrSize) / 2;
+      doc.addImage(qrDataUrl, 'PNG', qrX, y + 0.5, qrSize, qrSize);
+    }
+
+    // Texte : code en monospace, tronqué si trop long
+    doc.setFont('courier', 'bold');
+    doc.setFontSize(5);
+    doc.setTextColor(180, 83, 9); // amber foncé
+    const codeText = item.id.length > 12 ? item.id.slice(0, 12) + '…' : item.id;
+    doc.text(codeText, x + LABEL_W / 2, y + 15.5, { align: 'center' });
+
+    // Nom de l'article, max 2 lignes
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(4.5);
+    doc.setTextColor(20, 20, 20);
+    const nom = item.nom.length > 22 ? item.nom.slice(0, 22) + '…' : item.nom;
+    doc.text(nom, x + LABEL_W / 2, y + 18, { align: 'center' });
+  }
+
+  const fname = 'MELEC-Etiquettes-' + new Date().toISOString().slice(0,10) + '.pdf';
+  doc.save(fname);
+  toast('📄 PDF téléchargé — ' + items.length + ' étiquette(s)');
 }
 
 document.getElementById('qr-modal').addEventListener('click', e => {
