@@ -152,25 +152,42 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
 .badge-out { background: rgba(239,68,68,0.12); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
 .badge-in { background: rgba(34,197,94,0.12); color: var(--green); border: 1px solid rgba(34,197,94,0.2); }
 
-/* ── ITEM CARD ── */
-.item-card {
-  background: var(--navy3); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 14px;
-  display: flex; gap: 12px; cursor: pointer;
-  transition: border-color 0.15s;
+/* ── LISTE COMPACTE ── */
+.inv-table { width: 100%; border-collapse: collapse; }
+.inv-thead { position: sticky; top: 0; z-index: 10; background: var(--navy2); }
+.inv-thead th {
+  padding: 8px 10px; text-align: left;
+  font-family: 'Bebas Neue', sans-serif; font-size: 11px;
+  letter-spacing: 2px; color: var(--grey2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none; white-space: nowrap;
 }
-.item-card:active, .item-card:hover { border-color: rgba(245,158,11,0.3); }
-.item-icon {
-  width: 42px; height: 42px; border-radius: 8px;
-  background: var(--navy4); display: flex; align-items: center;
-  justify-content: center; font-size: 20px; flex-shrink: 0;
+.inv-thead th:hover { color: var(--amber); }
+.inv-thead th.sort-asc::after  { content: ' ↑'; color: var(--amber); }
+.inv-thead th.sort-desc::after { content: ' ↓'; color: var(--amber); }
+.inv-tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background 0.1s;
 }
-.item-info { flex: 1; min-width: 0; }
-.item-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.item-meta { font-size: 11px; color: var(--grey); margin-top: 2px; }
-.item-stock { text-align: right; flex-shrink: 0; }
-.item-qty { font-family: 'Bebas Neue', sans-serif; font-size: 22px; line-height: 1; }
-.item-qty-label { font-size: 10px; color: var(--grey); }
+.inv-tbody tr:hover { background: var(--glass); }
+.inv-tbody tr:active { background: var(--navy4); }
+.inv-tbody td { padding: 9px 10px; font-size: 13px; }
+.inv-cat-divider td {
+  padding: 6px 10px 3px;
+  font-family: 'Bebas Neue', sans-serif; font-size: 10px;
+  letter-spacing: 3px; color: var(--grey2);
+  background: var(--navy); border-bottom: none;
+  cursor: default;
+}
+.inv-tbody tr:hover .inv-cat-divider { background: var(--navy); }
+.inv-nom { font-weight: 500; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-id  { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--amber); white-space: nowrap; }
+.inv-loc { font-size: 11px; color: var(--grey2); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-qty { font-family: 'Bebas Neue', sans-serif; font-size: 16px; text-align: center; }
+.inv-total { font-size: 11px; color: var(--grey2); text-align: center; }
+.inv-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+/* count chip */
+.inv-count { font-size: 11px; color: var(--grey2); padding: 2px 0; }
 
 /* ── SCANNER ── */
 #scanner-view {
@@ -828,58 +845,106 @@ function renderCatChips() {
 
 function setCat(c) { activeCat = c; renderCatChips(); renderInventory(); }
 
+let sortCol = 'nom';
+let sortDir = 1; // 1 = asc, -1 = desc
+
+function setSortCol(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  renderInventory();
+}
+
 function renderInventory() {
   const search = (document.getElementById('search-input')?.value || '').toLowerCase();
   let items = db.items.filter(item => {
     const catOk = activeCat === 'Tous' || item.categorie === activeCat;
-    const searchOk = !search || item.nom.toLowerCase().includes(search) || item.id.toLowerCase().includes(search);
+    const searchOk = !search ||
+      item.nom.toLowerCase().includes(search) ||
+      item.id.toLowerCase().includes(search) ||
+      (item.localisation||'').toLowerCase().includes(search);
     return catOk && searchOk;
+  });
+
+  // Tri
+  items = [...items].sort((a, b) => {
+    let va = a[sortCol] ?? '';
+    let vb = b[sortCol] ?? '';
+    if (sortCol === 'quantite_dispo' || sortCol === 'quantite_totale') {
+      return (va - vb) * sortDir;
+    }
+    return String(va).localeCompare(String(vb), 'fr') * sortDir;
   });
 
   const list = document.getElementById('inventory-list');
   if (!list) return;
+
   if (!items.length) {
-    list.innerHTML = `<div class="empty-state"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"/><path d="m7.5 4.27 9 5.15"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg><br>Aucun article trouvé</div>`;
+    list.innerHTML = `<div class="empty-state"><br>Aucun article trouvé</div>`;
     return;
   }
 
-  // Group by category
-  const bycat = {};
-  items.forEach(item => {
-    const k = item.categorie || 'Autre';
-    if (!bycat[k]) bycat[k] = [];
-    bycat[k].push(item);
-  });
+  const thClass = col => `class="${sortCol===col ? 'sort-'+(sortDir===1?'asc':'desc') : ''}"`;
 
-  list.innerHTML = Object.entries(bycat).map(([cat, its]) => `
-    <div class="section-header" style="margin-bottom:8px;margin-top:4px">${CAT_ICONS[cat]||'📦'} ${cat.toUpperCase()}</div>
-    ${its.map(item => itemCard(item)).join('')}
-  `).join('<div style="height:8px"></div>');
+  // Groupement par catégorie uniquement si "Tous" et pas de recherche
+  const grouped = (activeCat === 'Tous' && !search);
+
+  let rows = '';
+  if (grouped) {
+    const bycat = {};
+    items.forEach(item => {
+      const k = item.categorie || 'Autre';
+      if (!bycat[k]) bycat[k] = [];
+      bycat[k].push(item);
+    });
+    Object.entries(bycat).forEach(([cat, its]) => {
+      rows += `<tr class="inv-cat-divider"><td colspan="6">${CAT_ICONS[cat]||'📦'} ${cat.toUpperCase()} (${its.length})</td></tr>`;
+      rows += its.map(item => itemRow(item)).join('');
+    });
+  } else {
+    rows = items.map(item => itemRow(item)).join('');
+  }
+
+  list.innerHTML = `
+    <div class="inv-count" style="padding:6px 2px;color:var(--grey2)">${items.length} article${items.length>1?'s':''}</div>
+    <div style="overflow-x:auto">
+    <table class="inv-table">
+      <thead class="inv-thead">
+        <tr>
+          <th ${thClass('nom')} onclick="setSortCol('nom')">Article</th>
+          <th ${thClass('localisation')} onclick="setSortCol('localisation')">Emplacement</th>
+          <th ${thClass('quantite_dispo')} onclick="setSortCol('quantite_dispo')" style="text-align:center">Dispo</th>
+          <th ${thClass('quantite_totale')} onclick="setSortCol('quantite_totale')" style="text-align:center">Total</th>
+          <th style="text-align:center">État</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody class="inv-tbody">${rows}</tbody>
+    </table>
+    </div>`;
 }
 
-function stockBadge(item) {
-  const pct = item.quantite_totale > 0 ? item.quantite_dispo / item.quantite_totale : 0;
-  if (item.quantite_dispo <= 0) return `<span class="badge badge-stock-zero">0 dispo</span>`;
-  if (item.quantite_dispo <= (item.seuil || 2)) return `<span class="badge badge-stock-low">⚠ stock bas</span>`;
-  return `<span class="badge badge-stock-ok">✓ dispo</span>`;
-}
-
-function itemCard(item) {
+function stockDot(item) {
   const color = item.quantite_dispo <= 0 ? 'var(--red)' :
                 item.quantite_dispo <= (item.seuil || 2) ? 'var(--amber)' : 'var(--green)';
-  return `
-  <div class="item-card" onclick="openItemDetail('${item.id}')" style="margin-bottom:8px">
-    <div class="item-icon">${item.icon || CAT_ICONS[item.categorie] || '📦'}</div>
-    <div class="item-info">
-      <div class="item-name">${item.nom}</div>
-      <div class="item-meta">${item.id} ${item.localisation ? '· ' + item.localisation : ''}</div>
-      <div style="margin-top:4px">${stockBadge(item)}</div>
-    </div>
-    <div class="item-stock">
-      <div class="item-qty" style="color:${color}">${item.quantite_dispo}</div>
-      <div class="item-qty-label">/ ${item.quantite_totale}</div>
-    </div>
-  </div>`;
+  const label = item.quantite_dispo <= 0 ? 'Épuisé' :
+                item.quantite_dispo <= (item.seuil || 2) ? 'Bas' : 'OK';
+  return `<span class="inv-dot" style="background:${color};box-shadow:0 0 5px ${color}"></span> <span style="font-size:11px;color:${color}">${label}</span>`;
+}
+
+function itemRow(item) {
+  return `<tr onclick="openItemDetail('${item.id}')">
+    <td>
+      <div class="inv-nom">${item.icon||CAT_ICONS[item.categorie]||'📦'} ${item.nom}</div>
+      <div class="inv-id">${item.id}</div>
+    </td>
+    <td class="inv-loc">${item.localisation||'—'}</td>
+    <td class="inv-qty" style="color:${item.quantite_dispo<=0?'var(--red)':item.quantite_dispo<=(item.seuil||2)?'var(--amber)':'var(--green)'}">${item.quantite_dispo}</td>
+    <td class="inv-total">${item.quantite_totale}</td>
+    <td style="text-align:center">${stockDot(item)}</td>
+    <td style="text-align:right;padding-right:6px">
+      <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();openMvModal('${item.id}','out')">↗</button>
+    </td>
+  </tr>`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1163,12 +1228,27 @@ function unlockAdmin() {
   if (pin === cfg.tokenAdmin) {
     doUnlockAdmin(); return;
   }
-  // Aide au diagnostic : montre les premiers/derniers caractères attendus
   const t = cfg.tokenAdmin;
   const hint = t.slice(0,6) + '···' + t.slice(-4);
   document.getElementById('admin-debug').textContent = `Token attendu : ${hint} (${t.length} caractères)`;
   document.getElementById('admin-debug').style.display = 'block';
   toast('❌ Token incorrect');
+}
+
+function prefillAdminIfKnown() {
+  // Si le token est déjà en mémoire, on pré-remplit le champ et on déverrouille silencieusement
+  try {
+    const saved = localStorage.getItem(CFG_KEY);
+    if (saved) cfg = JSON.parse(saved);
+  } catch(e) {}
+  if (cfg.tokenAdmin && !cfg.demo) {
+    const pin = document.getElementById('admin-pin');
+    if (pin) pin.value = cfg.tokenAdmin;
+    // Déverrouillage automatique discret
+    doUnlockAdmin();
+  } else if (cfg.demo) {
+    doUnlockAdmin();
+  }
 }
 
 function doUnlockAdmin() {
