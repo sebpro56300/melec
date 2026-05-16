@@ -482,6 +482,9 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
               <option>Systèmes didactiques</option>
               <option>Outils</option>
               <option>Consommable</option>
+              <option>Portative</option>
+              <option>Stationnaire</option>
+              <option>Armoires</option>
             </select>
           </div>
           <div class="form-group">
@@ -499,10 +502,19 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
             <input id="new-threshold" type="number" min="0" value="2">
           </div>
         </div>
-        <div class="form-group" style="margin-bottom:10px">
-          <label>LOCALISATION</label>
-          <input id="new-loc" type="text" placeholder="Armoire A — Étagère 2">
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>ARMOIRE</label>
+            <select id="new-armoire" onchange="updateNewLocPreview()">
+              <option value="">— Sans armoire —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>ÉTAGÈRE / POSITION</label>
+            <input id="new-etagere" type="text" placeholder="Étagère 2, Bac A…" oninput="updateNewLocPreview()">
+          </div>
         </div>
+        <div id="new-loc-preview" style="font-size:11px;color:var(--grey);margin-bottom:10px;margin-top:-6px;padding:0 2px"></div>
         <div class="form-group" style="margin-bottom:10px">
           <label>EMPRUNT NOMINATIF ?</label>
           <select id="new-nominatif">
@@ -517,6 +529,15 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
         <p style="font-size:12px; color:var(--grey); margin-bottom:12px">Sélectionner les articles à étiqueter :</p>
         <div id="qr-select-list" style="max-height:200px; overflow-y:auto; margin-bottom:12px"></div>
         <button class="btn btn-secondary btn-full" onclick="printQR()">GÉNÉRER PLANCHE PDF</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🗄 GÉRER LES ARMOIRES</div>
+        <p style="font-size:12px; color:var(--grey); margin-bottom:12px">Les armoires créées ici apparaissent dans les menus de localisation de chaque article.</p>
+        <div id="armoires-list" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <input id="new-armoire-nom" type="text" placeholder="Nom de l'armoire (ex: Armoire A)" style="flex:1">
+          <button class="btn btn-primary btn-sm" onclick="addArmoire()" style="flex-shrink:0">+ AJOUTER</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">💾 DONNÉES</div>
@@ -645,13 +666,19 @@ let scannerRAF = null;
 let lastScans = [];
 let syncTimer = null;
 
-const CATS = ['Tous','Appareils de mesure','Systèmes didactiques','Outils','Consommable'];
+const CATS = ['Tous','Appareils de mesure','Systèmes didactiques','Outils','Consommable','Portative','Stationnaire','Armoires'];
 const CAT_ICONS = {
   'Appareils de mesure': '📏',
   'Systèmes didactiques': '🖥',
   'Outils': '🔧',
   'Consommable': '🔩',
+  'Portative': '🔋',
+  'Stationnaire': '🏭',
+  'Armoires': '🗄',
 };
+
+// Colonnes de l'inventaire calquées sur le modèle Excel fourni
+// Numéro Région | Désignation Machine | Marque Machine | Type | Numéro Série | Année | CE | Contrôle
 
 // ═══════════════════════════════════════════════════════════
 //  INIT
@@ -679,6 +706,7 @@ function saveConfig() {
 function showResetConfig() {
   if (!confirm('Réinitialiser la configuration ?')) return;
   localStorage.removeItem(CFG_KEY);
+  localStorage.removeItem('melec_inv_admin');
   location.reload();
 }
 
@@ -686,12 +714,17 @@ async function startApp() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   await loadFromGist();
+  // Restaurer l'état admin si déjà déverrouillé précédemment sur cet appareil
+  if (localStorage.getItem('melec_inv_admin') === '1') {
+    isAdmin = true;
+  }
   renderAll();
   updateBadge();
 }
 
 function clearConfig() {
   localStorage.removeItem(CFG_KEY);
+  localStorage.removeItem('melec_inv_admin');
   cfg = {};
   document.getElementById('cfg-gist-id').value = '';
   document.getElementById('cfg-token-admin').value = '';
@@ -757,6 +790,7 @@ async function loadFromGist() {
     db = parsed;
     if (!db.items) db.items = [];
     if (!db.mouvements) db.mouvements = [];
+    if (!db.armoires) db.armoires = [];
     setConnBadge(true);
     renderAll();
     toast('📦 ' + db.items.length + ' article(s) chargé(s)');
@@ -808,7 +842,12 @@ function showPage(name, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   if (name === 'dashboard') renderDashboard();
-  if (name === 'admin') renderQrSelectList();
+  if (name === 'admin') {
+    prefillAdminIfKnown();
+    renderQrSelectList();
+    renderArmoiresList();
+    populateArmoireSelects();
+  }
 }
 
 function setConnBadge(ok) {
@@ -830,6 +869,7 @@ function renderAll() {
   renderCatChips();
   renderInventory();
   renderLastScans();
+  populateArmoireSelects();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1253,6 +1293,7 @@ function prefillAdminIfKnown() {
 
 function doUnlockAdmin() {
   isAdmin = true;
+  localStorage.setItem('melec_inv_admin', '1'); // mémorisé sur cet appareil
   document.getElementById('admin-locked').style.display = 'none';
   document.getElementById('admin-panel').style.display = 'flex';
   document.getElementById('admin-panel').style.flexDirection = 'column';
@@ -1272,6 +1313,10 @@ function addItem() {
   const nom = document.getElementById('new-name').value.trim();
   if (!nom) { toast('⚠ Nom requis'); return; }
   const id = nextId();
+  const armoireId = document.getElementById('new-armoire').value;
+  const etagere   = document.getElementById('new-etagere').value.trim();
+  const armoire   = db.armoires?.find(a => a.id === armoireId);
+  const localisation = buildLocalisation(armoire?.nom, etagere);
   const item = {
     id,
     qr_code: id,
@@ -1279,17 +1324,21 @@ function addItem() {
     categorie: document.getElementById('new-cat').value,
     icon: document.getElementById('new-icon').value || CAT_ICONS[document.getElementById('new-cat').value] || '📦',
     quantite_totale: parseInt(document.getElementById('new-qty').value) || 1,
-    quantite_dispo: parseInt(document.getElementById('new-qty').value) || 1,
+    quantite_dispo:  parseInt(document.getElementById('new-qty').value) || 1,
     seuil: parseInt(document.getElementById('new-threshold').value) || 2,
-    localisation: document.getElementById('new-loc').value.trim(),
+    armoire_id: armoireId || null,
+    etagere: etagere || null,
+    localisation,
     nominatif: document.getElementById('new-nominatif').value === '1',
   };
   db.items.push(item);
   renderInventory();
   renderQrSelectList();
-  ['new-name','new-icon','new-loc'].forEach(id => document.getElementById(id).value = '');
+  ['new-name','new-icon','new-etagere'].forEach(fid => document.getElementById(fid).value = '');
+  document.getElementById('new-armoire').value = '';
   document.getElementById('new-qty').value = 1;
-  syncGist(); // sauvegarde immédiate
+  document.getElementById('new-loc-preview').textContent = '';
+  syncGist();
   toast(`✅ ${item.nom} ajouté — ${item.id}`);
 }
 
@@ -1351,7 +1400,7 @@ function editItem(id) {
         <div class="form-group">
           <label>CATÉGORIE</label>
           <select id="edit-cat">
-            ${['Appareils de mesure','Systèmes didactiques','Outils','Consommable'].map(c =>
+            ${['Appareils de mesure','Systèmes didactiques','Outils','Consommable','Portative','Stationnaire'].map(c =>
               `<option ${item.categorie===c?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
@@ -1384,10 +1433,20 @@ function editItem(id) {
         </div>
       </div>
 
-      <div class="form-group" style="margin-bottom:10px">
-        <label>LOCALISATION</label>
-        <input id="edit-loc" type="text" value="${item.localisation||''}">
+      <div class="form-row" style="margin-bottom:4px">
+        <div class="form-group">
+          <label>ARMOIRE</label>
+          <select id="edit-armoire" onchange="updateEditLocPreview()">
+            <option value="">— Sans armoire —</option>
+            ${getArmoireOptions(item.armoire_id)}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ÉTAGÈRE / POSITION</label>
+          <input id="edit-etagere" type="text" placeholder="Étagère 2…" value="${item.etagere||''}" oninput="updateEditLocPreview()">
+        </div>
       </div>
+      <div id="edit-loc-preview" style="font-size:11px;color:var(--grey);margin-bottom:10px;padding:0 2px">${item.localisation||''}</div>
       <div class="form-group" style="margin-bottom:16px">
         <label>EMPRUNT NOMINATIF ?</label>
         <select id="edit-nominatif">
@@ -1430,22 +1489,167 @@ function saveEditItem(id) {
   if (isNaN(newTotal) || newTotal < 0) { toast('⚠ Quantité invalide'); return; }
   if (newTotal < sorties) { toast(`⚠ Total ne peut pas être < sorties en cours (${sorties})`); return; }
 
-  item.nom       = nom;
-  item.categorie = document.getElementById('edit-cat').value;
-  item.icon      = document.getElementById('edit-icon').value || CAT_ICONS[item.categorie] || '📦';
-  item.localisation = document.getElementById('edit-loc').value.trim();
-  item.nominatif = document.getElementById('edit-nominatif').value === '1';
-  item.seuil     = parseInt(document.getElementById('edit-seuil').value) || 2;
+  const armoireId = document.getElementById('edit-armoire').value;
+  const etagere   = document.getElementById('edit-etagere').value.trim();
+  const armoire   = db.armoires?.find(a => a.id === armoireId);
+
+  item.nom          = nom;
+  item.categorie    = document.getElementById('edit-cat').value;
+  item.icon         = document.getElementById('edit-icon').value || CAT_ICONS[item.categorie] || '📦';
+  item.armoire_id   = armoireId || null;
+  item.etagere      = etagere || null;
+  item.localisation = buildLocalisation(armoire?.nom, etagere);
+  item.nominatif    = document.getElementById('edit-nominatif').value === '1';
+  item.seuil        = parseInt(document.getElementById('edit-seuil').value) || 2;
   item.quantite_totale = newTotal;
-  item.quantite_dispo  = newTotal - sorties;   // recalcul propre
+  item.quantite_dispo  = newTotal - sorties;
 
   document.getElementById('edit-overlay').remove();
   document.getElementById('detail-modal').classList.remove('open');
   renderInventory();
   renderQrSelectList();
   renderDashboard();
-  syncGist(); // sauvegarde immédiate
+  syncGist();
   toast('✅ ' + item.nom + ' mis à jour');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ARMOIRES
+// ═══════════════════════════════════════════════════════════
+
+function getArmoires() {
+  if (!db.armoires) db.armoires = [];
+  return db.armoires;
+}
+
+function buildLocalisation(armoireNom, etagere) {
+  if (!armoireNom && !etagere) return '';
+  if (!armoireNom) return etagere;
+  if (!etagere) return armoireNom;
+  return armoireNom + ' — ' + etagere;
+}
+
+function getArmoireOptions(selectedId) {
+  return getArmoires().map(a =>
+    `<option value="${a.id}" ${a.id === selectedId ? 'selected' : ''}>${a.nom}</option>`
+  ).join('');
+}
+
+function populateArmoireSelects() {
+  // Alimente tous les selects armoire présents dans le DOM
+  ['new-armoire'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Sans armoire —</option>' + getArmoireOptions(cur);
+  });
+  // Le select edit-armoire est dans une modale dynamique, géré à l'ouverture
+}
+
+function renderArmoiresList() {
+  const wrap = document.getElementById('armoires-list');
+  if (!wrap) return;
+  const armoires = getArmoires();
+  if (!armoires.length) {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--grey2);padding:8px 0">Aucune armoire créée</div>';
+    return;
+  }
+  wrap.innerHTML = armoires.map(a => {
+    const nbItems = db.items.filter(i => i.armoire_id === a.id).length;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:18px">🗄</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${a.nom}</div>
+        <div style="font-size:11px;color:var(--grey)">${nbItems} article${nbItems>1?'s':''} assigné${nbItems>1?'s':''}</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="renameArmoire('${a.id}')">✏</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteArmoire('${a.id}')" ${nbItems>0?'title="Des articles y sont assignés"':''}>🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function addArmoire() {
+  const nom = document.getElementById('new-armoire-nom').value.trim();
+  if (!nom) { toast('⚠ Nom requis'); return; }
+  if (!db.armoires) db.armoires = [];
+  if (db.armoires.find(a => a.nom.toLowerCase() === nom.toLowerCase())) {
+    toast('⚠ Une armoire avec ce nom existe déjà'); return;
+  }
+  const armoire = { id: 'ARM-' + Date.now(), nom };
+  db.armoires.push(armoire);
+  document.getElementById('new-armoire-nom').value = '';
+  renderArmoiresList();
+  populateArmoireSelects();
+  syncGist();
+  toast('🗄 Armoire "' + nom + '" créée');
+}
+
+function renameArmoire(id) {
+  const armoire = getArmoires().find(a => a.id === id);
+  if (!armoire) return;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:24px';
+  overlay.innerHTML = `
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:320px;width:100%">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--amber);margin-bottom:12px">✏ RENOMMER</div>
+      <input id="rename-input" type="text" value="${armoire.nom}" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="flex:1" onclick="this.closest('div[style]').remove()">Annuler</button>
+        <button class="btn btn-primary" style="flex:1" onclick="
+          const v=document.getElementById('rename-input').value.trim();
+          if(!v){return;}
+          const a=db.armoires.find(x=>x.id==='${id}');
+          if(a){
+            a.nom=v;
+            db.items.filter(i=>i.armoire_id==='${id}').forEach(i=>{i.localisation=buildLocalisation(v,i.etagere);});
+            renderArmoiresList();populateArmoireSelects();renderInventory();syncGist();toast('✅ Renommé');
+          }
+          this.closest('div[style]').remove();">OK</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  setTimeout(() => document.getElementById('rename-input')?.focus(), 50);
+}
+
+function deleteArmoire(id) {
+  const armoire = getArmoires().find(a => a.id === id);
+  if (!armoire) return;
+  const nbItems = db.items.filter(i => i.armoire_id === id).length;
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:24px';
+  overlay.innerHTML = `
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:320px;width:100%;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">🗄</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:8px">SUPPRIMER "${armoire.nom}" ?</div>
+      ${nbItems > 0 ? `<div style="font-size:12px;color:var(--amber);margin-bottom:12px">⚠ ${nbItems} article${nbItems>1?'s':''} assigné${nbItems>1?'s':''} — leur localisation sera effacée.</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary" style="flex:1" onclick="this.closest('div[style]').remove()">Annuler</button>
+        <button class="btn btn-danger" style="flex:1" onclick="
+          db.armoires=db.armoires.filter(a=>a.id!=='${id}');
+          db.items.filter(i=>i.armoire_id==='${id}').forEach(i=>{i.armoire_id=null;i.localisation=i.etagere||'';});
+          renderArmoiresList();populateArmoireSelects();renderInventory();syncGist();toast('🗑 Armoire supprimée');
+          this.closest('div[style]').remove();">SUPPRIMER</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+function updateNewLocPreview() {
+  const armoireId = document.getElementById('new-armoire')?.value;
+  const etagere   = document.getElementById('new-etagere')?.value.trim();
+  const armoire   = db.armoires?.find(a => a.id === armoireId);
+  const prev = document.getElementById('new-loc-preview');
+  if (prev) prev.textContent = buildLocalisation(armoire?.nom, etagere) || '📍 Localisation : non définie';
+}
+
+function updateEditLocPreview() {
+  const armoireId = document.getElementById('edit-armoire')?.value;
+  const etagere   = document.getElementById('edit-etagere')?.value.trim();
+  const armoire   = db.armoires?.find(a => a.id === armoireId);
+  const prev = document.getElementById('edit-loc-preview');
+  if (prev) prev.textContent = buildLocalisation(armoire?.nom, etagere) || '📍 Non définie';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1467,17 +1671,42 @@ function printQR() {
   if (!checks.length) { toast('⚠ Sélectionner au moins un article'); return; }
   const grid = document.getElementById('qr-print-grid');
   grid.innerHTML = '';
+
   checks.forEach(cb => {
     const item = db.items.find(i => i.id === cb.value);
     if (!item) return;
+
+    // Construire la cellule sans innerHTML+= qui détruirait les noeuds enfants
     const cell = document.createElement('div');
     cell.className = 'qr-label-card';
+
     const qrWrap = document.createElement('div');
+    qrWrap.style.cssText = 'display:flex;justify-content:center;align-items:center;padding:4px';
     cell.appendChild(qrWrap);
-    cell.innerHTML += `<div class="qr-label-name">${item.nom}</div><div class="qr-label-id">${item.id}</div>`;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'qr-label-name';
+    nameEl.textContent = item.nom;
+    cell.appendChild(nameEl);
+
+    const idEl = document.createElement('div');
+    idEl.className = 'qr-label-id';
+    idEl.textContent = item.id;
+    cell.appendChild(idEl);
+
     grid.appendChild(cell);
-    new QRCode(qrWrap, { text: item.id, width: 128, height: 128, colorDark: '#0a0f1e', colorLight: '#f8f7f2' });
+
+    // QRCode génère un <canvas> ou <img> dans qrWrap — le noeud doit être dans le DOM
+    new QRCode(qrWrap, {
+      text: item.id,
+      width: 140,
+      height: 140,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
   });
+
   document.getElementById('qr-modal').classList.add('open');
 }
 
@@ -1501,56 +1730,114 @@ function exportXLSX() {
   if (typeof XLSX === 'undefined') { toast('❌ SheetJS non chargé'); return; }
   const wb = XLSX.utils.book_new();
 
-  // ── FEUILLE 1 : INVENTAIRE ──────────────────────────────
-  const invHeaders = ['Code', 'Nom', 'Catégorie', 'Qté totale', 'Qté disponible', 'Qtés sorties', 'Seuil alerte', 'Localisation', 'Emprunt nominatif'];
-  const invRows = db.items.map(i => [
-    i.id,
-    i.nom,
-    i.categorie,
-    i.quantite_totale,
-    i.quantite_dispo,
-    i.quantite_totale - i.quantite_dispo,
-    i.seuil || 2,
-    i.localisation || '',
-    i.nominatif ? 'Oui' : 'Non',
-  ]);
-  const wsInv = XLSX.utils.aoa_to_sheet([invHeaders, ...invRows]);
+  const HDR_FILL  = { fgColor: { rgb: 'B45309' } }; // ambre
+  const HDR_FONT  = { bold: true, color: { rgb: 'FFFFFF' }, name: 'Arial', sz: 10 };
+  const TITLE_FONT= { bold: true, color: { rgb: 'B45309' }, name: 'Arial', sz: 13 };
+  const MONO_FONT = { name: 'Courier New', sz: 9 };
+  const CENTER    = { horizontal: 'center', vertical: 'center' };
+  const BORDER    = { top:{style:'thin',color:{rgb:'CCCCCC'}}, bottom:{style:'thin',color:{rgb:'CCCCCC'}}, left:{style:'thin',color:{rgb:'CCCCCC'}}, right:{style:'thin',color:{rgb:'CCCCCC'}} };
 
-  // Colonnes largeurs
-  wsInv['!cols'] = [
-    {wch:12},{wch:36},{wch:22},{wch:12},{wch:16},{wch:14},{wch:13},{wch:28},{wch:18}
-  ];
+  // Colonnes calquées sur le modèle fourni :
+  // Catégorie | Numéro Région (= id) | Désignation | Marque | Type | N° Série | Année | CE | Contrôle | Qté totale | Qté dispo | Sorties | Seuil | Localisation | Nominatif
+  const HEADERS = ['Catégorie','Numéro / Code','Désignation','Marque','Type','Numéro Série','Année','CE','Contrôle','Qté totale','Qté disponible','Sorties','Seuil alerte','Localisation','Emprunt nominatif'];
+  const WIDTHS  = [18,14,32,20,16,16,8,6,10,10,12,8,12,26,16];
 
-  // Mise en forme entête (fond ambre, texte blanc, gras)
-  const invRange = XLSX.utils.decode_range(wsInv['!ref']);
-  for (let C = invRange.s.c; C <= invRange.e.c; C++) {
-    const cellRef = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (!wsInv[cellRef]) continue;
-    wsInv[cellRef].s = {
-      font: { bold: true, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: 'B45309' } },
-      alignment: { horizontal: 'center' },
-    };
-  }
-  // Colorier les lignes stock zéro en rouge clair
-  db.items.forEach((item, idx) => {
-    const rowIdx = idx + 1;
-    const fillColor = item.quantite_dispo <= 0 ? 'FEE2E2'
-                    : item.quantite_dispo <= (item.seuil || 2) ? 'FEF3C7'
-                    : null;
-    if (fillColor) {
-      for (let C = 0; C <= 8; C++) {
-        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
-        if (!wsInv[ref]) wsInv[ref] = { v: '', t: 's' };
-        wsInv[ref].s = { fill: { fgColor: { rgb: fillColor } } };
-      }
+  function styleHeader(ws, rowIdx, colCount) {
+    for (let C = 0; C < colCount; C++) {
+      const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
+      if (!ws[ref]) ws[ref] = { v: '', t: 's' };
+      ws[ref].s = { font: HDR_FONT, fill: HDR_FILL, alignment: CENTER, border: BORDER };
     }
+  }
+
+  function styleDataRow(ws, rowIdx, colCount, fillColor) {
+    for (let C = 0; C < colCount; C++) {
+      const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
+      if (!ws[ref]) ws[ref] = { v: '', t: 's' };
+      const s = { border: BORDER, font: { name: 'Arial', sz: 10 } };
+      if (fillColor) s.fill = { fgColor: { rgb: fillColor } };
+      ws[ref].s = s;
+    }
+  }
+
+  function itemToRow(item) {
+    return [
+      item.categorie || '',
+      item.id,
+      item.nom,
+      item.marque || '',
+      item.type_machine || '',
+      item.numero_serie || '',
+      item.annee || '',
+      item.ce || '',
+      item.controle || '',
+      item.quantite_totale,
+      item.quantite_dispo,
+      item.quantite_totale - item.quantite_dispo,
+      item.seuil || 2,
+      item.localisation || '',
+      item.nominatif ? 'Oui' : 'Non',
+    ];
+  }
+
+  // ── UNE FEUILLE PAR CATÉGORIE ──────────────────────────────
+  const allCats = [...new Set(db.items.map(i => i.categorie || 'Autre'))].sort();
+
+  allCats.forEach(cat => {
+    const items = db.items.filter(i => (i.categorie || 'Autre') === cat);
+    if (!items.length) return;
+
+    // Ligne 0 : titre atelier
+    // Ligne 1 : vide
+    // Ligne 2 : en-têtes colonnes
+    // Ligne 3+ : données
+    const aoa = [
+      [`Atelier Électricité — ${cat}`, ...Array(HEADERS.length - 1).fill(null)],
+      Array(HEADERS.length).fill(null),
+      HEADERS,
+      ...items.map(itemToRow),
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = WIDTHS.map(w => ({ wch: w }));
+
+    // Fusion titre sur toute la largeur
+    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 1 } }];
+
+    // Style titre
+    const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
+    if (ws[titleRef]) ws[titleRef].s = { font: TITLE_FONT, alignment: CENTER };
+
+    // Style en-têtes (ligne 2 = index 2)
+    styleHeader(ws, 2, HEADERS.length);
+
+    // Style lignes de données
+    items.forEach((item, idx) => {
+      const rowIdx = 3 + idx;
+      const fillColor = item.quantite_dispo <= 0 ? 'FEE2E2'
+                      : item.quantite_dispo <= (item.seuil || 2) ? 'FEF3C7'
+                      : (idx % 2 === 0 ? null : 'F8F7F2');
+      styleDataRow(ws, rowIdx, HEADERS.length, fillColor);
+
+      // Code en monospace
+      const codeRef = XLSX.utils.encode_cell({ r: rowIdx, c: 1 });
+      if (ws[codeRef]) ws[codeRef].s = { ...ws[codeRef].s, font: MONO_FONT, border: BORDER };
+
+      // Quantités centrées
+      [9,10,11,12].forEach(C => {
+        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
+        if (!ws[ref]) ws[ref] = { v: '', t: 's' };
+        ws[ref].s = { ...ws[ref].s, alignment: CENTER };
+      });
+    });
+
+    // Nom de feuille : 31 chars max, pas de caractères spéciaux
+    const sheetName = cat.substring(0, 31).replace(/[:\\/?*[\]]/g, '');
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
   });
 
-  XLSX.utils.book_append_sheet(wb, wsInv, 'Inventaire');
-
-  // ── FEUILLE 2 : HISTORIQUE MOUVEMENTS ──────────────────
-  const mvHeaders = ['Date', 'Heure', 'Code article', 'Nom article', 'Catégorie', 'Type', 'Quantité', 'Emprunteur / Utilisateur', 'Commentaire'];
+  // ── FEUILLE HISTORIQUE ─────────────────────────────────────
+  const mvHeaders = ['Date','Heure','Code article','Désignation','Catégorie','Type mouvement','Quantité','Emprunteur / Utilisateur','Commentaire'];
   const mvRows = [...db.mouvements].reverse().map(m => {
     const item = db.items.find(i => i.id === m.item_id);
     const dt = m.date ? new Date(m.date) : null;
@@ -1566,60 +1853,29 @@ function exportXLSX() {
       m.commentaire || '',
     ];
   });
+
   const wsMv = XLSX.utils.aoa_to_sheet([mvHeaders, ...mvRows]);
-  wsMv['!cols'] = [
-    {wch:12},{wch:8},{wch:13},{wch:36},{wch:22},{wch:16},{wch:10},{wch:26},{wch:30}
-  ];
-  for (let C = 0; C <= 8; C++) {
-    const cellRef = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (!wsMv[cellRef]) continue;
-    wsMv[cellRef].s = {
-      font: { bold: true, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: '0D9488' } },
-      alignment: { horizontal: 'center' },
-    };
+  wsMv['!cols'] = [{wch:12},{wch:8},{wch:14},{wch:32},{wch:18},{wch:16},{wch:10},{wch:26},{wch:30}];
+  for (let C = 0; C < mvHeaders.length; C++) {
+    const ref = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!wsMv[ref]) continue;
+    wsMv[ref].s = { font: { bold: true, color: { rgb: 'FFFFFF' }, name: 'Arial', sz: 10 }, fill: { fgColor: { rgb: '0D9488' } }, alignment: CENTER, border: BORDER };
   }
-  // Colorier sorties en rouge pâle, retours en vert pâle
   mvRows.forEach((row, idx) => {
     const isOut = row[5] === 'Sortie';
-    const fillColor = isOut ? 'FEE2E2' : 'DCFCE7';
-    const ref6 = XLSX.utils.encode_cell({ r: idx + 1, c: 5 });
-    if (!wsMv[ref6]) wsMv[ref6] = { v: row[5], t: 's' };
-    wsMv[ref6].s = { fill: { fgColor: { rgb: fillColor } }, font: { color: { rgb: isOut ? 'B91C1C' : '15803D' }, bold: true } };
+    for (let C = 0; C < mvHeaders.length; C++) {
+      const ref = XLSX.utils.encode_cell({ r: idx + 1, c: C });
+      if (!wsMv[ref]) wsMv[ref] = { v: '', t: 's' };
+      wsMv[ref].s = { border: BORDER, font: { name: 'Arial', sz: 10 } };
+    }
+    const ref5 = XLSX.utils.encode_cell({ r: idx + 1, c: 5 });
+    wsMv[ref5].s = { fill: { fgColor: { rgb: isOut ? 'FEE2E2' : 'DCFCE7' } }, font: { color: { rgb: isOut ? 'B91C1C' : '15803D' }, bold: true, name: 'Arial', sz: 10 }, border: BORDER };
   });
-
   XLSX.utils.book_append_sheet(wb, wsMv, 'Historique');
-
-  // ── FEUILLE 3 : RÉSUMÉ PAR CATÉGORIE ───────────────────
-  const cats = [...new Set(db.items.map(i => i.categorie))];
-  const sumHeaders = ['Catégorie', 'Nb articles', 'Qtés totales', 'Qtés dispos', 'Articles stock 0', 'Articles stock bas'];
-  const sumRows = cats.map(cat => {
-    const its = db.items.filter(i => i.categorie === cat);
-    return [
-      cat,
-      its.length,
-      its.reduce((s, i) => s + i.quantite_totale, 0),
-      its.reduce((s, i) => s + i.quantite_dispo, 0),
-      its.filter(i => i.quantite_dispo <= 0).length,
-      its.filter(i => i.quantite_dispo > 0 && i.quantite_dispo <= (i.seuil || 2)).length,
-    ];
-  });
-  const wsSum = XLSX.utils.aoa_to_sheet([sumHeaders, ...sumRows]);
-  wsSum['!cols'] = [{wch:24},{wch:12},{wch:14},{wch:13},{wch:17},{wch:17}];
-  for (let C = 0; C <= 5; C++) {
-    const ref = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (!wsSum[ref]) continue;
-    wsSum[ref].s = {
-      font: { bold: true, color: { rgb: 'FFFFFF' } },
-      fill: { fgColor: { rgb: '1C2333' } },
-      alignment: { horizontal: 'center' },
-    };
-  }
-  XLSX.utils.book_append_sheet(wb, wsSum, 'Résumé');
 
   const fname = 'MELEC-Inventaire-' + new Date().toISOString().slice(0,10) + '.xlsx';
   XLSX.writeFile(wb, fname);
-  toast('📊 Export Excel téléchargé');
+  toast('📊 Export Excel — ' + allCats.length + ' feuilles');
 }
 
 // ═══════════════════════════════════════════════════════════
