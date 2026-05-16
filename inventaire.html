@@ -395,6 +395,11 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
       Pas encore de Gist ?
       <a href="https://gist.github.com/new" target="_blank" style="color:var(--amber)">Créer sur gist.github.com</a>
     </div>
+    <div id="reader-url-wrap" style="display:none;margin-top:16px;padding:12px;background:var(--navy4);border-radius:8px">
+      <div style="font-size:11px;color:var(--grey);margin-bottom:6px">🔗 URL LECTURE SEULE (à partager)</div>
+      <div id="reader-url" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);word-break:break-all"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%" onclick="copyReaderUrl()">📋 Copier le lien</button>
+    </div>
   </div>
   <button class="btn btn-secondary btn-sm" onclick="loadDemo()">▶ MODE DÉMO (sans Gist)</button>
   <button class="btn btn-danger btn-sm" onclick="clearConfig()">🗑 VIDER LA CONFIG MÉMORISÉE</button>
@@ -412,9 +417,12 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
 
   <!-- PAGE : INVENTAIRE -->
   <div class="page active" id="page-inventory">
-    <div class="search-wrap">
-      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="search" id="search-input" placeholder="Rechercher un article…" oninput="renderInventory()">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">
+      <div class="search-wrap" style="flex:1">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="search" id="search-input" placeholder="Rechercher un article…" oninput="renderInventory()">
+      </div>
+      <button class="btn btn-teal btn-sm" onclick="exportXLSX()" title="Exporter en Excel">📊</button>
     </div>
     <div class="chip-row" id="cat-chips"></div>
     <div id="inventory-list"></div>
@@ -722,11 +730,22 @@ const CAT_ICONS = {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
+  // Priorité 1 : config admin déjà mémorisée
   const saved = localStorage.getItem(CFG_KEY);
   if (saved) {
     cfg = JSON.parse(saved);
+    if (localStorage.getItem('melec_inv_admin') === '1') isAdmin = true;
     startApp();
+    return;
   }
+  // Priorité 2 : ?gist=GIST_ID dans l'URL → mode lecteur sans config
+  const urlGist = new URLSearchParams(window.location.search).get('gist');
+  if (urlGist) {
+    cfg = { gistId: urlGist, tokenAdmin: null, readerMode: true };
+    startApp();
+    return;
+  }
+  // Sinon : afficher l'écran de configuration (admin)
   renderCatChips();
 });
 
@@ -738,7 +757,16 @@ function saveConfig() {
   };
   if (!cfg.gistId || !cfg.tokenAdmin) { toast('⚠ Gist ID et Token Admin requis'); return; }
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  // Affiche l'URL lecteur à partager
+  const readerUrl = window.location.origin + window.location.pathname + '?gist=' + cfg.gistId;
+  document.getElementById('reader-url').textContent = readerUrl;
+  document.getElementById('reader-url-wrap').style.display = 'block';
   startApp();
+}
+
+function copyReaderUrl() {
+  const url = document.getElementById('reader-url').textContent;
+  navigator.clipboard.writeText(url).then(() => toast('📋 Lien copié !')).catch(() => toast('Copiez manuellement : ' + url));
 }
 
 function showResetConfig() {
@@ -752,12 +780,9 @@ async function startApp() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   await loadFromGist();
-  // Restaurer l'état admin si déjà déverrouillé précédemment sur cet appareil
-  if (localStorage.getItem('melec_inv_admin') === '1') {
-    isAdmin = true;
-  }
   renderAll();
   updateBadge();
+  applyReaderMode();
 }
 
 function clearConfig() {
@@ -784,11 +809,9 @@ function loadDemo() {
 //  GIST API
 // ═══════════════════════════════════════════════════════════
 function gistHeaders() {
-  return {
-    'Authorization': 'token ' + cfg.tokenAdmin,
-    'Accept': 'application/vnd.github.v3+json',
-    'Content-Type': 'application/json',
-  };
+  const h = { 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+  if (cfg.tokenAdmin) h['Authorization'] = 'token ' + cfg.tokenAdmin;
+  return h;
 }
 
 async function loadFromGist() {
@@ -900,10 +923,26 @@ function showPage(name, btn) {
   }
 }
 
+function applyReaderMode() {
+  // Onglets Scanner et Admin : masqués en mode lecteur
+  const navBtns = document.querySelectorAll('.nav-btn');
+  navBtns.forEach(btn => {
+    const page = btn.getAttribute('onclick')?.match(/showPage\('(\w+)'/)?.[1];
+    if (!isAdmin && (page === 'scanner' || page === 'admin')) {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = '';
+    }
+  });
+  // Bouton export Excel dans l'inventaire : toujours visible
+  // Bouton export Excel admin : masqué si lecteur (géré via isAdmin dans le DOM)
+}
+
 function setConnBadge(ok) {
   const b = document.getElementById('conn-badge');
-  b.textContent = isAdmin ? 'ADMIN' : (ok ? 'CONNECTÉ' : 'HORS LIGNE');
-  b.className = 'conn-badge ' + (isAdmin ? 'admin' : (ok ? 'ok' : ''));
+  if (isAdmin) { b.textContent = 'ADMIN'; b.className = 'conn-badge admin'; }
+  else if (cfg.readerMode) { b.textContent = 'LECTURE'; b.className = 'conn-badge ok'; }
+  else { b.textContent = ok ? 'CONNECTÉ' : 'HORS LIGNE'; b.className = 'conn-badge ' + (ok ? 'ok' : ''); }
 }
 function updateBadge() { setConnBadge(!cfg.demo); }
 
@@ -1022,9 +1061,10 @@ function stockDot(item) {
 }
 
 function itemRow(item) {
+  const icon = item.icon || CAT_ICONS[item.categorie] || '📦';
   return `<tr onclick="openItemDetail('${item.id}')">
     <td>
-      <div class="inv-nom">${item.icon||CAT_ICONS[item.categorie]||'📦'} ${item.nom}</div>
+      <div class="inv-nom">${icon} ${item.nom}</div>
       <div class="inv-id">${item.id}</div>
     </td>
     <td class="inv-loc">${item.localisation||'—'}</td>
@@ -1032,7 +1072,7 @@ function itemRow(item) {
     <td class="inv-total">${item.quantite_totale}</td>
     <td style="text-align:center">${stockDot(item)}</td>
     <td style="text-align:right;padding-right:6px">
-      <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();openMvModal('${item.id}','out')">↗</button>
+      ${isAdmin ? `<button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();openMvModal('${item.id}','out')">↗</button>` : ''}
     </td>
   </tr>`;
 }
@@ -1060,9 +1100,11 @@ function openItemDetail(id) {
     </div>
     ${item.localisation ? `<div style="font-size:12px; color:var(--grey); margin-bottom:12px">📍 ${item.localisation}</div>` : ''}
     <div style="display:flex; gap:8px; margin-bottom:16px">
+      ${isAdmin ? `
       <button class="btn btn-danger" style="flex:1" onclick="closeMvModal();openMvModal('${item.id}','out');document.getElementById('detail-modal').classList.remove('open')">↗ SORTIE</button>
       <button class="btn btn-teal" style="flex:1" onclick="closeMvModal();openMvModal('${item.id}','in');document.getElementById('detail-modal').classList.remove('open')">↙ RETOUR</button>
-      ${isAdmin ? `<button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('detail-modal').classList.remove('open');editItem('${item.id}')">✏ STOCK</button>` : ''}
+      <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('detail-modal').classList.remove('open');editItem('${item.id}')">✏ MODIFIER</button>
+      ` : `<div style="font-size:12px;color:var(--grey);padding:8px 0">Mode lecture — contactez l'administrateur pour modifier les stocks.</div>`}
     </div>
     ${history.length ? `
     <div class="card-title">Historique récent</div>
@@ -1077,8 +1119,7 @@ function openItemDetail(id) {
       </div>`).join('')}` : ''}
     ${isAdmin ? `
     <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap">
-      <button class="btn btn-secondary btn-sm" onclick="editItem('${item.id}')">✏ Modifier / Réajuster stock</button>
-      <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}')">🗑 Supprimer</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}')">🗑 Supprimer l'article</button>
     </div>` : ''}
   `;
   document.getElementById('detail-modal').classList.add('open');
@@ -1340,6 +1381,7 @@ function doUnlockAdmin() {
   panel.style.flexDirection = 'column';
   panel.style.gap = '14px';
   setConnBadge(true);
+  applyReaderMode(); // met à jour la nav
   renderQrSelectList();
   renderArmoiresList();
   populateArmoireSelects();
@@ -1558,9 +1600,12 @@ function saveEditItem(id) {
   const armoireId = document.getElementById('edit-armoire').value;
   const etagere   = document.getElementById('edit-etagere').value.trim();
   const armoire   = db.items.find(a => a.categorie === 'Armoires' && a.id === armoireId);
+  const newCat = document.getElementById('edit-cat').value;
+  const newIcon = document.getElementById('edit-icon').value.trim();
   item.nom          = nom;
-  item.categorie    = document.getElementById('edit-cat').value;
-  item.icon         = document.getElementById('edit-icon').value || CAT_ICONS[item.categorie] || '📦';
+  item.categorie    = newCat;
+  // Icône : si champ saisi → on garde, sinon on recalcule depuis la nouvelle catégorie
+  item.icon         = newIcon || CAT_ICONS[newCat] || '📦';
   item.num_region   = document.getElementById('edit-num-region').value.trim() || null;
   item.marque       = document.getElementById('edit-marque').value.trim() || null;
   item.type_machine = document.getElementById('edit-type').value.trim() || null;
@@ -1579,6 +1624,8 @@ function saveEditItem(id) {
   document.getElementById('detail-modal').classList.remove('open');
   renderInventory();
   renderQrSelectList();
+  renderArmoiresList();
+  populateArmoireSelects();
   renderDashboard();
   syncGist();
   toast('✅ ' + item.nom + ' mis à jour');
