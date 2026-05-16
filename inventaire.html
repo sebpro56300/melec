@@ -507,7 +507,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group">
             <label>ARMOIRE</label>
-            <select id="new-armoire" onchange="updateNewLocPreview()">
+            <select id="new-armoire" class="armoire-select" onchange="updateNewLocPreview()">
               <option value="">— Sans armoire —</option>
             </select>
           </div>
@@ -1147,22 +1147,35 @@ async function openScanner() {
 function scanLoop() {
   const video = document.getElementById('scanner-video');
   const canvas = document.getElementById('scanner-canvas');
-  const ctx = canvas.getContext('2d');
-  function tick() {
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let lastTick = 0;
+  const THROTTLE = 150; // ms entre chaque analyse — économise la batterie mobile
+
+  function tick(ts) {
     if (!scannerStream) return;
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
-      if (code) {
-        handleScan(code.data);
-        return;
-      }
-    }
     scannerRAF = requestAnimationFrame(tick);
+    if (ts - lastTick < THROTTLE) return;
+    lastTick = ts;
+
+    if (video.readyState < 2) return; // pas encore assez de données
+    if (video.videoWidth === 0) return;
+
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+    // Essaie les deux modes d'inversion pour maximiser la détection
+    let code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+    if (!code) code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'invertFirst' });
+
+    if (code && code.data) {
+      cancelAnimationFrame(scannerRAF);
+      scannerRAF = null;
+      handleScan(code.data);
+    }
   }
+
   scannerRAF = requestAnimationFrame(tick);
 }
 
@@ -1442,7 +1455,7 @@ function editItem(id) {
       <div class="form-row" style="margin-bottom:4px">
         <div class="form-group">
           <label>ARMOIRE</label>
-          <select id="edit-armoire" onchange="updateEditLocPreview()">
+          <select id="edit-armoire" class="armoire-select" onchange="updateEditLocPreview()">
             <option value="">— Sans armoire —</option>
             ${getArmoireOptions(item.armoire_id)}
           </select>
@@ -1468,6 +1481,11 @@ function editItem(id) {
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  // Rafraîchit le select armoire maintenant que la modale est dans le DOM
+  populateArmoireSelects();
+  const editArm = document.getElementById('edit-armoire');
+  if (editArm && item.armoire_id) editArm.value = item.armoire_id;
+  updateEditLocPreview();
 }
 
 function updateEditDispo() {
@@ -1542,14 +1560,14 @@ function getArmoireOptions(selectedId) {
 }
 
 function populateArmoireSelects() {
-  // Alimente tous les selects armoire présents dans le DOM
-  ['new-armoire'].forEach(selId => {
-    const sel = document.getElementById(selId);
-    if (!sel) return;
+  // Alimente TOUS les selects armoire présents dans le DOM au moment de l'appel
+  document.querySelectorAll('.armoire-select').forEach(sel => {
     const cur = sel.value;
-    sel.innerHTML = '<option value="">— Sans armoire —</option>' + getArmoireOptions(cur);
+    sel.innerHTML = '<option value="">— Sans armoire —</option>' +
+      getArmoires().map(a =>
+        `<option value="${a.id}" ${a.id === cur ? 'selected' : ''}>${a.nom}</option>`
+      ).join('');
   });
-  // Le select edit-armoire est dans une modale dynamique, géré à l'ouverture
 }
 
 function renderArmoiresList() {
@@ -1729,17 +1747,17 @@ async function exportQRtoPDF() {
 
   toast('⏳ Génération PDF…', 8000);
 
-  // Étiquette : 20mm × 20mm
-  // Grille sur A4 (210 × 297mm), marges 10mm, espacement 2mm
-  const LABEL_W = 20;   // mm
-  const LABEL_H = 20;   // mm
-  const GAP     = 2;    // mm entre étiquettes
-  const MARGIN  = 10;   // mm marges
+  // Étiquette : 30mm × 30mm (plus lisible, flashable à distance)
+  // Grille sur A4 (210 × 297mm), marges 8mm, espacement 3mm
+  const LABEL_W = 30;
+  const LABEL_H = 30;
+  const GAP     = 3;
+  const MARGIN  = 8;
   const PAGE_W  = 210;
   const PAGE_H  = 297;
 
-  const cols = Math.floor((PAGE_W - 2 * MARGIN + GAP) / (LABEL_W + GAP)); // 8 colonnes
-  const rows = Math.floor((PAGE_H - 2 * MARGIN + GAP) / (LABEL_H + GAP)); // 13 lignes
+  const cols = Math.floor((PAGE_W - 2 * MARGIN + GAP) / (LABEL_W + GAP)); // 6 colonnes
+  const rows = Math.floor((PAGE_H - 2 * MARGIN + GAP) / (LABEL_H + GAP)); // 9 lignes → 54/page
   const perPage = cols * rows;
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -1786,27 +1804,27 @@ async function exportQRtoPDF() {
     doc.setLineWidth(0.2);
     doc.rect(x, y, LABEL_W, LABEL_H);
 
-    // QR code (15mm × 15mm, centré horizontalement, en haut)
+    // QR code : 22mm × 22mm, centré horizontalement, 1mm du haut
     const qrDataUrl = await makeQRCanvas(item.id);
     if (qrDataUrl) {
-      const qrSize = 14;
+      const qrSize = 22;
       const qrX = x + (LABEL_W - qrSize) / 2;
-      doc.addImage(qrDataUrl, 'PNG', qrX, y + 0.5, qrSize, qrSize);
+      doc.addImage(qrDataUrl, 'PNG', qrX, y + 1, qrSize, qrSize);
     }
 
-    // Texte : code en monospace, tronqué si trop long
+    // Code article — 2mm sous le QR
     doc.setFont('courier', 'bold');
-    doc.setFontSize(5);
-    doc.setTextColor(180, 83, 9); // amber foncé
-    const codeText = item.id.length > 12 ? item.id.slice(0, 12) + '…' : item.id;
-    doc.text(codeText, x + LABEL_W / 2, y + 15.5, { align: 'center' });
+    doc.setFontSize(6);
+    doc.setTextColor(180, 83, 9);
+    const codeText = item.id.length > 14 ? item.id.slice(0, 14) + '…' : item.id;
+    doc.text(codeText, x + LABEL_W / 2, y + 25, { align: 'center' });
 
-    // Nom de l'article, max 2 lignes
+    // Nom — 2mm sous le code
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(4.5);
+    doc.setFontSize(5.5);
     doc.setTextColor(20, 20, 20);
-    const nom = item.nom.length > 22 ? item.nom.slice(0, 22) + '…' : item.nom;
-    doc.text(nom, x + LABEL_W / 2, y + 18, { align: 'center' });
+    const nom = item.nom.length > 26 ? item.nom.slice(0, 26) + '…' : item.nom;
+    doc.text(nom, x + LABEL_W / 2, y + 28.5, { align: 'center' });
   }
 
   const fname = 'MELEC-Etiquettes-' + new Date().toISOString().slice(0,10) + '.pdf';
