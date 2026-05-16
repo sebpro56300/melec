@@ -828,7 +828,19 @@ async function loadFromGist() {
     db = parsed;
     if (!db.items) db.items = [];
     if (!db.mouvements) db.mouvements = [];
-    if (!db.armoires) db.armoires = [];
+    // db.armoires legacy: migrate old armoires into items if present
+    if (db.armoires && db.armoires.length) {
+      db.armoires.forEach(a => {
+        if (!db.items.find(i => i.id === a.id)) {
+          db.items.push({
+            id: a.id, qr_code: a.id, nom: a.nom, categorie: 'Armoires',
+            icon: '🗄', localisation: a.emplacement || null, etagere: null,
+            armoire_id: null, quantite_totale: 1, quantite_dispo: 1, seuil: 0, nominatif: false,
+          });
+        }
+      });
+      delete db.armoires;
+    }
     setConnBadge(true);
     renderAll();
     toast('📦 ' + db.items.length + ' article(s) chargé(s)');
@@ -1168,43 +1180,33 @@ async function openScanner() {
   view.classList.add('open');
   document.getElementById('scanner-status').textContent = 'Démarrage caméra…';
   try {
-    const hints = new Map();
-    const formats = [
-      ZXing.BarcodeFormat.QR_CODE,
-      ZXing.BarcodeFormat.CODE_128,
-      ZXing.BarcodeFormat.CODE_39,
-      ZXing.BarcodeFormat.EAN_13,
-    ];
-    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
-    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-
-    zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+    zxingReader = new ZXing.BrowserMultiFormatReader();
     const video = document.getElementById('scanner-video');
-
-    // Lister les caméras et préférer la caméra arrière
-    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
-    const backCam = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
-    const deviceId = backCam?.deviceId;
-
     document.getElementById('scanner-status').textContent = 'En attente de scan…';
-
-    await zxingReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
-      if (result) {
-        handleScan(result.getText());
+    // null = ZXing choisit automatiquement la caméra arrière (environment)
+    await zxingReader.decodeFromConstraints(
+      { video: { facingMode: { ideal: 'environment' } } },
+      video,
+      (result, err) => {
+        if (result) {
+          const code = result.getText();
+          closeScanner();
+          handleScan(code);
+        }
+        // les erreurs de "pas encore de code" sont normales, on les ignore
       }
-    });
+    );
   } catch(e) {
     document.getElementById('scanner-status').textContent = '❌ ' + (e.message || 'Caméra indisponible');
     toast('❌ Caméra : ' + (e.message || 'accès refusé'));
   }
 }
 
-function scanLoop() {} // conservé pour compatibilité, non utilisé avec ZXing
+function scanLoop() {} // non utilisé avec ZXing
 
 function closeScanner() {
   document.getElementById('scanner-view').classList.remove('open');
   if (zxingReader) { try { zxingReader.reset(); } catch(e) {} zxingReader = null; }
-  if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
 }
 
 function handleScan(code) {
@@ -1356,7 +1358,7 @@ function addItem() {
   const id = nextId();
   const armoireId = document.getElementById('new-armoire').value;
   const etagere   = document.getElementById('new-etagere').value.trim();
-  const armoire   = db.armoires?.find(a => a.id === armoireId);
+  const armoire   = db.items.find(a => a.categorie === 'Armoires' && a.id === armoireId);
   const localisation = buildLocalisation(armoire?.nom, etagere);
   const item = {
     id,
@@ -1555,7 +1557,7 @@ function saveEditItem(id) {
   if (newTotal < sorties) { toast(`⚠ Total ne peut pas être < sorties en cours (${sorties})`); return; }
   const armoireId = document.getElementById('edit-armoire').value;
   const etagere   = document.getElementById('edit-etagere').value.trim();
-  const armoire   = db.armoires?.find(a => a.id === armoireId);
+  const armoire   = db.items.find(a => a.categorie === 'Armoires' && a.id === armoireId);
   item.nom          = nom;
   item.categorie    = document.getElementById('edit-cat').value;
   item.icon         = document.getElementById('edit-icon').value || CAT_ICONS[item.categorie] || '📦';
@@ -1587,8 +1589,8 @@ function saveEditItem(id) {
 // ═══════════════════════════════════════════════════════════
 
 function getArmoires() {
-  if (!db.armoires) db.armoires = [];
-  return db.armoires;
+  // Les armoires sont des articles de catégorie "Armoires" dans db.items
+  return db.items.filter(i => i.categorie === 'Armoires');
 }
 
 function buildLocalisation(armoireNom, etagere) {
@@ -1605,13 +1607,14 @@ function getArmoireOptions(selectedId) {
 }
 
 function populateArmoireSelects() {
-  // Alimente TOUS les selects armoire présents dans le DOM au moment de l'appel
+  const armoires = getArmoires(); // lit db.items filtrés Armoires
   document.querySelectorAll('.armoire-select').forEach(sel => {
     const cur = sel.value;
     sel.innerHTML = '<option value="">— Sans armoire —</option>' +
-      getArmoires().map(a =>
+      armoires.map(a =>
         `<option value="${a.id}" ${a.id === cur ? 'selected' : ''}>${a.nom}</option>`
       ).join('');
+    if (cur) sel.value = cur; // restaure la sélection
   });
 }
 
@@ -1620,7 +1623,7 @@ function renderArmoiresList() {
   if (!wrap) return;
   const armoires = getArmoires();
   if (!armoires.length) {
-    wrap.innerHTML = '<div style="font-size:12px;color:var(--grey2);padding:8px 0">Aucune armoire créée</div>';
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--grey2);padding:8px 0">Aucune armoire créée.<br>Créez des armoires via le formulaire ci-dessous ou via "Nouvel Article" en choisissant la catégorie Armoires.</div>';
     return;
   }
   wrap.innerHTML = armoires.map(a => {
@@ -1629,9 +1632,9 @@ function renderArmoiresList() {
       <span style="font-size:18px">🗄</span>
       <div style="flex:1">
         <div style="font-size:13px;font-weight:600">${a.nom}</div>
-        <div style="font-size:11px;color:var(--grey)">${nbItems} article${nbItems>1?'s':''} assigné${nbItems>1?'s':''}</div>
+        <div style="font-size:11px;color:var(--grey)">${a.localisation||'—'} · ${nbItems} article${nbItems>1?'s':''} assigné${nbItems>1?'s':''}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber)">${a.id}</div>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="renameArmoire('${a.id}')">✏</button>
       <button class="btn btn-danger btn-sm" onclick="deleteArmoire('${a.id}')" ${nbItems>0?'title="Des articles y sont assignés"':''}>🗑</button>
     </div>`;
   }).join('');
@@ -1640,48 +1643,37 @@ function renderArmoiresList() {
 function addArmoire() {
   const nom = document.getElementById('new-armoire-nom').value.trim();
   if (!nom) { toast('⚠ Nom requis'); return; }
-  if (!db.armoires) db.armoires = [];
-  if (db.armoires.find(a => a.nom.toLowerCase() === nom.toLowerCase())) {
+  if (db.items.find(a => a.categorie === 'Armoires' && a.nom.toLowerCase() === nom.toLowerCase())) {
     toast('⚠ Une armoire avec ce nom existe déjà'); return;
   }
   const emplacement = document.getElementById('new-armoire-emplacement').value.trim();
-  const armoire = { id: 'ARM-' + Date.now(), nom, emplacement: emplacement || null };
-  db.armoires.push(armoire);
+  const id = nextId();
+  // L'armoire est un article comme les autres — catégorie Armoires
+  const armoire = {
+    id,
+    qr_code: id,
+    nom,
+    categorie: 'Armoires',
+    icon: '🗄',
+    localisation: emplacement || null,
+    etagere: null,
+    armoire_id: null, // une armoire n'est pas dans une autre armoire
+    quantite_totale: 1,
+    quantite_dispo: 1,
+    seuil: 0,
+    nominatif: false,
+  };
+  db.items.push(armoire);
   document.getElementById('new-armoire-nom').value = '';
   document.getElementById('new-armoire-emplacement').value = '';
   renderArmoiresList();
   populateArmoireSelects();
+  renderInventory();
+  renderQrSelectList();
   syncGist();
-  toast('🗄 Armoire "' + nom + '" créée');
+  toast('🗄 Armoire "' + nom + '" créée — ' + id);
 }
 
-function renameArmoire(id) {
-  const armoire = getArmoires().find(a => a.id === id);
-  if (!armoire) return;
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;padding:24px';
-  overlay.innerHTML = `
-    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:320px;width:100%">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--amber);margin-bottom:12px">✏ RENOMMER</div>
-      <input id="rename-input" type="text" value="${armoire.nom}" style="margin-bottom:12px">
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-secondary" style="flex:1" onclick="this.closest('div[style]').remove()">Annuler</button>
-        <button class="btn btn-primary" style="flex:1" onclick="
-          const v=document.getElementById('rename-input').value.trim();
-          if(!v){return;}
-          const a=db.armoires.find(x=>x.id==='${id}');
-          if(a){
-            a.nom=v;
-            db.items.filter(i=>i.armoire_id==='${id}').forEach(i=>{i.localisation=buildLocalisation(v,i.etagere);});
-            renderArmoiresList();populateArmoireSelects();renderInventory();syncGist();toast('✅ Renommé');
-          }
-          this.closest('div[style]').remove();">OK</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-  setTimeout(() => document.getElementById('rename-input')?.focus(), 50);
-}
 
 function deleteArmoire(id) {
   const armoire = getArmoires().find(a => a.id === id);
@@ -1697,9 +1689,9 @@ function deleteArmoire(id) {
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn btn-secondary" style="flex:1" onclick="this.closest('div[style]').remove()">Annuler</button>
         <button class="btn btn-danger" style="flex:1" onclick="
-          db.armoires=db.armoires.filter(a=>a.id!=='${id}');
+          db.items=db.items.filter(i=>i.id!=='${id}');
           db.items.filter(i=>i.armoire_id==='${id}').forEach(i=>{i.armoire_id=null;i.localisation=i.etagere||'';});
-          renderArmoiresList();populateArmoireSelects();renderInventory();syncGist();toast('🗑 Armoire supprimée');
+          renderArmoiresList();populateArmoireSelects();renderInventory();renderQrSelectList();syncGist();toast('🗑 Armoire supprimée');
           this.closest('div[style]').remove();">SUPPRIMER</button>
       </div>
     </div>`;
@@ -1710,7 +1702,7 @@ function deleteArmoire(id) {
 function updateNewLocPreview() {
   const armoireId = document.getElementById('new-armoire')?.value;
   const etagere   = document.getElementById('new-etagere')?.value.trim();
-  const armoire   = db.armoires?.find(a => a.id === armoireId);
+  const armoire   = db.items.find(a => a.categorie === 'Armoires' && a.id === armoireId);
   const prev = document.getElementById('new-loc-preview');
   if (prev) prev.textContent = buildLocalisation(armoire?.nom, etagere) || '📍 Localisation : non définie';
 }
@@ -1718,7 +1710,7 @@ function updateNewLocPreview() {
 function updateEditLocPreview() {
   const armoireId = document.getElementById('edit-armoire')?.value;
   const etagere   = document.getElementById('edit-etagere')?.value.trim();
-  const armoire   = db.armoires?.find(a => a.id === armoireId);
+  const armoire   = db.items.find(a => a.categorie === 'Armoires' && a.id === armoireId);
   const prev = document.getElementById('edit-loc-preview');
   if (prev) prev.textContent = buildLocalisation(armoire?.nom, etagere) || '📍 Non définie';
 }
@@ -2044,9 +2036,9 @@ function exportXLSX() {
 
   // ── FEUILLE ARMOIRES ───────────────────────────────────────
   const armHeaders = ['Désignation', 'Code article', 'Emplacement', 'Nb articles rangés'];
-  const armRows = (db.armoires || []).map(a => {
+  const armRows = getArmoires().map(a => {
     const nbItems = db.items.filter(i => i.armoire_id === a.id).length;
-    return [a.nom, a.id, a.emplacement || '', nbItems];
+    return [a.nom, a.id, a.localisation || '', nbItems];
   });
   const wsArm = XLSX.utils.aoa_to_sheet([armHeaders, ...armRows]);
   wsArm['!cols'] = [{wch:26},{wch:16},{wch:28},{wch:16}];
