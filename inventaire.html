@@ -9,8 +9,8 @@
 <title>MELEC · Inventaire</title>
 <link rel="manifest" id="pwa-manifest">
 
-<!-- QR Scanner -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<!-- QR/Barcode Scanner (ZXing) -->
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <!-- QR Generator -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- Excel export (SheetJS) -->
@@ -473,7 +473,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
       <div class="card">
         <div class="card-title">➕ NOUVEL ARTICLE</div>
         <div class="form-group" style="margin-bottom:10px">
-          <label>NOM</label>
+          <label>DÉSIGNATION (NOM)</label>
           <input id="new-name" type="text" placeholder="Multimètre Fluke 115">
         </div>
         <div class="form-row" style="margin-bottom:10px">
@@ -484,8 +484,6 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
               <option>Systèmes didactiques</option>
               <option>Outils</option>
               <option>Consommable</option>
-              <option>Portative</option>
-              <option>Stationnaire</option>
               <option>Armoires</option>
             </select>
           </div>
@@ -493,6 +491,44 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
             <label>ICÔNE</label>
             <input id="new-icon" type="text" placeholder="🔌" maxlength="4">
           </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>N° RÉGION</label>
+            <input id="new-num-region" type="text" placeholder="REG-01">
+          </div>
+          <div class="form-group">
+            <label>MARQUE</label>
+            <input id="new-marque" type="text" placeholder="Fluke, Legrand…">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>TYPE / MODÈLE</label>
+            <input id="new-type" type="text" placeholder="115, DS1054Z…">
+          </div>
+          <div class="form-group">
+            <label>N° SÉRIE</label>
+            <input id="new-serie" type="text" placeholder="SN-XXXXXXX">
+          </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group">
+            <label>ANNÉE</label>
+            <input id="new-annee" type="number" placeholder="2023" min="1990" max="2099">
+          </div>
+          <div class="form-group">
+            <label>CE</label>
+            <select id="new-ce">
+              <option value="">—</option>
+              <option value="Oui">Oui</option>
+              <option value="Non">Non</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label>CONTRÔLE / VÉRIFICATION</label>
+          <input id="new-controle" type="text" placeholder="Vérif. annuelle, date dernier contrôle…">
         </div>
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group">
@@ -536,8 +572,9 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
         <div class="card-title">🗄 GÉRER LES ARMOIRES</div>
         <p style="font-size:12px; color:var(--grey); margin-bottom:12px">Les armoires créées ici apparaissent dans les menus de localisation de chaque article.</p>
         <div id="armoires-list" style="margin-bottom:12px"></div>
-        <div style="display:flex;gap:8px">
-          <input id="new-armoire-nom" type="text" placeholder="Nom de l'armoire (ex: Armoire A)" style="flex:1">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="new-armoire-nom" type="text" placeholder="Nom (ex: Armoire A)" style="flex:1;min-width:120px">
+          <input id="new-armoire-emplacement" type="text" placeholder="Emplacement (ex: Salle 102)" style="flex:1;min-width:120px">
           <button class="btn btn-primary btn-sm" onclick="addArmoire()" style="flex-shrink:0">+ AJOUTER</button>
         </div>
       </div>
@@ -669,14 +706,12 @@ let scannerRAF = null;
 let lastScans = [];
 let syncTimer = null;
 
-const CATS = ['Tous','Appareils de mesure','Systèmes didactiques','Outils','Consommable','Portative','Stationnaire','Armoires'];
+const CATS = ['Tous','Appareils de mesure','Systèmes didactiques','Outils','Consommable','Armoires'];
 const CAT_ICONS = {
   'Appareils de mesure': '📏',
   'Systèmes didactiques': '🖥',
   'Outils': '🔧',
   'Consommable': '🔩',
-  'Portative': '🔋',
-  'Stationnaire': '🏭',
   'Armoires': '🗄',
 };
 
@@ -1015,6 +1050,7 @@ function openItemDetail(id) {
     <div style="display:flex; gap:8px; margin-bottom:16px">
       <button class="btn btn-danger" style="flex:1" onclick="closeMvModal();openMvModal('${item.id}','out');document.getElementById('detail-modal').classList.remove('open')">↗ SORTIE</button>
       <button class="btn btn-teal" style="flex:1" onclick="closeMvModal();openMvModal('${item.id}','in');document.getElementById('detail-modal').classList.remove('open')">↙ RETOUR</button>
+      ${isAdmin ? `<button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('detail-modal').classList.remove('open');editItem('${item.id}')">✏ STOCK</button>` : ''}
     </div>
     ${history.length ? `
     <div class="card-title">Historique récent</div>
@@ -1125,63 +1161,49 @@ function confirmMouvement() {
 // ═══════════════════════════════════════════════════════════
 //  SCANNER
 // ═══════════════════════════════════════════════════════════
+let zxingReader = null;
+
 async function openScanner() {
   const view = document.getElementById('scanner-view');
   view.classList.add('open');
   document.getElementById('scanner-status').textContent = 'Démarrage caméra…';
   try {
-    scannerStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
+    const hints = new Map();
+    const formats = [
+      ZXing.BarcodeFormat.QR_CODE,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.CODE_39,
+      ZXing.BarcodeFormat.EAN_13,
+    ];
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, formats);
+    hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+    zxingReader = new ZXing.BrowserMultiFormatReader(hints);
     const video = document.getElementById('scanner-video');
-    video.srcObject = scannerStream;
-    await video.play();
+
+    // Lister les caméras et préférer la caméra arrière
+    const devices = await ZXing.BrowserCodeReader.listVideoInputDevices();
+    const backCam = devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1];
+    const deviceId = backCam?.deviceId;
+
     document.getElementById('scanner-status').textContent = 'En attente de scan…';
-    scanLoop();
+
+    await zxingReader.decodeFromVideoDevice(deviceId, video, (result, err) => {
+      if (result) {
+        handleScan(result.getText());
+      }
+    });
   } catch(e) {
-    document.getElementById('scanner-status').textContent = '❌ Caméra indisponible';
-    toast('❌ Accès caméra refusé');
+    document.getElementById('scanner-status').textContent = '❌ ' + (e.message || 'Caméra indisponible');
+    toast('❌ Caméra : ' + (e.message || 'accès refusé'));
   }
 }
 
-function scanLoop() {
-  const video = document.getElementById('scanner-video');
-  const canvas = document.getElementById('scanner-canvas');
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  let lastTick = 0;
-  const THROTTLE = 150; // ms entre chaque analyse — économise la batterie mobile
-
-  function tick(ts) {
-    if (!scannerStream) return;
-    scannerRAF = requestAnimationFrame(tick);
-    if (ts - lastTick < THROTTLE) return;
-    lastTick = ts;
-
-    if (video.readyState < 2) return; // pas encore assez de données
-    if (video.videoWidth === 0) return;
-
-    canvas.width  = video.videoWidth;
-    canvas.height = video.videoHeight;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Essaie les deux modes d'inversion pour maximiser la détection
-    let code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
-    if (!code) code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'invertFirst' });
-
-    if (code && code.data) {
-      cancelAnimationFrame(scannerRAF);
-      scannerRAF = null;
-      handleScan(code.data);
-    }
-  }
-
-  scannerRAF = requestAnimationFrame(tick);
-}
+function scanLoop() {} // conservé pour compatibilité, non utilisé avec ZXing
 
 function closeScanner() {
   document.getElementById('scanner-view').classList.remove('open');
-  if (scannerRAF) cancelAnimationFrame(scannerRAF);
+  if (zxingReader) { try { zxingReader.reset(); } catch(e) {} zxingReader = null; }
   if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
 }
 
@@ -1330,7 +1352,7 @@ function nextId() {
 
 function addItem() {
   const nom = document.getElementById('new-name').value.trim();
-  if (!nom) { toast('⚠ Nom requis'); return; }
+  if (!nom) { toast('⚠ Désignation requise'); return; }
   const id = nextId();
   const armoireId = document.getElementById('new-armoire').value;
   const etagere   = document.getElementById('new-etagere').value.trim();
@@ -1340,20 +1362,31 @@ function addItem() {
     id,
     qr_code: id,
     nom,
-    categorie: document.getElementById('new-cat').value,
-    icon: document.getElementById('new-icon').value || CAT_ICONS[document.getElementById('new-cat').value] || '📦',
+    categorie:    document.getElementById('new-cat').value,
+    icon:         document.getElementById('new-icon').value || CAT_ICONS[document.getElementById('new-cat').value] || '📦',
+    num_region:   document.getElementById('new-num-region').value.trim() || null,
+    marque:       document.getElementById('new-marque').value.trim() || null,
+    type_machine: document.getElementById('new-type').value.trim() || null,
+    num_serie:    document.getElementById('new-serie').value.trim() || null,
+    annee:        document.getElementById('new-annee').value || null,
+    ce:           document.getElementById('new-ce').value || null,
+    controle:     document.getElementById('new-controle').value.trim() || null,
     quantite_totale: parseInt(document.getElementById('new-qty').value) || 1,
     quantite_dispo:  parseInt(document.getElementById('new-qty').value) || 1,
-    seuil: parseInt(document.getElementById('new-threshold').value) || 2,
-    armoire_id: armoireId || null,
-    etagere: etagere || null,
+    seuil:        parseInt(document.getElementById('new-threshold').value) || 2,
+    armoire_id:   armoireId || null,
+    etagere:      etagere || null,
     localisation,
-    nominatif: document.getElementById('new-nominatif').value === '1',
+    nominatif:    document.getElementById('new-nominatif').value === '1',
   };
   db.items.push(item);
   renderInventory();
   renderQrSelectList();
-  ['new-name','new-icon','new-etagere'].forEach(fid => document.getElementById(fid).value = '');
+  ['new-name','new-icon','new-etagere','new-num-region','new-marque','new-type','new-serie','new-controle'].forEach(fid => {
+    const el = document.getElementById(fid); if (el) el.value = '';
+  });
+  document.getElementById('new-annee').value = '';
+  document.getElementById('new-ce').value = '';
   document.getElementById('new-armoire').value = '';
   document.getElementById('new-qty').value = 1;
   document.getElementById('new-loc-preview').textContent = '';
@@ -1398,9 +1431,7 @@ function deleteItem(id) {
 function editItem(id) {
   const item = db.items.find(i => i.id === id);
   if (!item) return;
-
   const sorties = item.quantite_totale - item.quantite_dispo;
-
   const overlay = document.createElement('div');
   overlay.id = 'edit-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);display:flex;align-items:flex-end';
@@ -1408,19 +1439,17 @@ function editItem(id) {
     <div style="width:100%;background:var(--navy2);border-radius:20px 20px 0 0;border-top:1px solid var(--border);padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));max-height:90vh;overflow-y:auto;animation:slideUp .25s cubic-bezier(.32,.72,0,1)">
       <div style="width:40px;height:4px;background:var(--navy4);border-radius:2px;margin:0 auto 16px"></div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--amber);margin-bottom:16px">✏ MODIFIER L'ARTICLE</div>
-
       <div style="background:var(--navy4);border-radius:10px;padding:12px;margin-bottom:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--amber)">${item.id}</div>
-
       <div class="form-group" style="margin-bottom:10px">
-        <label>NOM</label>
+        <label>DÉSIGNATION</label>
         <input id="edit-nom" type="text" value="${item.nom}">
       </div>
       <div class="form-row" style="margin-bottom:10px">
         <div class="form-group">
           <label>CATÉGORIE</label>
           <select id="edit-cat">
-            ${['Appareils de mesure','Systèmes didactiques','Outils','Consommable','Portative','Stationnaire'].map(c =>
-              `<option ${item.categorie===c?'selected':''}>${c}</option>`).join('')}
+            ${['Appareils de mesure','Systèmes didactiques','Outils','Consommable','Armoires'].map(c =>
+              `<option ${item.categorie===c?'selected':''} >${c}</option>`).join('')}
           </select>
         </div>
         <div class="form-group">
@@ -1428,14 +1457,35 @@ function editItem(id) {
           <input id="edit-icon" type="text" value="${item.icon||''}" maxlength="4">
         </div>
       </div>
-
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group"><label>N° RÉGION</label><input id="edit-num-region" type="text" value="${item.num_region||''}"></div>
+        <div class="form-group"><label>MARQUE</label><input id="edit-marque" type="text" value="${item.marque||''}"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group"><label>TYPE / MODÈLE</label><input id="edit-type" type="text" value="${item.type_machine||''}"></div>
+        <div class="form-group"><label>N° SÉRIE</label><input id="edit-serie" type="text" value="${item.num_serie||''}"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group"><label>ANNÉE</label><input id="edit-annee" type="number" value="${item.annee||''}" min="1990" max="2099"></div>
+        <div class="form-group">
+          <label>CE</label>
+          <select id="edit-ce">
+            <option value="" ${!item.ce?'selected':''}>—</option>
+            <option value="Oui" ${item.ce==='Oui'?'selected':''}>Oui</option>
+            <option value="Non" ${item.ce==='Non'?'selected':''}>Non</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>CONTRÔLE</label>
+        <input id="edit-controle" type="text" value="${item.controle||''}">
+      </div>
       <div style="background:var(--navy4);border-radius:10px;padding:14px;margin-bottom:10px">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--amber);margin-bottom:12px">📦 GESTION DU STOCK</div>
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group">
             <label>QTÉ TOTALE</label>
-            <input id="edit-qty-total" type="number" min="${sorties}" value="${item.quantite_totale}"
-              oninput="updateEditDispo()">
+            <input id="edit-qty-total" type="number" min="${sorties}" value="${item.quantite_totale}" oninput="updateEditDispo()">
           </div>
           <div class="form-group">
             <label>SEUIL ALERTE</label>
@@ -1443,21 +1493,16 @@ function editItem(id) {
           </div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--grey);margin-bottom:4px">
-          <span>Actuellement sorti : <strong style="color:var(--white)">${sorties}</strong></span>
-          <span>→ Disponible recalculé : <strong id="edit-dispo-preview" style="color:var(--green)">${item.quantite_dispo}</strong></span>
+          <span>Sorti : <strong style="color:var(--white)">${sorties}</strong></span>
+          <span>→ Dispo : <strong id="edit-dispo-preview" style="color:var(--green)">${item.quantite_dispo}</strong></span>
         </div>
-        <div style="font-size:11px;color:var(--grey2)">
-          La quantité disponible = total − sorties en cours (${sorties}).
-          ${sorties > 0 ? `Minimum autorisé : <strong style="color:var(--amber)">${sorties}</strong>.` : ''}
-        </div>
+        ${sorties > 0 ? `<div style="font-size:11px;color:var(--grey2)">Min : <strong style="color:var(--amber)">${sorties}</strong></div>` : ''}
       </div>
-
       <div class="form-row" style="margin-bottom:4px">
         <div class="form-group">
           <label>ARMOIRE</label>
           <select id="edit-armoire" class="armoire-select" onchange="updateEditLocPreview()">
             <option value="">— Sans armoire —</option>
-            ${getArmoireOptions(item.armoire_id)}
           </select>
         </div>
         <div class="form-group">
@@ -1473,7 +1518,6 @@ function editItem(id) {
           <option value="1" ${item.nominatif?'selected':''}>Oui — nom requis</option>
         </select>
       </div>
-
       <div style="display:flex;gap:8px">
         <button class="btn btn-secondary" style="flex:0 0 auto" onclick="document.getElementById('edit-overlay').remove()">Annuler</button>
         <button class="btn btn-primary" style="flex:1" onclick="saveEditItem('${id}')">ENREGISTRER</button>
@@ -1481,7 +1525,6 @@ function editItem(id) {
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-  // Rafraîchit le select armoire maintenant que la modale est dans le DOM
   populateArmoireSelects();
   const editArm = document.getElementById('edit-armoire');
   if (editArm && item.armoire_id) editArm.value = item.armoire_id;
@@ -1504,22 +1547,25 @@ function updateEditDispo() {
 function saveEditItem(id) {
   const item = db.items.find(i => i.id === id);
   if (!item) return;
-
   const nom = document.getElementById('edit-nom').value.trim();
-  if (!nom) { toast('⚠ Nom requis'); return; }
-
+  if (!nom) { toast('⚠ Désignation requise'); return; }
   const sorties = item.quantite_totale - item.quantite_dispo;
   const newTotal = parseInt(document.getElementById('edit-qty-total').value);
   if (isNaN(newTotal) || newTotal < 0) { toast('⚠ Quantité invalide'); return; }
   if (newTotal < sorties) { toast(`⚠ Total ne peut pas être < sorties en cours (${sorties})`); return; }
-
   const armoireId = document.getElementById('edit-armoire').value;
   const etagere   = document.getElementById('edit-etagere').value.trim();
   const armoire   = db.armoires?.find(a => a.id === armoireId);
-
   item.nom          = nom;
   item.categorie    = document.getElementById('edit-cat').value;
   item.icon         = document.getElementById('edit-icon').value || CAT_ICONS[item.categorie] || '📦';
+  item.num_region   = document.getElementById('edit-num-region').value.trim() || null;
+  item.marque       = document.getElementById('edit-marque').value.trim() || null;
+  item.type_machine = document.getElementById('edit-type').value.trim() || null;
+  item.num_serie    = document.getElementById('edit-serie').value.trim() || null;
+  item.annee        = document.getElementById('edit-annee').value || null;
+  item.ce           = document.getElementById('edit-ce').value || null;
+  item.controle     = document.getElementById('edit-controle').value.trim() || null;
   item.armoire_id   = armoireId || null;
   item.etagere      = etagere || null;
   item.localisation = buildLocalisation(armoire?.nom, etagere);
@@ -1527,7 +1573,6 @@ function saveEditItem(id) {
   item.seuil        = parseInt(document.getElementById('edit-seuil').value) || 2;
   item.quantite_totale = newTotal;
   item.quantite_dispo  = newTotal - sorties;
-
   document.getElementById('edit-overlay').remove();
   document.getElementById('detail-modal').classList.remove('open');
   renderInventory();
@@ -1599,9 +1644,11 @@ function addArmoire() {
   if (db.armoires.find(a => a.nom.toLowerCase() === nom.toLowerCase())) {
     toast('⚠ Une armoire avec ce nom existe déjà'); return;
   }
-  const armoire = { id: 'ARM-' + Date.now(), nom };
+  const emplacement = document.getElementById('new-armoire-emplacement').value.trim();
+  const armoire = { id: 'ARM-' + Date.now(), nom, emplacement: emplacement || null };
   db.armoires.push(armoire);
   document.getElementById('new-armoire-nom').value = '';
+  document.getElementById('new-armoire-emplacement').value = '';
   renderArmoiresList();
   populateArmoireSelects();
   syncGist();
@@ -1994,6 +2041,28 @@ function exportXLSX() {
     wsMv[ref5].s = { fill: { fgColor: { rgb: isOut ? 'FEE2E2' : 'DCFCE7' } }, font: { color: { rgb: isOut ? 'B91C1C' : '15803D' }, bold: true, name: 'Arial', sz: 10 }, border: BORDER };
   });
   XLSX.utils.book_append_sheet(wb, wsMv, 'Historique');
+
+  // ── FEUILLE ARMOIRES ───────────────────────────────────────
+  const armHeaders = ['Désignation', 'Code article', 'Emplacement', 'Nb articles rangés'];
+  const armRows = (db.armoires || []).map(a => {
+    const nbItems = db.items.filter(i => i.armoire_id === a.id).length;
+    return [a.nom, a.id, a.emplacement || '', nbItems];
+  });
+  const wsArm = XLSX.utils.aoa_to_sheet([armHeaders, ...armRows]);
+  wsArm['!cols'] = [{wch:26},{wch:16},{wch:28},{wch:16}];
+  for (let C = 0; C < armHeaders.length; C++) {
+    const ref = XLSX.utils.encode_cell({ r: 0, c: C });
+    if (!wsArm[ref]) continue;
+    wsArm[ref].s = { font: HDR_FONT, fill: { fgColor: { rgb: '1C2333' } }, alignment: CENTER, border: BORDER };
+  }
+  armRows.forEach((_, idx) => {
+    for (let C = 0; C < armHeaders.length; C++) {
+      const ref = XLSX.utils.encode_cell({ r: idx + 1, c: C });
+      if (!wsArm[ref]) wsArm[ref] = { v: '', t: 's' };
+      wsArm[ref].s = { border: BORDER, font: { name: 'Arial', sz: 10 } };
+    }
+  });
+  XLSX.utils.book_append_sheet(wb, wsArm, 'Armoires');
 
   const fname = 'MELEC-Inventaire-' + new Date().toISOString().slice(0,10) + '.xlsx';
   XLSX.writeFile(wb, fname);
