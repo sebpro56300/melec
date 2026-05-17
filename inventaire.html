@@ -1500,6 +1500,8 @@ function deleteItem(id) {
 function editItem(id) {
   const item = db.items.find(i => i.id === id);
   if (!item) return;
+  // Les armoires ont leur propre formulaire d'édition
+  if (item.categorie === 'Armoires') { editArmoire(id); return; }
   const sorties = item.quantite_totale - item.quantite_dispo;
   const overlay = document.createElement('div');
   overlay.id = 'edit-overlay';
