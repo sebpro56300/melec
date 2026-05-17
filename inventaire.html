@@ -377,32 +377,16 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
     <div class="setup-sub">Gestion d'Inventaire</div>
   </div>
   <div class="setup-card">
-    <div class="card-title" style="margin-bottom:16px">⚙ CONFIGURATION GIST</div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>GIST ID (depuis github.com/gist)</label>
-      <input id="cfg-gist-id" type="text" placeholder="abc123def456..." autocomplete="off" spellcheck="false">
-    </div>
-    <div class="form-group" style="margin-bottom:12px">
-      <label>TOKEN ADMIN (lecture+écriture)</label>
+    <div class="card-title" style="margin-bottom:4px">🔐 CONNEXION ADMIN</div>
+    <div style="font-size:11px;color:var(--grey);margin-bottom:14px">Saisissez votre token pour accéder à toutes les fonctions.</div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label>TOKEN ADMIN</label>
       <input id="cfg-token-admin" type="password" placeholder="ghp_xxxxxxxxxxxx">
     </div>
-    <div class="form-group" style="margin-bottom:16px">
-      <label>TOKEN LECTEUR (optionnel — lecture seule)</label>
-      <input id="cfg-token-reader" type="password" placeholder="ghp_xxxxxxxxxxxx (optionnel)">
-    </div>
-    <button class="btn btn-primary btn-full" onclick="saveConfig()">CONNECTER →</button>
-    <div style="margin-top:12px; font-size:11px; color:var(--grey); text-align:center">
-      Pas encore de Gist ?
-      <a href="https://gist.github.com/new" target="_blank" style="color:var(--amber)">Créer sur gist.github.com</a>
-    </div>
-    <div id="reader-url-wrap" style="display:none;margin-top:16px;padding:12px;background:var(--navy4);border-radius:8px">
-      <div style="font-size:11px;color:var(--grey);margin-bottom:6px">🔗 URL LECTURE SEULE (à partager)</div>
-      <div id="reader-url" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);word-break:break-all"></div>
-      <button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%" onclick="copyReaderUrl()">📋 Copier le lien</button>
-    </div>
+    <button class="btn btn-primary btn-full" onclick="saveConfig()">CONNEXION →</button>
+    <button class="btn btn-secondary btn-sm" style="margin-top:10px;width:100%" onclick="loadDemo()">▶ MODE DÉMO</button>
+    <button class="btn btn-secondary btn-sm" style="margin-top:8px;width:100%;color:var(--red);border-color:rgba(239,68,68,0.4)" onclick="clearConfig()">⚠ RÉINITIALISER</button>
   </div>
-  <button class="btn btn-secondary btn-sm" onclick="loadDemo()">▶ MODE DÉMO (sans Gist)</button>
-  <button class="btn btn-secondary btn-sm" style="margin-top:12px;width:100%;color:var(--red);border-color:var(--red)" onclick="clearConfig()">⚠ RÉINITIALISER LA CONFIG</button>
 </div>
 
 <!-- ═══════════════ APP ═══════════════ -->
@@ -704,6 +688,10 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
 //  STATE
 // ═══════════════════════════════════════════════════════════
 const CFG_KEY = 'melec_inv_cfg';
+
+// ⚙ CONFIGURATION — remplacer par votre Gist ID
+const GIST_ID_PUBLIC = '7199f3da76a616c61c7b7780409bf786';
+
 let cfg = {};
 let db = { items: [], mouvements: [] };
 let isAdmin = false;
@@ -731,7 +719,7 @@ const CAT_ICONS = {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  // Un seul mode de démarrage : config en localStorage = admin, sinon écran config
+  // Priorité 1 : token admin mémorisé sur cet appareil → mode admin complet
   const saved = localStorage.getItem(CFG_KEY);
   if (saved) {
     try {
@@ -745,22 +733,24 @@ window.addEventListener('DOMContentLoaded', () => {
       localStorage.removeItem('melec_inv_admin');
     }
   }
-  // Pas de config : écran de configuration
+  // Priorité 2 : Gist ID codé en dur → mode lecteur direct, rien à saisir
+  if (GIST_ID_PUBLIC && GIST_ID_PUBLIC !== 'VOTRE_GIST_ID_ICI') {
+    cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: null, readerMode: true };
+    isAdmin = false;
+    startApp();
+    return;
+  }
+  // Sinon : écran de configuration (premier lancement)
   renderCatChips();
 });
 
 function saveConfig() {
-  cfg = {
-    gistId: document.getElementById('cfg-gist-id').value.trim(),
-    tokenAdmin: document.getElementById('cfg-token-admin').value.trim(),
-    tokenReader: document.getElementById('cfg-token-reader').value.trim(),
-  };
-  if (!cfg.gistId || !cfg.tokenAdmin) { toast('⚠ Gist ID et Token Admin requis'); return; }
+  const token = document.getElementById('cfg-token-admin').value.trim();
+  if (!token) { toast('⚠ Token admin requis'); return; }
+  cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: token, readerMode: false };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  // Affiche l'URL lecteur à partager
-  const readerUrl = window.location.origin + window.location.pathname + '?gist=' + cfg.gistId;
-  document.getElementById('reader-url').textContent = readerUrl;
-  document.getElementById('reader-url-wrap').style.display = 'block';
+  isAdmin = true;
+  localStorage.setItem('melec_inv_admin', '1');
   startApp();
 }
 
@@ -934,12 +924,8 @@ function showAdminLogin() {
   overlay.id = 'admin-login-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:24px';
   overlay.innerHTML = `
-    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:360px;width:100%">
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--amber);margin-bottom:16px">⚙ ACCÈS ADMIN</div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label>GIST ID</label>
-        <input id="login-gist" type="text" placeholder="abc123..." value="${cfg.gistId||''}">
-      </div>
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:320px;width:100%">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--amber);margin-bottom:16px">🔐 ACCÈS ADMIN</div>
       <div class="form-group" style="margin-bottom:16px">
         <label>TOKEN ADMIN</label>
         <input id="login-token" type="password" placeholder="ghp_xxxxxxxxxxxx">
@@ -951,13 +937,13 @@ function showAdminLogin() {
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  setTimeout(() => document.getElementById('login-token')?.focus(), 50);
 }
 
 function loginAsAdmin() {
-  const gistId = document.getElementById('login-gist').value.trim();
-  const token  = document.getElementById('login-token').value.trim();
-  if (!gistId || !token) { toast('⚠ Gist ID et token requis'); return; }
-  cfg = { gistId, tokenAdmin: token, readerMode: false };
+  const token = document.getElementById('login-token').value.trim();
+  if (!token) { toast('⚠ Token requis'); return; }
+  cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: token, readerMode: false };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   localStorage.setItem('melec_inv_admin', '1');
   isAdmin = true;
