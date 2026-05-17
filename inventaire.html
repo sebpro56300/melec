@@ -1080,6 +1080,7 @@ function renderInventory() {
 }
 
 function stockDot(item) {
+  if (item.categorie === 'Armoires') return ''; // pas d'indicateur de stock pour les armoires
   const color = item.quantite_dispo <= 0 ? 'var(--red)' :
                 item.quantite_dispo <= (item.seuil || 2) ? 'var(--amber)' : 'var(--green)';
   const label = item.quantite_dispo <= 0 ? 'Épuisé' :
@@ -1095,8 +1096,8 @@ function itemRow(item) {
       <div class="inv-id">${item.id}</div>
     </td>
     <td class="inv-loc">${item.localisation||'—'}</td>
-    <td class="inv-qty" style="color:${item.quantite_dispo<=0?'var(--red)':item.quantite_dispo<=(item.seuil||2)?'var(--amber)':'var(--green)'}">${item.quantite_dispo}</td>
-    <td class="inv-total">${item.quantite_totale}</td>
+    <td class="inv-qty" style="color:${item.categorie==='Armoires'?'var(--grey)':item.quantite_dispo<=0?'var(--red)':item.quantite_dispo<=(item.seuil||2)?'var(--amber)':'var(--green)'}">${item.categorie==='Armoires'?'—':item.quantite_dispo}</td>
+    <td class="inv-total">${item.categorie==='Armoires'?'':item.quantite_totale}</td>
     <td style="text-align:center">${stockDot(item)}</td>
     <td style="text-align:right;padding-right:6px">
       ${isAdmin ? `<button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px" onclick="event.stopPropagation();openMvModal('${item.id}','out')">↗</button>` : ''}
@@ -1319,8 +1320,8 @@ function renderDashboard() {
   if (!grid) return;
   const total = db.items.length;
   const dispo = db.items.filter(i => i.quantite_dispo > 0).length;
-  const low = db.items.filter(i => i.quantite_dispo > 0 && i.quantite_dispo <= (i.seuil || 2)).length;
-  const zero = db.items.filter(i => i.quantite_dispo <= 0).length;
+  const low = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo > 0 && i.quantite_dispo <= (i.seuil || 2)).length;
+  const zero = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo <= 0).length;
   const mvToday = db.mouvements.filter(m => m.date?.startsWith(new Date().toISOString().slice(0,10))).length;
 
   grid.innerHTML = [
@@ -1331,7 +1332,7 @@ function renderDashboard() {
   ].map(s => `<div class="stat-card"><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
 
   const lowList = document.getElementById('low-stock-list');
-  const lowItems = db.items.filter(i => i.quantite_dispo <= (i.seuil || 2));
+  const lowItems = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo <= (i.seuil || 2));
   lowList.innerHTML = lowItems.length
     ? lowItems.map(item => itemCard(item)).join('')
     : '<div class="empty-state" style="padding:12px; color:var(--green)">✓ Tous les stocks sont OK</div>';
