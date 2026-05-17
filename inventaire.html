@@ -14,7 +14,7 @@
 <!-- QR Generator -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <!-- Excel export (SheetJS) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <!-- PDF export (jsPDF) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -417,7 +417,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
   <!-- PAGE : SCANNER -->
   <div class="page" id="page-scanner">
     <div class="card">
-      <div class="card-title">📷 SCAN QR / BARCODE</div>
+      <div class="card-title">📷 SCAN QR CODE</div>
       <p style="font-size:13px; color:var(--grey); margin-bottom:14px">Scannez un QR code pour enregistrer une entrée ou sortie de matériel.</p>
       <button class="btn btn-primary btn-full" onclick="openScanner()">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect width="7" height="7" x="7" y="7" rx="1"/></svg>
@@ -1283,8 +1283,8 @@ function handleScan(code) {
   document.getElementById('scanner-status').textContent = 'Scanné : ' + code;
   const item = db.items.find(i => i.id === code || i.qr_code === code);
   if (item) {
-    openMvModal(item.id, 'out');
     showPage('scanner', document.querySelector('.nav-btn:nth-child(2)'));
+    openItemDetail(item.id); // fiche complète : sortie + retour + modifier
   } else {
     toast('❓ Code inconnu : ' + code);
     showPage('scanner', document.querySelector('.nav-btn:nth-child(2)'));
@@ -1318,18 +1318,17 @@ function renderLastScans() {
 function renderDashboard() {
   const grid = document.getElementById('stats-grid');
   if (!grid) return;
-  const total = db.items.length;
-  const dispo = db.items.filter(i => i.quantite_dispo > 0).length;
-  const low = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo > 0 && i.quantite_dispo < i.quantite_totale && i.quantite_dispo <= (i.seuil || 2)).length;
-  const zero = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo <= 0).length;
-  const mvToday = db.mouvements.filter(m => m.date?.startsWith(new Date().toISOString().slice(0,10))).length;
+  const dispo    = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo > 0 && !(i.quantite_dispo < i.quantite_totale && i.quantite_dispo <= (i.seuil||2))).length;
+  const low      = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo > 0 && i.quantite_dispo < i.quantite_totale && i.quantite_dispo <= (i.seuil || 2)).length;
+  const zero     = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo <= 0).length;
+  const mvToday  = db.mouvements.filter(m => m.date?.startsWith(new Date().toISOString().slice(0,10))).length;
 
   grid.innerHTML = [
-    { val: total, lbl: 'Articles' },
-    { val: dispo, lbl: 'Disponibles' },
-    { val: low, lbl: 'Stocks bas' },
-    { val: mvToday, lbl: "Mouvements aujourd'hui" },
-  ].map(s => `<div class="stat-card"><div class="stat-val">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
+    { val: dispo,   lbl: 'Disponibles',           color: 'var(--green)' },
+    { val: zero,    lbl: 'Épuisés',                color: 'var(--red)'   },
+    { val: low,     lbl: 'Stocks bas',             color: 'var(--amber)' },
+    { val: mvToday, lbl: "Mouvements aujourd'hui", color: 'var(--amber)' },
+  ].map(s => `<div class="stat-card"><div class="stat-val" style="color:${s.color}">${s.val}</div><div class="stat-lbl">${s.lbl}</div></div>`).join('');
 
   const lowList = document.getElementById('low-stock-list');
   const lowItems = db.items.filter(i => i.categorie !== 'Armoires' && i.quantite_dispo > 0 && i.quantite_dispo < i.quantite_totale && i.quantite_dispo <= (i.seuil || 2));
