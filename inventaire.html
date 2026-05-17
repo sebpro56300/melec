@@ -477,7 +477,6 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
               <option>Systèmes didactiques</option>
               <option>Outils</option>
               <option>Consommable</option>
-              <option>Armoires</option>
             </select>
           </div>
           <div class="form-group">
@@ -690,7 +689,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
 const CFG_KEY = 'melec_inv_cfg';
 
 // ⚙ CONFIGURATION — remplacer par votre Gist ID
-const GIST_ID_PUBLIC = '7199f3da76a616c61c7b7780409bf786';
+const GIST_ID_PUBLIC = 'VOTRE_GIST_ID_ICI';
 
 let cfg = {};
 let db = { items: [], mouvements: [] };
@@ -1504,7 +1503,7 @@ function editItem(id) {
         <div class="form-group">
           <label>CATÉGORIE</label>
           <select id="edit-cat">
-            ${['Appareils de mesure','Systèmes didactiques','Outils','Consommable','Armoires'].map(c =>
+            ${['Appareils de mesure','Systèmes didactiques','Outils','Consommable'].map(c =>
               `<option ${item.categorie===c?'selected':''} >${c}</option>`).join('')}
           </select>
         </div>
@@ -1682,7 +1681,7 @@ function renderArmoiresList() {
   if (!wrap) return;
   const armoires = getArmoires();
   if (!armoires.length) {
-    wrap.innerHTML = '<div style="font-size:12px;color:var(--grey2);padding:8px 0">Aucune armoire créée.<br>Créez des armoires via le formulaire ci-dessous ou via "Nouvel Article" en choisissant la catégorie Armoires.</div>';
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--grey2);padding:8px 0">Aucune armoire créée. Utilisez le formulaire ci-dessous.</div>';
     return;
   }
   wrap.innerHTML = armoires.map(a => {
