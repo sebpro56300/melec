@@ -3,426 +3,196 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MELEC — Gestion TPs & Systèmes</title>
+<title>MELEC — Gestion TPs</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
   :root {
-    --bg: #0d1117;
-    --bg2: #161b24;
-    --bg3: #1e2635;
-    --border: #2a3347;
-    --border2: #3a4a66;
-    --accent: #3b82f6;
-    --accent2: #60a5fa;
-    --green: #22c55e;
-    --orange: #f59e0b;
-    --red: #ef4444;
-    --purple: #a78bfa;
-    --text: #e2e8f0;
-    --text2: #94a3b8;
-    --text3: #64748b;
-    --radius: 10px;
-    --mono: 'DM Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
-    --display: 'Syne', sans-serif;
+    --bg:#0d1117;--bg2:#161b24;--bg3:#1e2635;
+    --border:#2a3347;--border2:#3a4a66;
+    --accent:#3b82f6;--accent2:#60a5fa;
+    --green:#22c55e;--orange:#f59e0b;--red:#ef4444;--purple:#a78bfa;
+    --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+    --radius:10px;
+    --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;
   }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { height: 100%; }
-  body {
-    font-family: var(--sans);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
 
   /* HEADER */
-  header {
-    background: var(--bg2);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    height: 56px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-  }
-  .logo {
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 15px;
-    color: var(--accent2);
-    letter-spacing: 0.05em;
-  }
-  .logo span { color: var(--text3); font-weight: 600; }
-  .header-tabs { display: flex; gap: 2px; margin-left: 20px; }
-  .htab {
-    padding: 6px 14px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    color: var(--text2);
-    border: none;
-    background: none;
-    transition: all 0.15s;
-  }
-  .htab:hover { background: var(--bg3); color: var(--text); }
-  .htab.active { background: var(--accent); color: #fff; }
-  .header-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
-  .gist-status { font-size: 11px; font-family: var(--mono); color: var(--text3); }
-  .gist-status.ok::before { content: "● "; color: var(--green); }
-  .gist-status.err::before { content: "● "; color: var(--red); }
-  .gist-status.loading::before { content: "◌ "; color: var(--orange); }
-  .btn {
-    padding: 7px 14px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all 0.15s;
-    font-family: var(--sans);
-  }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #2563eb; }
-  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
-  .btn-ghost:hover { background: var(--bg3); color: var(--text); }
-  .btn-danger { background: transparent; color: var(--red); border: 1px solid #3f1a1a; }
-  .btn-danger:hover { background: #1f0a0a; }
-  .btn-green { background: var(--green); color: #fff; }
-  .btn-green:hover { background: #16a34a; }
-  .btn-sm { padding: 4px 10px; font-size: 11px; }
+  header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:20px;height:56px;position:sticky;top:0;z-index:100;}
+  .logo{font-family:var(--display);font-weight:800;font-size:15px;color:var(--accent2);letter-spacing:.05em;}
+  .logo span{color:var(--text3);font-weight:600;}
+  .header-tabs{display:flex;gap:2px;margin-left:20px;}
+  .htab{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:none;transition:all .15s;font-family:var(--sans);}
+  .htab:hover{background:var(--bg3);color:var(--text);}
+  .htab.active{background:var(--accent);color:#fff;}
+  .header-right{margin-left:auto;display:flex;gap:10px;align-items:center;}
+  .gist-status{font-size:11px;font-family:var(--mono);color:var(--text3);}
+  .gist-status.ok::before{content:"● ";color:var(--green);}
+  .gist-status.err::before{content:"● ";color:var(--red);}
+  .gist-status.loading::before{content:"◌ ";color:var(--orange);}
+
+  /* BUTTONS */
+  .btn{padding:7px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--sans);}
+  .btn-primary{background:var(--accent);color:#fff;}.btn-primary:hover{background:#2563eb;}
+  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}.btn-ghost:hover{background:var(--bg3);color:var(--text);}
+  .btn-danger{background:transparent;color:var(--red);border:1px solid #3f1a1a;}.btn-danger:hover{background:#1f0a0a;}
+  .btn-sm{padding:4px 10px;font-size:11px;}
 
   /* LAYOUT */
-  .main { flex: 1; display: flex; overflow: hidden; height: calc(100vh - 56px); }
-  .sidebar {
-    width: 280px;
-    border-right: 1px solid var(--border);
-    background: var(--bg2);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-  .sidebar-header {
-    padding: 14px 16px 10px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .sidebar-title { font-family: var(--display); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text2); }
-  .sidebar-list { flex: 1; overflow-y: auto; padding: 8px; }
-  .list-item {
-    padding: 10px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    margin-bottom: 2px;
-    transition: all 0.12s;
-    position: relative;
-  }
-  .list-item:hover { background: var(--bg3); }
-  .list-item.active { background: #1a2540; border-color: var(--accent); }
-  .list-item-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .list-item-meta { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
-  .list-item-badge {
-    position: absolute;
-    top: 10px; right: 10px;
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: var(--mono);
-  }
-  .badge-green { background: #14231a; color: var(--green); }
-  .badge-blue { background: #111f3a; color: var(--accent2); }
-  .badge-orange { background: #251a0a; color: var(--orange); }
-  .badge-purple { background: #1e1632; color: var(--purple); }
+  .main{flex:1;display:flex;overflow:hidden;height:calc(100vh - 56px);}
+  .sidebar{width:280px;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;}
+  .sidebar-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .sidebar-title{font-family:var(--display);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);}
+  .sidebar-filter{padding:8px;border-bottom:1px solid var(--border);}
+  .sidebar-filter input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:12px;font-family:var(--sans);}
+  .sidebar-filter input:focus{outline:none;border-color:var(--accent);}
+  .sidebar-list{flex:1;overflow-y:auto;padding:8px;}
+  .list-item{padding:10px 12px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .12s;position:relative;}
+  .list-item:hover{background:var(--bg3);}
+  .list-item.active{background:#1a2540;border-color:var(--accent);}
+  .list-item-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:44px;}
+  .list-item-meta{font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono);}
+  .list-badge{position:absolute;top:10px;right:10px;font-size:10px;padding:2px 6px;border-radius:4px;font-family:var(--mono);}
+  .b-blue{background:#111f3a;color:var(--accent2);}
+  .b-purple{background:#1e1632;color:var(--purple);}
 
   /* CONTENT */
-  .content { flex: 1; overflow-y: auto; padding: 24px; }
-  .empty-state {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    color: var(--text3);
-  }
-  .empty-icon { font-size: 48px; opacity: 0.4; }
-  .empty-text { font-size: 14px; }
+  .content{flex:1;overflow-y:auto;padding:24px;}
+  .empty-state{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3);}
+  .empty-icon{font-size:48px;opacity:.4;}
 
   /* FORM */
-  .form-card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    margin-bottom: 16px;
+  .form-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+  .form-card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg3);}
+  .form-card-title{font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);}
+  .form-card-body{padding:18px;display:flex;flex-direction:column;gap:14px;}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-group{display:flex;flex-direction:column;gap:6px;}
+  .form-group.full{grid-column:1/-1;}
+  label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);}
+  input[type=text],input[type=url],input[type=number],textarea,select{
+    background:var(--bg);border:1px solid var(--border);border-radius:6px;
+    padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--sans);
+    transition:border-color .15s;width:100%;
   }
-  .form-card-header {
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--bg3);
-  }
-  .form-card-title { font-family: var(--display); font-size: 13px; font-weight: 700; color: var(--text); }
-  .form-card-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  .form-group { display: flex; flex-direction: column; gap: 6px; }
-  .form-group.full { grid-column: 1 / -1; }
-  label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text2); }
-  input[type=text], input[type=url], textarea, select {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 9px 12px;
-    color: var(--text);
-    font-size: 13px;
-    font-family: var(--sans);
-    transition: border-color 0.15s;
-    width: 100%;
-  }
-  input[type=text]:focus, input[type=url]:focus, textarea:focus, select:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  textarea { resize: vertical; min-height: 80px; }
-  select option { background: var(--bg2); }
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);}
+  textarea{resize:vertical;min-height:80px;}
+  select option{background:var(--bg2);}
 
-  /* CHECKBOX GROUP */
-  .checkbox-group { display: flex; gap: 8px; flex-wrap: wrap; }
-  .checkbox-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 10px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.12s;
-    user-select: none;
+  /* NIVEAUX */
+  .niveaux-group{display:flex;gap:8px;flex-wrap:wrap;}
+  .niveau-pill{
+    padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;
+    cursor:pointer;border:2px solid var(--border);color:var(--text2);
+    background:var(--bg);transition:all .15s;user-select:none;
   }
-  .checkbox-item input { display: none; }
-  .checkbox-item.checked { background: #111f3a; border-color: var(--accent); color: var(--accent2); }
-  .checkbox-item .check-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--border2);
-    transition: background 0.12s;
-  }
-  .checkbox-item.checked .check-dot { background: var(--accent); }
+  .niveau-pill:hover{border-color:var(--accent2);color:var(--accent2);}
+  .niveau-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 
-  /* SYSTEMES LIST IN TP */
-  .sys-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 8px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 11px;
-    font-family: var(--mono);
-    color: var(--text2);
-    margin: 2px;
-  }
-  .sys-tag .remove { cursor: pointer; color: var(--text3); font-size: 13px; line-height: 1; }
-  .sys-tag .remove:hover { color: var(--red); }
-  .tags-input-wrap {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 6px 8px;
-    min-height: 42px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 4px;
-    cursor: text;
-  }
-  .tags-input-wrap:focus-within { border-color: var(--accent); }
-  .tags-input-wrap select {
-    border: none;
-    background: transparent;
-    padding: 2px 4px;
-    font-size: 12px;
-    color: var(--text2);
-    flex: 1;
-    min-width: 100px;
-  }
+  /* TAGS */
+  .tags-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;min-height:28px;}
+  .sys-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text2);}
+  .sys-tag .x{cursor:pointer;color:var(--text3);font-size:15px;margin-left:2px;line-height:1;}
+  .sys-tag .x:hover{color:var(--red);}
 
   /* RESSOURCES */
-  .ressource-row {
-    display: grid;
-    grid-template-columns: 100px 1fr auto auto;
-    gap: 8px;
-    align-items: center;
-    padding: 8px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-  }
-  .ressource-list { display: flex; flex-direction: column; gap: 6px; }
-  .icon-btn {
-    background: none;
-    border: none;
-    color: var(--text3);
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    font-size: 14px;
-    line-height: 1;
-  }
-  .icon-btn:hover { color: var(--red); background: #1f0a0a; }
+  .res-row{display:grid;grid-template-columns:105px 1fr 1fr auto;gap:8px;align-items:center;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
+  .res-list{display:flex;flex-direction:column;gap:6px;}
+  .icon-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;border-radius:4px;font-size:14px;}
+  .icon-btn:hover{color:var(--red);background:#1f0a0a;}
 
   /* DETAIL HEADER */
-  .detail-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    gap: 16px;
-  }
-  .detail-title {
-    font-family: var(--display);
-    font-size: 22px;
-    font-weight: 800;
-    color: var(--text);
-    line-height: 1.2;
-  }
-  .detail-id {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text3);
-    margin-top: 4px;
-  }
-  .action-row { display: flex; gap: 8px; flex-shrink: 0; }
+  .detail-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;}
+  .detail-title{font-family:var(--display);font-size:22px;font-weight:800;color:var(--text);line-height:1.2;}
+  .detail-id{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px;}
+  .action-row{display:flex;gap:8px;flex-shrink:0;}
 
   /* QR */
-  .qr-section {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 16px;
-  }
-  #qr-canvas { border-radius: 6px; background: #fff; }
-  .qr-info { flex: 1; }
-  .qr-url {
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--text2);
-    background: var(--bg);
-    padding: 8px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    word-break: break-all;
-    margin-bottom: 10px;
-  }
+  .qr-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;gap:20px;margin-bottom:16px;}
+  .qr-url{font-family:var(--mono);font-size:11px;color:var(--text2);background:var(--bg);padding:8px 12px;border-radius:6px;border:1px solid var(--border);word-break:break-all;margin-bottom:10px;}
+
+  /* STATS */
+  .stats-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .stat-pill{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;text-align:center;}
+  .stat-val{font-family:var(--display);font-size:20px;font-weight:800;color:var(--accent2);}
+  .stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+
+  /* INFO BOX */
+  .info-box{background:var(--bg3);border-left:3px solid var(--orange);padding:12px 16px;border-radius:4px;font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;}
+  .info-box code{background:#111;padding:2px 5px;border-radius:3px;font-family:var(--mono);color:var(--accent2);}
+  .info-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
+  .info-num{background:var(--orange);color:#111;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
 
   /* CONFIG */
-  .config-section {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-  .config-title { font-family: var(--display); font-size: 13px; font-weight: 700; margin-bottom: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; }
+  .config-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
+  .config-title{font-family:var(--display);font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;}
 
   /* TOAST */
-  #toast {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px 18px;
-    font-size: 13px;
-    color: var(--text);
-    z-index: 999;
-    display: none;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  #toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;z-index:999;display:none;box-shadow:0 8px 32px rgba(0,0,0,.4);}
+  #toast.show{display:block;}
+  #toast.success{border-color:var(--green);}
+  #toast.error{border-color:var(--red);}
+
+  .flex-end{display:flex;justify-content:flex-end;gap:8px;}
+  .text-muted{color:var(--text3);font-size:12px;}
+  .mt8{margin-top:8px;}.mt16{margin-top:16px;}
+  ::-webkit-scrollbar{width:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+
+  /* UPLOAD MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:none;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:24px;}
+  .modal-title{font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:18px;color:var(--text);}
+  .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+
+  /* DROP ZONE */
+  .drop-zone{
+    border:2px dashed var(--border2);border-radius:10px;padding:32px;text-align:center;
+    cursor:pointer;transition:all .2s;background:var(--bg);
   }
-  #toast.show { display: block; }
-  #toast.success { border-color: var(--green); }
-  #toast.error { border-color: var(--red); }
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:#111f3a;}
+  .drop-zone .dz-icon{font-size:36px;margin-bottom:8px;}
+  .drop-zone .dz-label{font-size:13px;color:var(--text2);}
+  .drop-zone .dz-sub{font-size:11px;color:var(--text3);margin-top:4px;}
 
-  /* MODAL */
-  .modal-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 200;
-    display: none;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--bg2);
-    border: 1px solid var(--border2);
-    border-radius: 12px;
-    width: 520px;
-    max-width: 95vw;
-    max-height: 90vh;
-    overflow-y: auto;
-    padding: 24px;
-  }
-  .modal-title { font-family: var(--display); font-size: 17px; font-weight: 700; margin-bottom: 18px; }
-  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  /* PROGRESS */
+  .upload-file-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;}
+  .ufi-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .ufi-name{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ufi-size{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;}
+  .ufi-status{font-size:11px;flex-shrink:0;font-family:var(--mono);}
+  .ufi-status.pending{color:var(--text3);}
+  .ufi-status.uploading{color:var(--orange);}
+  .ufi-status.done{color:var(--green);}
+  .ufi-status.error{color:var(--red);}
+  .progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
+  .ufi-url{font-size:10px;font-family:var(--mono);color:var(--accent2);word-break:break-all;margin-top:6px;cursor:pointer;}
+  .ufi-url:hover{text-decoration:underline;}
 
-  /* STATS PILL */
-  .stats-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-  .stat-pill {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 16px;
-    text-align: center;
-  }
-  .stat-val { font-family: var(--display); font-size: 22px; font-weight: 800; color: var(--accent2); }
-  .stat-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  /* RES ROW améliorée */
+  .res-row{display:grid;grid-template-columns:105px 1fr auto auto;gap:8px;align-items:center;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
+  .res-url-wrap{display:flex;align-items:center;gap:6px;}
+  .res-url-wrap input{flex:1;min-width:0;}
+  .btn-upload-inline{flex-shrink:0;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap;}
+  .btn-upload-inline:hover{border-color:var(--accent);color:var(--accent2);}
 
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-  .sep { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
-  .text-muted { color: var(--text3); font-size: 12px; }
-  .mt8 { margin-top: 8px; }
-  .flex-end { display: flex; justify-content: flex-end; gap: 8px; }
-
-  /* PRINT */
-  @media print {
-    body { background: white; }
-    header, .sidebar, .action-row { display: none !important; }
-    .qr-section { border: 1px solid #ccc; }
-    #qr-canvas { border: 1px solid #ddd; }
-    .content { padding: 0; }
-    .form-card { display: none; }
+  @media print{
+    body{background:#fff;color:#000;}
+    header,.sidebar,.action-row,.form-card,.stats-row{display:none!important;}
+    .qr-section{border:1px solid #ccc;background:#fff;color:#000;}
+    .content{padding:0;}
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">MELEC <span>/ Admin TP</span></div>
+  <div class="logo">MELEC <span>/ Gestion TPs</span></div>
   <div class="header-tabs">
     <button class="htab active" onclick="switchTab('systemes')">🖥️ Systèmes</button>
     <button class="htab" onclick="switchTab('tps')">🔬 TPs</button>
@@ -430,321 +200,272 @@
   </div>
   <div class="header-right">
     <span class="gist-status loading" id="gist-status">non connecté</span>
-    <button class="btn btn-ghost btn-sm" onclick="syncGist()">↑ Sauvegarder</button>
+    <button class="btn btn-ghost btn-sm" onclick="syncGist()">↑ Sauvegarder TPs</button>
   </div>
 </header>
 
 <div class="main">
-
-  <!-- SIDEBAR SYSTEMES -->
-  <div class="sidebar" id="sidebar-systemes">
+  <div class="sidebar" id="sb-systemes">
     <div class="sidebar-header">
       <span class="sidebar-title">Systèmes</span>
-      <button class="btn btn-primary btn-sm" onclick="newSysteme()">+ Nouveau</button>
     </div>
-    <div class="sidebar-list" id="list-systemes"></div>
+    <div class="sidebar-filter">
+      <input type="text" id="f-sys" placeholder="Rechercher..." oninput="renderSys(this.value)">
+    </div>
+    <div class="sidebar-list" id="list-sys">
+      <div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">Chargement inventaire...</div>
+    </div>
   </div>
 
-  <!-- SIDEBAR TPS -->
-  <div class="sidebar" id="sidebar-tps" style="display:none">
+  <div class="sidebar" id="sb-tps" style="display:none">
     <div class="sidebar-header">
       <span class="sidebar-title">TPs</span>
-      <button class="btn btn-primary btn-sm" onclick="newTP()">+ Nouveau</button>
+      <button class="btn btn-primary btn-sm" onclick="newTP(null)">+ Nouveau</button>
+    </div>
+    <div class="sidebar-filter">
+      <input type="text" id="f-tp" placeholder="Rechercher..." oninput="renderTPs(this.value)">
     </div>
     <div class="sidebar-list" id="list-tps"></div>
   </div>
 
-  <!-- CONTENT -->
   <div class="content" id="content">
     <div class="empty-state">
       <div class="empty-icon">🔌</div>
-      <div class="empty-text">Sélectionnez un élément ou créez-en un nouveau</div>
+      <div style="font-size:14px;color:var(--text3);">Configurez le Gist (onglet Config) puis sélectionnez un système</div>
     </div>
   </div>
 </div>
 
-<!-- TOAST -->
 <div id="toast"></div>
 
-<!-- MODAL CONFIG -->
-<div class="modal-overlay" id="modal-config">
+<!-- MODAL UPLOAD -->
+<div class="modal-overlay" id="upload-modal">
   <div class="modal">
-    <div class="modal-title">⚙️ Configuration Gist</div>
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div class="form-group">
-        <label>Token GitHub (Personal Access Token)</label>
-        <input type="text" id="cfg-token" placeholder="ghp_xxxxxxxxxxxx">
-        <div class="text-muted mt8">Permissions requises : <code>gist</code> (read + write)</div>
-      </div>
-      <div class="form-group">
-        <label>ID du Gist</label>
-        <input type="text" id="cfg-gist-id" placeholder="abc123def456...">
-      </div>
-      <div class="form-group">
-        <label>URL de base de l'app élève</label>
-        <input type="text" id="cfg-app-url" placeholder="https://exemple.github.io/melec-eleve.html">
-        <div class="text-muted mt8">Le QR code sera généré avec : [URL]?sys=[ID_SYSTEME]</div>
-      </div>
+    <div class="modal-title">📦 Uploader une ressource</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">
+      Fichiers uploadés sur <strong style="color:var(--accent2);">GitHub Releases</strong> — accessibles publiquement depuis n'importe quel réseau (mobile, lycée, domicile).
     </div>
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
+      <div class="dz-icon">📂</div>
+      <div class="dz-label">Cliquez ou glissez vos fichiers ici</div>
+      <div class="dz-sub">PDF · Word · Excel · JPEG · PNG · TXT · max 100 Mo/fichier</div>
+    </div>
+    <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" style="display:none" onchange="filesSelected(this.files)">
+
+    <!-- Liste fichiers -->
+    <div id="upload-list" style="margin-top:14px;"></div>
+
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modal-config')">Annuler</button>
-      <button class="btn btn-primary" onclick="saveConfig()">Enregistrer</button>
+      <button class="btn btn-ghost" onclick="closeUploadModal()">Fermer</button>
+      <button class="btn btn-primary" id="btn-do-upload" onclick="runUploads()" disabled>⬆️ Uploader</button>
     </div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-// ============================================================
-// STATE
-// ============================================================
-let state = {
-  systemes: [],
-  tps: [],
-  currentTab: 'systemes',
-  selectedSysteme: null,
-  selectedTP: null,
-  dirty: false
-};
+// ═══════════════════════════════════════════════════════════════
+// CONFIG & STATE
+// ═══════════════════════════════════════════════════════════════
+const INV_GIST_ID   = '7199f3da76a616c61c7b7780409bf786';
+const INV_FILE_NAME = 'melec-inventaire.json';
 
-let config = {
-  token: '',
-  gistId: '',
-  appUrl: ''
-};
+let inventory = [];
+let tps       = [];
+let selSys    = null;
+let selTP     = null;
+let cfg = { token:'', tpGistId:'', appUrl:'' };
 
-// ============================================================
+// ═══════════════════════════════════════════════════════════════
 // INIT
-// ============================================================
+// ═══════════════════════════════════════════════════════════════
 function init() {
-  // Load config from localStorage
-  const saved = localStorage.getItem('melec_tp_config');
-  if (saved) {
-    config = JSON.parse(saved);
-    document.getElementById('cfg-token').value = config.token || '';
-    document.getElementById('cfg-gist-id').value = config.gistId || '';
-    document.getElementById('cfg-app-url').value = config.appUrl || '';
-  }
-
-  // Load local data
-  const localData = localStorage.getItem('melec_tp_data');
-  if (localData) {
-    const d = JSON.parse(localData);
-    state.systemes = d.systemes || [];
-    state.tps = d.tps || [];
-  }
-
-  renderSidebars();
-
-  // Try to connect to Gist
-  if (config.token && config.gistId) {
-    loadGist();
-  } else {
-    setGistStatus('err', 'Config manquante');
-  }
+  const c = localStorage.getItem('melec_tp_cfg');
+  if (c) cfg = Object.assign(cfg, JSON.parse(c));
+  const t = localStorage.getItem('melec_tps');
+  if (t) { try { tps = JSON.parse(t); } catch(e){} }
+  loadInventaire();
+  if (cfg.token && cfg.tpGistId) loadTPs();
 }
 
-// ============================================================
+// ═══════════════════════════════════════════════════════════════
 // TABS
-// ============================================================
+// ═══════════════════════════════════════════════════════════════
 function switchTab(tab) {
-  state.currentTab = tab;
-  document.querySelectorAll('.htab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.htab')[['systemes','tps','config'].indexOf(tab)].classList.add('active');
+  ['systemes','tps','config'].forEach((t,i) => {
+    document.querySelectorAll('.htab')[i].classList.toggle('active', t===tab);
+  });
+  document.getElementById('sb-systemes').style.display = tab==='systemes' ? 'flex':'none';
+  document.getElementById('sb-tps').style.display      = tab==='tps'      ? 'flex':'none';
+  if (tab==='config') showConfig(); else showEmpty();
+}
 
-  document.getElementById('sidebar-systemes').style.display = tab === 'systemes' ? 'flex' : 'none';
-  document.getElementById('sidebar-tps').style.display = tab === 'tps' ? 'flex' : 'none';
-
-  if (tab === 'config') {
-    showConfigPanel();
-  } else {
-    showEmpty();
+// ═══════════════════════════════════════════════════════════════
+// GIST — INVENTAIRE (lecture seule)
+// ═══════════════════════════════════════════════════════════════
+async function loadInventaire() {
+  setStatus('loading','Chargement...');
+  try {
+    const h = cfg.token ? { Authorization:`token ${cfg.token}` } : {};
+    const r = await fetch(`https://api.github.com/gists/${INV_GIST_ID}`, { headers:h });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    const raw = d.files[INV_FILE_NAME]?.content;
+    if (!raw) throw new Error('Fichier inventaire introuvable');
+    const parsed = JSON.parse(raw);
+    inventory = parsed.items || [];
+    renderSys();
+    setStatus('ok','Inventaire OK');
+    toast('Inventaire chargé — '+inventory.length+' items','success');
+  } catch(e) {
+    setStatus('err','Err. inventaire');
+    toast('Inventaire : '+e.message,'error');
+    renderSys();
   }
 }
 
-// ============================================================
-// GIST
-// ============================================================
-function setGistStatus(status, msg) {
-  const el = document.getElementById('gist-status');
-  el.className = 'gist-status ' + status;
-  el.textContent = msg;
-}
-
-async function loadGist() {
-  setGistStatus('loading', 'Connexion...');
+// ═══════════════════════════════════════════════════════════════
+// GIST — TPs (lecture / écriture)
+// ═══════════════════════════════════════════════════════════════
+async function loadTPs() {
+  if (!cfg.token || !cfg.tpGistId) return;
   try {
-    const res = await fetch(`https://api.github.com/gists/${config.gistId}`, {
-      headers: { Authorization: `token ${config.token}` }
+    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, {
+      headers:{ Authorization:`token ${cfg.token}` }
     });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = await res.json();
-
-    if (data.files['systemes.json']) {
-      state.systemes = JSON.parse(data.files['systemes.json'].content);
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    if (d.files['tps.json']) {
+      tps = JSON.parse(d.files['tps.json'].content);
+      saveLocal();
     }
-    if (data.files['tps.json']) {
-      state.tps = JSON.parse(data.files['tps.json'].content);
-    }
-    setGistStatus('ok', 'Connecté');
-    saveLocal();
-    renderSidebars();
-    toast('Données chargées depuis GitHub', 'success');
+    renderTPs();
+    toast('TPs chargés ('+tps.length+')','success');
   } catch(e) {
-    setGistStatus('err', 'Erreur: ' + e.message);
-    toast('Impossible de charger le Gist : ' + e.message, 'error');
+    toast('TPs : '+e.message,'error');
   }
 }
 
 async function syncGist() {
-  if (!config.token || !config.gistId) {
-    toast('Configurez le Gist d\'abord (onglet Config)', 'error');
+  if (!cfg.token||!cfg.tpGistId) { toast('Configurez le Gist TP (onglet Config)','error'); return; }
+  setStatus('loading','Sauvegarde...');
+  try {
+    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, {
+      method:'PATCH',
+      headers:{ Authorization:`token ${cfg.token}`,'Content-Type':'application/json' },
+      body: JSON.stringify({ files:{ 'tps.json':{ content:JSON.stringify(tps,null,2) } } })
+    });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    setStatus('ok','Sauvegardé');
+    saveLocal();
+    toast('TPs sauvegardés ✓','success');
+  } catch(e) {
+    setStatus('err','Err. sync');
+    toast('Erreur : '+e.message,'error');
+  }
+}
+
+function saveLocal() { localStorage.setItem('melec_tps', JSON.stringify(tps)); }
+function setStatus(cls,msg) {
+  const el=document.getElementById('gist-status');
+  el.className='gist-status '+cls; el.textContent=msg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS INVENTAIRE
+// ═══════════════════════════════════════════════════════════════
+function byCat(cat) { return inventory.filter(i=>i.categorie===cat); }
+const getSystems     = ()=>byCat('Systèmes didactiques');
+const getArmoires    = ()=>byCat('Armoires');
+const getMesure      = ()=>byCat('Appareils de mesure');
+const getAppareillage= ()=>byCat('Appareillage');
+const getOutils      = ()=>byCat('Outils');
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER SIDEBARS
+// ═══════════════════════════════════════════════════════════════
+function renderSys(filter='') {
+  const f=(filter||'').toLowerCase();
+  const list=getSystems().filter(s=>!f||s.nom.toLowerCase().includes(f));
+  const el=document.getElementById('list-sys');
+  if (!list.length) {
+    el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">'
+      +(inventory.length?'Aucun système trouvé':'Inventaire non chargé')+'</div>';
     return;
   }
-  setGistStatus('loading', 'Sauvegarde...');
-  try {
-    const res = await fetch(`https://api.github.com/gists/${config.gistId}`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `token ${config.token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        files: {
-          'systemes.json': { content: JSON.stringify(state.systemes, null, 2) },
-          'tps.json': { content: JSON.stringify(state.tps, null, 2) }
-        }
-      })
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    setGistStatus('ok', 'Sauvegardé');
-    state.dirty = false;
-    saveLocal();
-    toast('Sauvegardé sur GitHub ✓', 'success');
-  } catch(e) {
-    setGistStatus('err', 'Erreur sync');
-    toast('Erreur de sauvegarde : ' + e.message, 'error');
+  el.innerHTML=list.map(s=>{
+    const n=tps.filter(t=>(t.systemes||[]).includes(s.id)).length;
+    return `<div class="list-item${selSys===s.id?' active':''}" onclick="selectSys('${s.id}')">
+      <div class="list-item-name">${esc(s.nom)}</div>
+      <div class="list-item-meta">${s.id} · ${esc(s.localisation||'—')}</div>
+      <span class="list-badge b-blue">${n} TP${n!==1?'s':''}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTPs(filter='') {
+  const f=(filter||'').toLowerCase();
+  const list=tps.filter(t=>!f||(t.titre||'').toLowerCase().includes(f));
+  const el=document.getElementById('list-tps');
+  if (!list.length) {
+    el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">Aucun TP — créez-en un →</div>';
+    return;
   }
+  el.innerHTML=list.map(tp=>{
+    const niv=(tp.niveaux||[]).join(', ')||'—';
+    const res=(tp.ressources||[]).length;
+    return `<div class="list-item${selTP===tp.id?' active':''}" onclick="selectTP('${tp.id}')">
+      <div class="list-item-name">${esc(tp.titre||'(sans titre)')}</div>
+      <div class="list-item-meta">${tp.id} · ${niv}</div>
+      <span class="list-badge b-purple">${res} res.</span>
+    </div>`;
+  }).join('');
 }
 
-function saveLocal() {
-  localStorage.setItem('melec_tp_data', JSON.stringify({ systemes: state.systemes, tps: state.tps }));
+// ═══════════════════════════════════════════════════════════════
+// SYSTÈMES — affichage détail
+// ═══════════════════════════════════════════════════════════════
+function selectSys(id) {
+  selSys=id;
+  renderSys(document.getElementById('f-sys').value);
+  showSysDetail(id);
 }
 
-function markDirty() {
-  state.dirty = true;
-  saveLocal();
-}
-
-// ============================================================
-// IDs
-// ============================================================
-function genId(prefix) {
-  return prefix + Date.now().toString(36).toUpperCase();
-}
-
-// ============================================================
-// RENDER SIDEBARS
-// ============================================================
-function renderSidebars() {
-  // Systèmes
-  const ls = document.getElementById('list-systemes');
-  ls.innerHTML = '';
-  state.systemes.forEach(s => {
-    const tpCount = state.tps.filter(t => t.systemes && t.systemes.includes(s.id)).length;
-    const div = document.createElement('div');
-    div.className = 'list-item' + (state.selectedSysteme === s.id ? ' active' : '');
-    div.innerHTML = `
-      <div class="list-item-name">${s.nom || '(sans nom)'}</div>
-      <div class="list-item-meta">${s.id}</div>
-      <span class="list-item-badge badge-blue">${tpCount} TP${tpCount>1?'s':''}</span>
-    `;
-    div.onclick = () => selectSysteme(s.id);
-    ls.appendChild(div);
-  });
-  if (!state.systemes.length) {
-    ls.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">Aucun système</div>';
-  }
-
-  // TPs
-  const lt = document.getElementById('list-tps');
-  lt.innerHTML = '';
-  state.tps.forEach(tp => {
-    const niveaux = (tp.niveaux || []).join(', ');
-    const div = document.createElement('div');
-    div.className = 'list-item' + (state.selectedTP === tp.id ? ' active' : '');
-    div.innerHTML = `
-      <div class="list-item-name">${tp.titre || '(sans titre)'}</div>
-      <div class="list-item-meta">${tp.id} · ${niveaux}</div>
-      <span class="list-item-badge badge-purple">${(tp.ressources||[]).length} res.</span>
-    `;
-    div.onclick = () => selectTP(tp.id);
-    lt.appendChild(div);
-  });
-  if (!state.tps.length) {
-    lt.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">Aucun TP</div>';
-  }
-}
-
-// ============================================================
-// SYSTEMES
-// ============================================================
-function newSysteme() {
-  const s = {
-    id: genId('SYS'),
-    nom: '',
-    description: '',
-    localisation: '',
-    image_url: ''
-  };
-  state.systemes.push(s);
-  state.selectedSysteme = s.id;
-  markDirty();
-  renderSidebars();
-  showSystemeForm(s.id);
-}
-
-function selectSysteme(id) {
-  state.selectedSysteme = id;
-  renderSidebars();
-  showSystemeForm(id);
-}
-
-function showSystemeForm(id) {
-  const s = state.systemes.find(x => x.id === id);
+function showSysDetail(id) {
+  const s=inventory.find(x=>x.id===id);
   if (!s) return;
+  const appUrl=cfg.appUrl||'https://[url-app-eleve]';
+  const qrVal=s.qr_code||s.id;
+  const qrUrl=`${appUrl}?sys=${qrVal}`;
+  const linked=tps.filter(t=>(t.systemes||[]).includes(id));
 
-  const tpCount = state.tps.filter(t => (t.systemes||[]).includes(id)).length;
-  const appUrl = config.appUrl || 'https://[app-eleve-url]';
-  const qrUrl = `${appUrl}?sys=${id}`;
-
-  document.getElementById('content').innerHTML = `
+  document.getElementById('content').innerHTML=`
     <div class="detail-header">
       <div>
-        <div class="detail-title" id="sys-title-disp">${s.nom || 'Nouveau système'}</div>
-        <div class="detail-id">${s.id}</div>
+        <div class="detail-title">${esc(s.nom)}</div>
+        <div class="detail-id">${s.id} · QR: ${qrVal} · ${esc(s.categorie)}</div>
       </div>
       <div class="action-row">
-        <button class="btn btn-ghost btn-sm" onclick="saveSysteme('${id}')">💾 Enregistrer</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteSysteme('${id}')">Supprimer</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimer QR</button>
       </div>
     </div>
 
     <div class="stats-row">
-      <div class="stat-pill"><div class="stat-val">${tpCount}</div><div class="stat-lbl">TPs liés</div></div>
-      <div class="stat-pill"><div class="stat-val">${(s.localisation||'—')}</div><div class="stat-lbl">Armoire</div></div>
+      <div class="stat-pill"><div class="stat-val">${linked.length}</div><div class="stat-lbl">TPs liés</div></div>
+      <div class="stat-pill"><div class="stat-val">${esc(s.localisation||'—')}</div><div class="stat-lbl">Localisation</div></div>
+      <div class="stat-pill"><div class="stat-val">${s.quantite_dispo}/${s.quantite_totale}</div><div class="stat-lbl">Dispo</div></div>
     </div>
 
-    <!-- QR CODE -->
     <div class="qr-section">
-      <div>
-        <canvas id="qr-canvas" width="120" height="120"></canvas>
-      </div>
-      <div class="qr-info">
-        <div style="font-family:var(--display);font-size:13px;font-weight:700;margin-bottom:8px;">QR Code système</div>
+      <canvas id="qr-cv" width="130" height="130" style="border-radius:6px;background:#fff;"></canvas>
+      <div style="flex:1;">
+        <div style="font-family:var(--display);font-size:13px;font-weight:700;margin-bottom:8px;">QR Code — ${esc(s.nom)}</div>
         <div class="qr-url">${qrUrl}</div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-ghost btn-sm" onclick="copyUrl('${qrUrl}')">Copier l'URL</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyTxt('${qrUrl}')">Copier URL</button>
           <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimer</button>
         </div>
       </div>
@@ -752,461 +473,624 @@ function showSystemeForm(id) {
 
     <div class="form-card">
       <div class="form-card-header">
-        <span>🖥️</span>
-        <span class="form-card-title">Informations du système</span>
+        <span>🔬</span><span class="form-card-title">TPs rattachés</span>
+        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="newTP('${id}')">+ Créer un TP lié</button>
       </div>
+      <div class="form-card-body">
+        ${linked.length ? linked.map(tp=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+            <div>
+              <div style="font-size:13px;font-weight:500;">${esc(tp.titre||'(sans titre)')}</div>
+              <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${tp.id} · ${(tp.niveaux||[]).join(', ')||'—'} · ${tp.duree_h||'?'}h</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="switchTab('tps');selectTP('${tp.id}')">Ouvrir →</button>
+          </div>`).join('')
+        : '<div class="text-muted">Aucun TP lié. Créez-en un ou associez un TP existant depuis l\'onglet TPs.</div>'}
+      </div>
+    </div>
+  `;
+
+  setTimeout(()=>{
+    try { QRCode.toCanvas(document.getElementById('qr-cv'),qrUrl,{width:130,margin:1,color:{dark:'#000',light:'#fff'}}); }
+    catch(e){}
+  },60);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TPs — CRUD
+// ═══════════════════════════════════════════════════════════════
+function genTPId() { return 'TP'+Date.now().toString(36).toUpperCase(); }
+
+function newTP(preSys) {
+  const tp={ id:genTPId(), titre:'', description:'', objectifs:'', niveaux:[], systemes:preSys?[preSys]:[], duree_h:2, ressources:[] };
+  tps.push(tp); selTP=tp.id;
+  saveLocal(); renderTPs();
+  switchTab('tps');
+  showTPForm(tp.id);
+}
+
+function selectTP(id) {
+  selTP=id;
+  switchTab('tps');
+  renderTPs(document.getElementById('f-tp').value);
+  showTPForm(id);
+}
+
+function showTPForm(id) {
+  const tp=tps.find(x=>x.id===id);
+  if (!tp) return;
+  const NIVEAUX=['2nde','1ère','Terminale'];
+  const systems=getSystems();
+
+  document.getElementById('content').innerHTML=`
+    <div class="detail-header">
+      <div>
+        <div class="detail-title" id="tp-th">${esc(tp.titre||'Nouveau TP')}</div>
+        <div class="detail-id">${tp.id}</div>
+      </div>
+      <div class="action-row">
+        <button class="btn btn-ghost btn-sm" onclick="saveTP('${id}')">💾 Enregistrer</button>
+        <button class="btn btn-danger btn-sm" onclick="delTP('${id}')">Supprimer</button>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-card-header"><span>🔬</span><span class="form-card-title">Informations</span></div>
       <div class="form-card-body">
         <div class="form-row">
           <div class="form-group">
-            <label>Nom du système</label>
-            <input type="text" id="sys-nom" value="${esc(s.nom)}" placeholder="Ex: Maquette domotique BTS">
+            <label>Titre du TP</label>
+            <input type="text" id="tp-titre" value="${esc(tp.titre)}" placeholder="Ex: Câblage d'un circuit de puissance"
+              oninput="document.getElementById('tp-th').textContent=this.value||'Nouveau TP'">
           </div>
           <div class="form-group">
-            <label>Localisation / Armoire</label>
-            <input type="text" id="sys-loc" value="${esc(s.localisation)}" placeholder="Ex: Armoire B3">
+            <label>Durée (heures)</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="number" id="tp-duree" value="${tp.duree_h||2}" min="0.5" max="20" step="0.5" style="max-width:100px;">
+              <span style="font-size:12px;color:var(--text3);">h</span>
+            </div>
           </div>
         </div>
+
+        <div class="form-group full">
+          <label>Niveaux concernés</label>
+          <div class="niveaux-group" id="niv-grp">
+            ${NIVEAUX.map(n=>`<div class="niveau-pill${(tp.niveaux||[]).includes(n)?' on':''}" onclick="this.classList.toggle('on')">${n}</div>`).join('')}
+          </div>
+        </div>
+
+        <div class="form-group full">
+          <label>Systèmes didactiques associés</label>
+          <div class="tags-wrap" id="sys-tags">
+            ${(tp.systemes||[]).map(sid=>{
+              const s=inventory.find(x=>x.id===sid);
+              return `<span class="sys-tag">${esc(s?s.nom:sid)}<span class="x" onclick="rmSys('${id}','${sid}')">×</span></span>`;
+            }).join('')}
+          </div>
+          <select onchange="addSys('${id}',this)">
+            <option value="">+ Associer un système...</option>
+            ${systems.filter(s=>!(tp.systemes||[]).includes(s.id)).map(s=>
+              `<option value="${s.id}">${esc(s.nom)} (${s.id})</option>`
+            ).join('')}
+          </select>
+        </div>
+
         <div class="form-group full">
           <label>Description</label>
-          <textarea id="sys-desc" placeholder="Description du système...">${esc(s.description)}</textarea>
+          <textarea id="tp-desc" placeholder="Description générale...">${esc(tp.description||'')}</textarea>
         </div>
         <div class="form-group full">
-          <label>URL image (optionnel)</label>
-          <input type="url" id="sys-img" value="${esc(s.image_url||'')}" placeholder="https://...">
+          <label>Objectifs pédagogiques</label>
+          <textarea id="tp-obj" placeholder="À l'issue du TP, l'élève sera capable de...">${esc(tp.objectifs||'')}</textarea>
         </div>
       </div>
     </div>
 
     <div class="form-card">
       <div class="form-card-header">
-        <span>🔬</span>
-        <span class="form-card-title">TPs rattachés à ce système</span>
+        <span>📄</span><span class="form-card-title">Ressources</span>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="showUploadHelp()">❓ Où stocker les fichiers ?</button>
       </div>
-      <div class="form-card-body" id="sys-tps-list">
-        ${renderSystemeTPs(id)}
-      </div>
-    </div>
-
-    <div class="flex-end">
-      <button class="btn btn-primary" onclick="saveSysteme('${id}')">💾 Enregistrer les modifications</button>
-    </div>
-  `;
-
-  // Generate QR
-  setTimeout(() => {
-    try {
-      const canvas = document.getElementById('qr-canvas');
-      QRCode.toCanvas(canvas, qrUrl, { width: 120, margin: 1, color: { dark: '#000000', light: '#ffffff' } });
-    } catch(e) {}
-  }, 50);
-}
-
-function renderSystemeTPs(sysId) {
-  const linked = state.tps.filter(t => (t.systemes||[]).includes(sysId));
-  if (!linked.length) return '<div class="text-muted">Aucun TP lié. Créez des TPs dans l\'onglet TPs et associez-les à ce système.</div>';
-  return linked.map(tp => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
-      <div>
-        <div style="font-size:13px;font-weight:500;">${esc(tp.titre)}</div>
-        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${tp.id} · ${(tp.niveaux||[]).join(', ')}</div>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="switchTab('tps');selectTP('${tp.id}')">Ouvrir →</button>
-    </div>
-  `).join('');
-}
-
-function saveSysteme(id) {
-  const s = state.systemes.find(x => x.id === id);
-  if (!s) return;
-  s.nom = document.getElementById('sys-nom').value;
-  s.localisation = document.getElementById('sys-loc').value;
-  s.description = document.getElementById('sys-desc').value;
-  s.image_url = document.getElementById('sys-img').value;
-  markDirty();
-  renderSidebars();
-  document.getElementById('sys-title-disp').textContent = s.nom || 'Nouveau système';
-  toast('Système sauvegardé localement', 'success');
-}
-
-function deleteSysteme(id) {
-  if (!confirm('Supprimer ce système ? Les TPs liés ne seront pas supprimés.')) return;
-  state.systemes = state.systemes.filter(x => x.id !== id);
-  // Remove from TPs
-  state.tps.forEach(tp => {
-    tp.systemes = (tp.systemes||[]).filter(s => s !== id);
-  });
-  state.selectedSysteme = null;
-  markDirty();
-  renderSidebars();
-  showEmpty();
-  toast('Système supprimé', 'success');
-}
-
-// ============================================================
-// TPs
-// ============================================================
-function newTP() {
-  const tp = {
-    id: genId('TP'),
-    titre: '',
-    description: '',
-    objectifs: '',
-    niveaux: [],
-    systemes: [],
-    duree_min: 60,
-    ressources: []
-  };
-  state.tps.push(tp);
-  state.selectedTP = tp.id;
-  markDirty();
-  renderSidebars();
-  showTPForm(tp.id);
-}
-
-function selectTP(id) {
-  state.selectedTP = id;
-  switchTab('tps');
-  renderSidebars();
-  showTPForm(id);
-}
-
-function showTPForm(id) {
-  const tp = state.tps.find(x => x.id === id);
-  if (!tp) return;
-  const niveaux = ['2nde', '1ère', 'Terminale'];
-
-  document.getElementById('content').innerHTML = `
-    <div class="detail-header">
-      <div>
-        <div class="detail-title">${esc(tp.titre) || 'Nouveau TP'}</div>
-        <div class="detail-id">${tp.id}</div>
-      </div>
-      <div class="action-row">
-        <button class="btn btn-ghost btn-sm" onclick="saveTP('${id}')">💾 Enregistrer</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteTP('${id}')">Supprimer</button>
-      </div>
-    </div>
-
-    <div class="form-card">
-      <div class="form-card-header"><span>🔬</span><span class="form-card-title">Informations du TP</span></div>
       <div class="form-card-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Titre du TP</label>
-            <input type="text" id="tp-titre" value="${esc(tp.titre)}" placeholder="Ex: Câblage d'un circuit de puissance">
-          </div>
-          <div class="form-group">
-            <label>Durée (minutes)</label>
-            <input type="text" id="tp-duree" value="${tp.duree_min||60}" placeholder="60">
-          </div>
+        <div class="res-list" id="res-list">
+          ${(tp.ressources||[]).map((r,i)=>resRow(r,i,id)).join('')}
         </div>
-        <div class="form-group full">
-          <label>Niveaux concernés</label>
-          <div class="checkbox-group" id="niveaux-group">
-            ${niveaux.map(n => `
-              <label class="checkbox-item ${(tp.niveaux||[]).includes(n) ? 'checked' : ''}" onclick="toggleNiveau(this,'${n}')">
-                <input type="checkbox" ${(tp.niveaux||[]).includes(n) ? 'checked' : ''}>
-                <div class="check-dot"></div>
-                ${n}
-              </label>
-            `).join('')}
-          </div>
-        </div>
-        <div class="form-group full">
-          <label>Systèmes didactiques associés</label>
-          <div id="sys-tags-container" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
-            ${(tp.systemes||[]).map(sid => {
-              const s = state.systemes.find(x => x.id === sid);
-              return `<span class="sys-tag">${esc(s?s.nom:sid)} <span class="remove" onclick="removeSysTag('${id}','${sid}')">×</span></span>`;
-            }).join('')}
-          </div>
-          <select id="sys-add-select" onchange="addSysTag('${id}', this)">
-            <option value="">+ Associer un système...</option>
-            ${state.systemes.filter(s => !(tp.systemes||[]).includes(s.id)).map(s =>
-              `<option value="${s.id}">${esc(s.nom)} (${s.id})</option>`
-            ).join('')}
-          </select>
-        </div>
-        <div class="form-group full">
-          <label>Description</label>
-          <textarea id="tp-desc" placeholder="Description du TP...">${esc(tp.description||'')}</textarea>
-        </div>
-        <div class="form-group full">
-          <label>Objectifs pédagogiques</label>
-          <textarea id="tp-obj" placeholder="Objectifs...">${esc(tp.objectifs||'')}</textarea>
-        </div>
+        <button class="btn btn-ghost btn-sm mt8" onclick="addRes('${id}')">+ Ajouter une ressource</button>
       </div>
     </div>
 
-    <div class="form-card">
-      <div class="form-card-header"><span>📄</span><span class="form-card-title">Ressources</span></div>
-      <div class="form-card-body">
-        <div class="ressource-list" id="ressource-list">
-          ${(tp.ressources||[]).map((r,i) => renderRessource(r,i,id)).join('')}
-        </div>
-        <button class="btn btn-ghost btn-sm mt8" onclick="addRessource('${id}')">+ Ajouter une ressource</button>
-      </div>
-    </div>
-
-    <div class="flex-end">
+    <div class="flex-end mt8">
       <button class="btn btn-primary" onclick="saveTP('${id}')">💾 Enregistrer les modifications</button>
     </div>
   `;
 }
 
-function renderRessource(r, i, tpId) {
-  return `
-    <div class="ressource-row" id="res-row-${i}">
-      <select id="res-type-${i}">
-        <option value="pdf" ${r.type==='pdf'?'selected':''}>📄 PDF</option>
-        <option value="video" ${r.type==='video'?'selected':''}>🎬 Vidéo</option>
-        <option value="lien" ${r.type==='lien'?'selected':''}>🔗 Lien</option>
-        <option value="image" ${r.type==='image'?'selected':''}>🖼️ Image</option>
-      </select>
-      <input type="text" id="res-titre-${i}" value="${esc(r.titre||'')}" placeholder="Titre de la ressource">
-      <input type="url" id="res-url-${i}" value="${esc(r.url||'')}" placeholder="https://..." style="min-width:180px;">
-      <button class="icon-btn" onclick="removeRessource('${tpId}',${i})">✕</button>
+function resRow(r,i,tpId) {
+  return `<div class="res-row" id="rr-${i}">
+    <select id="rt-${i}">
+      <option value="pdf"   ${r.type==='pdf'  ?'selected':''}>📄 PDF</option>
+      <option value="word"  ${r.type==='word' ?'selected':''}>📝 Word</option>
+      <option value="excel" ${r.type==='excel'?'selected':''}>📊 Excel</option>
+      <option value="image" ${r.type==='image'?'selected':''}>🖼️ Image</option>
+      <option value="video" ${r.type==='video'?'selected':''}>🎬 Vidéo</option>
+      <option value="lien"  ${r.type==='lien' ?'selected':''}>🔗 Lien</option>
+      <option value="txt"   ${r.type==='txt'  ?'selected':''}>📃 Texte</option>
+    </select>
+    <input type="text" id="rn-${i}" value="${esc(r.titre||'')}" placeholder="Titre de la ressource">
+    <div class="res-url-wrap">
+      <input type="url" id="ru-${i}" value="${esc(r.url||'')}" placeholder="URL ou uploader →">
+      <button class="btn-upload-inline" onclick="openUploadModal('${tpId}',${i})">📤 Upload</button>
     </div>
-  `;
+    <button class="icon-btn" onclick="rmRes('${tpId}',${i})">✕</button>
+  </div>`;
 }
 
-function addRessource(tpId) {
-  // Save current state first, then add
-  saveTPSilent(tpId);
-  const tp = state.tps.find(x => x.id === tpId);
-  if (!tp) return;
-  tp.ressources = tp.ressources || [];
-  tp.ressources.push({ type: 'pdf', titre: '', url: '' });
-  markDirty();
-  showTPForm(tpId);
-}
-
-function removeRessource(tpId, idx) {
-  saveTPSilent(tpId);
-  const tp = state.tps.find(x => x.id === tpId);
-  if (!tp) return;
-  tp.ressources.splice(idx, 1);
-  markDirty();
-  showTPForm(tpId);
-}
-
-function toggleNiveau(el, niveau) {
-  el.classList.toggle('checked');
-}
-
-function addSysTag(tpId, sel) {
+// ─── actions sur systèmes / ressources ───────────────────────
+function addSys(tpId, sel) {
   if (!sel.value) return;
   saveTPSilent(tpId);
-  const tp = state.tps.find(x => x.id === tpId);
+  const tp=tps.find(x=>x.id===tpId);
   if (!tp) return;
-  tp.systemes = tp.systemes || [];
+  tp.systemes=tp.systemes||[];
   if (!tp.systemes.includes(sel.value)) tp.systemes.push(sel.value);
-  markDirty();
-  showTPForm(tpId);
+  saveLocal(); showTPForm(tpId);
 }
 
-function removeSysTag(tpId, sysId) {
-  const tp = state.tps.find(x => x.id === tpId);
+function rmSys(tpId,sysId) {
+  saveTPSilent(tpId);
+  const tp=tps.find(x=>x.id===tpId);
+  if (tp) { tp.systemes=(tp.systemes||[]).filter(s=>s!==sysId); saveLocal(); showTPForm(tpId); }
+}
+
+function addRes(tpId) {
+  saveTPSilent(tpId);
+  const tp=tps.find(x=>x.id===tpId);
   if (!tp) return;
-  tp.systemes = (tp.systemes||[]).filter(s => s !== sysId);
-  markDirty();
-  showTPForm(tpId);
+  tp.ressources=tp.ressources||[];
+  tp.ressources.push({type:'pdf',titre:'',url:''});
+  saveLocal(); showTPForm(tpId);
 }
 
+function rmRes(tpId,idx) {
+  saveTPSilent(tpId);
+  const tp=tps.find(x=>x.id===tpId);
+  if (tp) { tp.ressources.splice(idx,1); saveLocal(); showTPForm(tpId); }
+}
+
+// ─── save silent (lit le DOM) ─────────────────────────────────
 function saveTPSilent(id) {
-  const tp = state.tps.find(x => x.id === id);
-  if (!tp) return;
-  if (document.getElementById('tp-titre')) {
-    tp.titre = document.getElementById('tp-titre').value;
-    tp.duree_min = parseInt(document.getElementById('tp-duree').value) || 60;
-    tp.description = document.getElementById('tp-desc').value;
-    tp.objectifs = document.getElementById('tp-obj').value;
-    tp.niveaux = [...document.querySelectorAll('#niveaux-group .checkbox-item.checked')].map(el => el.textContent.trim());
-    // Save ressources
-    (tp.ressources||[]).forEach((r,i) => {
-      const t = document.getElementById(`res-type-${i}`);
-      const ti = document.getElementById(`res-titre-${i}`);
-      const u = document.getElementById(`res-url-${i}`);
-      if (t) r.type = t.value;
-      if (ti) r.titre = ti.value;
-      if (u) r.url = u.value;
-    });
-  }
+  const tp=tps.find(x=>x.id===id);
+  if (!tp||!document.getElementById('tp-titre')) return;
+  tp.titre      =document.getElementById('tp-titre').value;
+  tp.duree_h    =parseFloat(document.getElementById('tp-duree').value)||2;
+  tp.description=document.getElementById('tp-desc').value;
+  tp.objectifs  =document.getElementById('tp-obj').value;
+  tp.niveaux    =[...document.querySelectorAll('#niv-grp .niveau-pill.on')].map(el=>el.textContent.trim());
+  (tp.ressources||[]).forEach((_,i)=>{
+    const t=document.getElementById('rt-'+i);
+    const n=document.getElementById('rn-'+i);
+    const u=document.getElementById('ru-'+i);
+    if (t) tp.ressources[i].type =t.value;
+    if (n) tp.ressources[i].titre=n.value;
+    if (u) tp.ressources[i].url  =u.value;
+  });
 }
 
 function saveTP(id) {
-  saveTPSilent(id);
-  markDirty();
-  renderSidebars();
-  toast('TP sauvegardé localement', 'success');
+  saveTPSilent(id); saveLocal();
+  renderTPs(document.getElementById('f-tp').value);
+  renderSys(document.getElementById('f-sys').value);
+  toast('TP sauvegardé localement ✓','success');
 }
 
-function deleteTP(id) {
+function delTP(id) {
   if (!confirm('Supprimer ce TP ?')) return;
-  state.tps = state.tps.filter(x => x.id !== id);
-  state.selectedTP = null;
-  markDirty();
-  renderSidebars();
-  showEmpty();
-  toast('TP supprimé', 'success');
+  tps=tps.filter(x=>x.id!==id); selTP=null;
+  saveLocal(); renderTPs(); showEmpty();
+  toast('TP supprimé','success');
 }
 
-// ============================================================
-// CONFIG
-// ============================================================
-function showConfigPanel() {
-  document.getElementById('content').innerHTML = `
-    <div class="detail-header">
-      <div><div class="detail-title">Configuration</div></div>
+// ═══════════════════════════════════════════════════════════════
+// AIDE UPLOAD FICHIERS
+// ═══════════════════════════════════════════════════════════════
+function showUploadHelp() {
+  // Insère avant le premier .form-card visible
+  const target=document.querySelector('.form-card');
+  if (!target) return;
+  if (document.getElementById('upload-help')) { document.getElementById('upload-help').remove(); return; }
+  const div=document.createElement('div');
+  div.id='upload-help';
+  div.className='form-card';
+  div.style.cssText='margin-bottom:16px;border-color:var(--orange);';
+  div.innerHTML=`
+    <div class="form-card-header" style="background:#251a0a;border-color:var(--orange);">
+      <span>📦</span>
+      <span class="form-card-title" style="color:var(--orange);">Où stocker les fichiers des ressources ?</span>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="this.closest('#upload-help').remove()">✕ Fermer</button>
     </div>
+    <div class="form-card-body">
+      <div class="info-box" style="border-color:var(--accent2);">
+        <strong style="color:var(--accent2);">✅ Solution recommandée : GitHub Releases</strong><br>
+        Gratuit · Permanent · Accessible depuis le réseau lycée · Même compte GitHub que le Gist
+      </div>
+      <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Marche à suivre</div>
+      <div class="info-step"><div class="info-num">1</div><div>Aller sur <strong>github.com</strong> → votre dépôt (ou créer un nouveau : <strong>melec-ressources</strong>)</div></div>
+      <div class="info-step"><div class="info-num">2</div><div>Cliquer <strong>Releases</strong> (colonne droite) → <strong>Draft a new release</strong></div></div>
+      <div class="info-step"><div class="info-num">3</div><div>Créer un tag (ex: <code>v1.0</code>), glisser les fichiers dans la zone <em>"Attach binaries"</em></div></div>
+      <div class="info-step"><div class="info-num">4</div><div>Publier → clic droit sur chaque fichier → <strong>Copier le lien</strong> → coller dans le champ URL ci-dessus</div></div>
+      <div class="info-box mt8">
+        📁 Formats : PDF, JPEG, PNG, Excel (.xlsx), Word (.docx), texte (.txt)<br>
+        📦 Limite : <strong>100 Mo par fichier</strong>, volume total illimité<br>
+        🔗 URL type : <code>github.com/compte/repo/releases/download/v1.0/fichier.pdf</code>
+      </div>
+    </div>
+  `;
+  target.parentElement.insertBefore(div,target);
+  div.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+function showConfig() {
+  document.getElementById('content').innerHTML=`
+    <div class="detail-header"><div><div class="detail-title">Configuration</div></div></div>
 
     <div class="config-section">
-      <div class="config-title">🔑 Connexion GitHub Gist</div>
+      <div class="config-title">🔑 Connexion GitHub</div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div class="form-group">
           <label>Token GitHub (Personal Access Token)</label>
-          <input type="text" id="cfg-token-inline" value="${esc(config.token||'')}" placeholder="ghp_xxxxxxxxxxxx">
-          <div class="text-muted mt8">Créer sur <strong>github.com → Settings → Developer settings → Personal access tokens → Fine-grained</strong> avec scope <code>gist</code></div>
+          <input type="text" id="c-tok" value="${esc(cfg.token||'')}" placeholder="ghp_xxxxxxxxxxxx">
+          <div class="text-muted mt8">github.com → Settings → Developer settings → Personal access tokens → scope <code>gist</code></div>
         </div>
         <div class="form-group">
-          <label>ID du Gist</label>
-          <input type="text" id="cfg-gist-inline" value="${esc(config.gistId||'')}" placeholder="abc123def456...">
+          <label>ID du Gist pour tps.json</label>
+          <input type="text" id="c-gist" value="${esc(cfg.tpGistId||'')}" placeholder="ID du Gist (peut être le même que l'inventaire)">
+          <div class="text-muted mt8">ID inventaire existant : <code>${INV_GIST_ID}</code></div>
         </div>
         <div class="form-group">
-          <label>URL de base de l'app élève</label>
-          <input type="text" id="cfg-url-inline" value="${esc(config.appUrl||'')}" placeholder="https://exemple.github.io/melec-eleve.html">
-          <div class="text-muted mt8">QR code généré : <code>[URL]?sys=[ID_SYSTEME]</code></div>
+          <label>URL de l'app élève</label>
+          <input type="text" id="c-url" value="${esc(cfg.appUrl||'')}" placeholder="https://...github.io/melec-eleve.html">
+          <div class="text-muted mt8">QR code généré : <code>[URL]?sys=[QR_CODE_SYSTÈME]</code></div>
         </div>
         <div class="flex-end">
-          <button class="btn btn-ghost" onclick="testGist()">🔄 Tester la connexion</button>
-          <button class="btn btn-primary" onclick="saveConfigInline()">Enregistrer</button>
+          <button class="btn btn-ghost" onclick="testGist()">🔄 Tester</button>
+          <button class="btn btn-primary" onclick="saveConfig()">Enregistrer</button>
         </div>
       </div>
     </div>
 
     <div class="config-section">
-      <div class="config-title">💾 Données locales</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <div class="stat-pill"><div class="stat-val">${state.systemes.length}</div><div class="stat-lbl">Systèmes</div></div>
-        <div class="stat-pill"><div class="stat-val">${state.tps.length}</div><div class="stat-lbl">TPs</div></div>
-        <div class="stat-pill"><div class="stat-val">${state.tps.reduce((a,t)=>a+(t.ressources||[]).length,0)}</div><div class="stat-lbl">Ressources</div></div>
+      <div class="config-title">📊 État de l'inventaire</div>
+      <div class="stats-row">
+        <div class="stat-pill"><div class="stat-val">${getSystems().length}</div><div class="stat-lbl">Systèmes</div></div>
+        <div class="stat-pill"><div class="stat-val">${getArmoires().length}</div><div class="stat-lbl">Armoires</div></div>
+        <div class="stat-pill"><div class="stat-val">${getMesure().length}</div><div class="stat-lbl">Mesure</div></div>
+        <div class="stat-pill"><div class="stat-val">${getAppareillage().length}</div><div class="stat-lbl">Appareillage</div></div>
+        <div class="stat-pill"><div class="stat-val">${getOutils().length}</div><div class="stat-lbl">Outils</div></div>
+        <div class="stat-pill"><div class="stat-val">${tps.length}</div><div class="stat-lbl">TPs créés</div></div>
       </div>
-      <div style="display:flex;gap:8px;margin-top:14px;">
-        <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇️ Exporter JSON</button>
-        <button class="btn btn-ghost btn-sm" onclick="importJSON()">⬆️ Importer JSON</button>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+      <button class="btn btn-ghost btn-sm" onclick="loadInventaire()">↻ Recharger l'inventaire</button>
+    </div>
+
+    <div class="config-section">
+      <div class="config-title">💾 Import / Export TPs</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="exportTPs()">⬇️ Exporter tps.json</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp').click()">⬆️ Importer tps.json</button>
+        <input type="file" id="imp" accept=".json" style="display:none" onchange="handleImport(event)">
       </div>
     </div>
   `;
-}
-
-function saveConfigInline() {
-  config.token = document.getElementById('cfg-token-inline').value.trim();
-  config.gistId = document.getElementById('cfg-gist-inline').value.trim();
-  config.appUrl = document.getElementById('cfg-url-inline').value.trim();
-  localStorage.setItem('melec_tp_config', JSON.stringify(config));
-  toast('Configuration enregistrée', 'success');
-  loadGist();
 }
 
 function saveConfig() {
-  config.token = document.getElementById('cfg-token').value.trim();
-  config.gistId = document.getElementById('cfg-gist-id').value.trim();
-  config.appUrl = document.getElementById('cfg-app-url').value.trim();
-  localStorage.setItem('melec_tp_config', JSON.stringify(config));
-  closeModal('modal-config');
-  toast('Configuration enregistrée', 'success');
-  loadGist();
+  cfg.token    =document.getElementById('c-tok').value.trim();
+  cfg.tpGistId =document.getElementById('c-gist').value.trim();
+  cfg.appUrl   =document.getElementById('c-url').value.trim();
+  localStorage.setItem('melec_tp_cfg',JSON.stringify(cfg));
+  toast('Configuration enregistrée','success');
+  loadInventaire();
+  if (cfg.tpGistId) loadTPs();
 }
 
 async function testGist() {
-  const token = document.getElementById('cfg-token-inline').value.trim();
-  const gistId = document.getElementById('cfg-gist-inline').value.trim();
-  if (!token || !gistId) { toast('Renseignez token et ID', 'error'); return; }
-  setGistStatus('loading', 'Test...');
+  const tok =document.getElementById('c-tok').value.trim();
+  const gist=document.getElementById('c-gist').value.trim();
+  if (!tok||!gist) { toast('Renseignez token et ID','error'); return; }
+  setStatus('loading','Test...');
   try {
-    const res = await fetch(`https://api.github.com/gists/${gistId}`, {
-      headers: { Authorization: `token ${token}` }
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    setGistStatus('ok', 'Connecté');
-    toast('Connexion Gist OK ✓', 'success');
-  } catch(e) {
-    setGistStatus('err', 'Erreur');
-    toast('Erreur : ' + e.message, 'error');
-  }
+    const r=await fetch(`https://api.github.com/gists/${gist}`,{headers:{Authorization:`token ${tok}`}});
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    setStatus('ok','OK'); toast('Connexion Gist OK ✓','success');
+  } catch(e) { setStatus('err','Erreur'); toast('Erreur : '+e.message,'error'); }
 }
 
-// ============================================================
-// IMPORT / EXPORT
-// ============================================================
-function exportJSON() {
-  const data = JSON.stringify({ systemes: state.systemes, tps: state.tps }, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'melec-tp-data.json';
-  a.click();
-}
-
-function importJSON() {
-  document.getElementById('import-file').click();
+function exportTPs() {
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(tps,null,2)],{type:'application/json'}));
+  a.download='tps.json'; a.click();
 }
 
 function handleImport(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const d = JSON.parse(ev.target.result);
-      if (d.systemes) state.systemes = d.systemes;
-      if (d.tps) state.tps = d.tps;
-      markDirty();
-      renderSidebars();
-      showConfigPanel();
-      toast('Données importées', 'success');
-    } catch(err) {
-      toast('Erreur de lecture JSON', 'error');
-    }
-  };
-  reader.readAsText(file);
+  const f=e.target.files[0]; if (!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{ try {
+    const d=JSON.parse(ev.target.result);
+    tps=Array.isArray(d)?d:(d.tps||[]);
+    saveLocal(); renderTPs(); showConfig();
+    toast('TPs importés ('+tps.length+')','success');
+  } catch(err) { toast('Erreur JSON : '+err.message,'error'); } };
+  r.readAsText(f);
 }
 
-// ============================================================
-// HELPERS
-// ============================================================
+// ═══════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════
 function showEmpty() {
-  document.getElementById('content').innerHTML = `
+  document.getElementById('content').innerHTML=`
     <div class="empty-state">
       <div class="empty-icon">🔌</div>
-      <div class="empty-text">Sélectionnez un élément ou créez-en un nouveau</div>
-    </div>
-  `;
+      <div style="font-size:14px;color:var(--text3);">Sélectionnez un élément ou créez-en un nouveau</div>
+    </div>`;
 }
 
-function esc(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function copyUrl(url) {
-  navigator.clipboard.writeText(url).then(() => toast('URL copiée !', 'success'));
+function copyTxt(t) { navigator.clipboard.writeText(t).then(()=>toast('Copié !','success')); }
+
+function toast(msg,type='success') {
+  const el=document.getElementById('toast');
+  el.textContent=(type==='success'?'✓ ':'✕ ')+msg;
+  el.className='toast show '+type;
+  clearTimeout(el._t);
+  el._t=setTimeout(()=>el.classList.remove('show'),3200);
 }
 
-function toast(msg, type='success') {
-  const el = document.getElementById('toast');
-  el.textContent = (type === 'success' ? '✓ ' : '✕ ') + msg;
-  el.className = 'toast show ' + type;
-  setTimeout(() => el.classList.remove('show'), 3000);
+// ═══════════════════════════════════════════════════════════════
+// MODULE UPLOAD — GitHub Releases API
+// ═══════════════════════════════════════════════════════════════
+// Contexte de l'upload en cours (TP + index ressource ciblée)
+let uploadCtx = { tpId: null, resIdx: null };
+// Files en attente d'upload
+let uploadQueue = []; // [{file, status:'pending'|'uploading'|'done'|'error', url:'', progress:0}]
+
+// ─── Ouverture / fermeture ────────────────────────────────────
+function openUploadModal(tpId, resIdx) {
+  // Sauvegarde le TP d'abord pour ne pas perdre les saisies
+  saveTPSilent(tpId);
+  uploadCtx = { tpId, resIdx };
+  uploadQueue = [];
+  document.getElementById('upload-list').innerHTML = '';
+  document.getElementById('btn-do-upload').disabled = true;
+  document.getElementById('upload-modal').classList.add('open');
 }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeUploadModal() {
+  document.getElementById('upload-modal').classList.remove('open');
+  uploadQueue = [];
+}
 
-// ============================================================
-// START
-// ============================================================
+// ─── Drop zone ────────────────────────────────────────────────
+function dzOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
+function dzLeave()  { document.getElementById('drop-zone').classList.remove('drag-over'); }
+function dzDrop(e)  { e.preventDefault(); dzLeave(); filesSelected(e.dataTransfer.files); }
+
+function filesSelected(files) {
+  if (!files || !files.length) return;
+  [...files].forEach(f => {
+    uploadQueue.push({ file: f, status: 'pending', url: '', progress: 0 });
+  });
+  renderUploadList();
+  document.getElementById('btn-do-upload').disabled = false;
+}
+
+function renderUploadList() {
+  const el = document.getElementById('upload-list');
+  if (!uploadQueue.length) { el.innerHTML = ''; return; }
+  el.innerHTML = uploadQueue.map((item, i) => {
+    const size = formatSize(item.file.size);
+    const statusLabel = { pending:'en attente', uploading:'upload...', done:'✓ uploadé', error:'✕ erreur' }[item.status];
+    return `<div class="upload-file-item" id="ufi-${i}">
+      <div class="ufi-top">
+        <div class="ufi-name" title="${esc(item.file.name)}">${esc(item.file.name)}</div>
+        <div class="ufi-size">${size}</div>
+        <div class="ufi-status ${item.status}" id="ufi-st-${i}">${statusLabel}</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="ufi-pb-${i}" style="width:${item.progress}%"></div></div>
+      ${item.url ? `<div class="ufi-url" onclick="copyTxt('${item.url}')" title="Cliquer pour copier">${item.url}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' o';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' Ko';
+  return (bytes/1024/1024).toFixed(1) + ' Mo';
+}
+
+// ─── Workflow upload ──────────────────────────────────────────
+async function runUploads() {
+  if (!cfg.token) { toast('Token GitHub manquant (onglet Config)', 'error'); return; }
+  if (!cfg.uploadRepo) { toast('Dépôt de stockage non configuré (onglet Config)', 'error'); return; }
+
+  document.getElementById('btn-do-upload').disabled = true;
+
+  // 1. Obtenir ou créer la release "melec-ressources"
+  let releaseId, releaseTag;
+  try {
+    releaseId = await getOrCreateRelease();
+  } catch(e) {
+    toast('Impossible de créer la release : ' + e.message, 'error');
+    document.getElementById('btn-do-upload').disabled = false;
+    return;
+  }
+
+  // 2. Uploader chaque fichier en séquence
+  for (let i = 0; i < uploadQueue.length; i++) {
+    const item = uploadQueue[i];
+    if (item.status === 'done') continue;
+    try {
+      item.status = 'uploading'; item.progress = 5;
+      updateUFI(i);
+      const url = await uploadAsset(releaseId, item.file, i);
+      item.url = url; item.status = 'done'; item.progress = 100;
+      updateUFI(i);
+      // Si c'est l'upload ciblé sur une ressource précise → remplir l'URL
+      if (uploadCtx.resIdx !== null && uploadQueue.length === 1) {
+        const urlField = document.getElementById('ru-' + uploadCtx.resIdx);
+        if (urlField) { urlField.value = url; saveTPSilent(uploadCtx.tpId); }
+      }
+    } catch(e) {
+      item.status = 'error'; item.progress = 0;
+      updateUFI(i);
+      toast('Erreur ' + item.file.name + ' : ' + e.message, 'error');
+    }
+  }
+
+  // 3. Si plusieurs fichiers uploadés, ajouter comme nouvelles ressources au TP
+  const done = uploadQueue.filter(x => x.status === 'done');
+  if (done.length > 1 || (done.length === 1 && uploadCtx.resIdx === null)) {
+    const tp = tps.find(x => x.id === uploadCtx.tpId);
+    if (tp) {
+      done.forEach(item => {
+        const ext = item.file.name.split('.').pop().toLowerCase();
+        const typeMap = { pdf:'pdf', doc:'word', docx:'word', xls:'excel', xlsx:'excel', jpg:'image', jpeg:'image', png:'image', txt:'txt' };
+        tp.ressources = tp.ressources || [];
+        tp.ressources.push({ type: typeMap[ext]||'lien', titre: item.file.name.replace(/\.[^.]+$/,''), url: item.url });
+      });
+      saveLocal();
+      toast(done.length + ' ressource(s) ajoutée(s) au TP', 'success');
+    }
+  }
+
+  toast('Upload terminé ✓', 'success');
+  document.getElementById('btn-do-upload').disabled = uploadQueue.every(x=>x.status==='done');
+
+  // Rafraîchir le formulaire TP pour afficher les nouvelles ressources
+  setTimeout(() => { showTPForm(uploadCtx.tpId); }, 400);
+}
+
+function updateUFI(i) {
+  const item = uploadQueue[i];
+  const statusLabel = { pending:'en attente', uploading:'upload...', done:'✓ uploadé', error:'✕ erreur' }[item.status];
+  const st = document.getElementById('ufi-st-' + i);
+  const pb = document.getElementById('ufi-pb-' + i);
+  const box = document.getElementById('ufi-' + i);
+  if (st) { st.textContent = statusLabel; st.className = 'ufi-status ' + item.status; }
+  if (pb) pb.style.width = item.progress + '%';
+  if (pb) pb.style.background = item.status === 'error' ? 'var(--red)' : item.status === 'done' ? 'var(--green)' : 'var(--accent)';
+  if (item.url && box) {
+    const existing = box.querySelector('.ufi-url');
+    if (!existing) {
+      const d = document.createElement('div');
+      d.className = 'ufi-url'; d.title = 'Cliquer pour copier';
+      d.textContent = item.url; d.onclick = () => copyTxt(item.url);
+      box.appendChild(d);
+    }
+  }
+}
+
+// ─── API GitHub : Release ─────────────────────────────────────
+async function getOrCreateRelease() {
+  const [owner, repo] = cfg.uploadRepo.split('/');
+  const tag = 'melec-ressources';
+  const headers = {
+    Authorization: `token ${cfg.token}`,
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+
+  // Chercher une release existante avec ce tag
+  const listRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`, { headers });
+  if (!listRes.ok) throw new Error('HTTP ' + listRes.status + ' — vérifiez le dépôt et le token');
+  const releases = await listRes.json();
+  const existing = releases.find(r => r.tag_name === tag);
+  if (existing) return existing.id;
+
+  // Créer la release si elle n'existe pas
+  const createRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ tag_name: tag, name: 'MELEC Ressources pédagogiques', body: 'Fichiers uploadés depuis l\'app MELEC Admin', draft: false, prerelease: false })
+  });
+  if (!createRes.ok) {
+    const err = await createRes.json();
+    throw new Error((err.message || 'HTTP ' + createRes.status));
+  }
+  const created = await createRes.json();
+  return created.id;
+}
+
+// ─── API GitHub : Upload asset ────────────────────────────────
+async function uploadAsset(releaseId, file, queueIdx) {
+  const [owner, repo] = cfg.uploadRepo.split('/');
+
+  // Nommer le fichier avec timestamp pour éviter les doublons
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const ts = Date.now();
+  const assetName = ts + '_' + safeName;
+
+  const uploadUrl = `https://uploads.github.com/repos/${owner}/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(assetName)}`;
+
+  // Lire le fichier en ArrayBuffer
+  const buffer = await readFileBuffer(file, queueIdx);
+
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `token ${cfg.token}`,
+      'Content-Type': getMimeType(file.name),
+      'X-GitHub-Api-Version': '2022-11-28'
+    },
+    body: buffer
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'HTTP ' + res.status);
+  }
+
+  const data = await res.json();
+  return data.browser_download_url;
+}
+
+function readFileBuffer(file, queueIdx) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 80); // 0→80% = lecture
+        if (uploadQueue[queueIdx]) { uploadQueue[queueIdx].progress = pct; updateUFI(queueIdx); }
+      }
+    };
+    reader.onload = e => {
+      if (uploadQueue[queueIdx]) { uploadQueue[queueIdx].progress = 85; updateUFI(queueIdx); }
+      resolve(e.target.result);
+    };
+    reader.onerror = () => reject(new Error('Lecture fichier impossible'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function getMimeType(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const map = {
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    txt: 'text/plain'
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
+// ─── GO ───────────────────────────────────────────────────────
 init();
 </script>
 </body>
