@@ -556,9 +556,23 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
       </div>
       <div class="card">
         <div class="card-title">🏷 GÉNÉRER ÉTIQUETTES QR</div>
-        <p style="font-size:12px; color:var(--grey); margin-bottom:12px">Sélectionner les articles à étiqueter :</p>
-        <div id="qr-select-list" style="max-height:200px; overflow-y:auto; margin-bottom:12px"></div>
-        <button class="btn btn-secondary btn-full" onclick="printQR()">GÉNÉRER PLANCHE PDF</button>
+        <!-- Filtre catégorie -->
+        <div class="chip-row" id="qr-cat-chips" style="margin-bottom:10px"></div>
+        <!-- Barre sélection -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span id="qr-count" style="font-size:11px;color:var(--grey)"></span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="qrSelectAll()">Tout sélectionner</button>
+            <button class="btn btn-secondary btn-sm" onclick="qrSelectNone()">Tout désélectionner</button>
+          </div>
+        </div>
+        <!-- Liste articles -->
+        <div id="qr-select-list" style="max-height:280px;overflow-y:auto;margin-bottom:12px;border:1px solid var(--border);border-radius:8px"></div>
+        <!-- Actions -->
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" style="flex:1" onclick="printQR()">🖨 Aperçu / Imprimer</button>
+          <button class="btn btn-primary" style="flex:1" onclick="exportQRtoPDF()">📄 PDF 3×3cm</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">🗄 GÉRER LES ARMOIRES</div>
@@ -902,6 +916,7 @@ function showPage(name, btn) {
   if (name === 'dashboard') renderDashboard();
   if (name === 'admin') {
     prefillAdminIfKnown();
+    renderQrCatChips();
     renderQrSelectList();
     renderArmoiresList();
     populateArmoireSelects();
@@ -1392,7 +1407,8 @@ function doUnlockAdmin() {
   panel.style.flexDirection = 'column';
   panel.style.gap = '14px';
   setConnBadge(true);
-  applyReaderMode(); // met à jour la nav
+  applyReaderMode();
+  renderQrCatChips();
   renderQrSelectList();
   renderArmoiresList();
   populateArmoireSelects();
@@ -1826,15 +1842,87 @@ function updateEditLocPreview() {
 // ═══════════════════════════════════════════════════════════
 //  QR CODE GENERATION
 // ═══════════════════════════════════════════════════════════
+let qrActiveCat = 'Tous';
+
+function renderQrCatChips() {
+  const wrap = document.getElementById('qr-cat-chips');
+  if (!wrap) return;
+  const cats = ['Tous', ...Object.keys(CAT_ICONS)];
+  wrap.innerHTML = cats.map(c =>
+    `<div class="chip ${qrActiveCat === c ? 'active' : ''}" onclick="setQrCat('${c}')">${CAT_ICONS[c] || ''} ${c}</div>`
+  ).join('');
+}
+
+function setQrCat(cat) {
+  qrActiveCat = cat;
+  renderQrCatChips();
+  renderQrSelectList();
+}
+
 function renderQrSelectList() {
   const wrap = document.getElementById('qr-select-list');
   if (!wrap) return;
-  wrap.innerHTML = db.items.map(item => `
-    <label style="display:flex; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); cursor:pointer">
-      <input type="checkbox" value="${item.id}" style="width:auto; accent-color:var(--amber)">
-      <span style="font-size:13px">${item.icon||'📦'} ${item.nom}</span>
-      <span style="font-family:'DM Mono',monospace; font-size:10px; color:var(--amber); margin-left:auto">${item.id}</span>
-    </label>`).join('');
+
+  const items = qrActiveCat === 'Tous'
+    ? db.items
+    : db.items.filter(i => i.categorie === qrActiveCat);
+
+  // Mémorise les cases déjà cochées
+  const checked = new Set(
+    [...document.querySelectorAll('#qr-select-list input:checked')].map(el => el.value)
+  );
+
+  if (!items.length) {
+    wrap.innerHTML = '<div class="empty-state" style="padding:16px">Aucun article dans cette catégorie</div>';
+    updateQrCount();
+    return;
+  }
+
+  // Grouper par catégorie si "Tous"
+  let html = '';
+  if (qrActiveCat === 'Tous') {
+    const bycat = {};
+    items.forEach(i => { const k = i.categorie||'Autre'; if (!bycat[k]) bycat[k]=[]; bycat[k].push(i); });
+    Object.entries(bycat).forEach(([cat, its]) => {
+      html += `<div style="padding:6px 10px;background:var(--navy);font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:2px;color:var(--grey2)">${CAT_ICONS[cat]||'📦'} ${cat.toUpperCase()}</div>`;
+      html += its.map(item => qrItemRow(item, checked.has(item.id))).join('');
+    });
+  } else {
+    html = items.map(item => qrItemRow(item, checked.has(item.id))).join('');
+  }
+
+  wrap.innerHTML = html;
+  // Réattache le listener de comptage
+  wrap.querySelectorAll('input[type=checkbox]').forEach(cb =>
+    cb.addEventListener('change', updateQrCount)
+  );
+  updateQrCount();
+}
+
+function qrItemRow(item, isChecked) {
+  const icon = item.icon || CAT_ICONS[item.categorie] || '📦';
+  return `<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);cursor:pointer">
+    <input type="checkbox" value="${item.id}" ${isChecked ? 'checked' : ''} style="width:auto;accent-color:var(--amber);flex-shrink:0">
+    <span style="font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${icon} ${item.nom}</span>
+    <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);flex-shrink:0">${item.id}</span>
+  </label>`;
+}
+
+function updateQrCount() {
+  const total = document.querySelectorAll('#qr-select-list input').length;
+  const sel   = document.querySelectorAll('#qr-select-list input:checked').length;
+  const el = document.getElementById('qr-count');
+  if (el) el.textContent = `${sel} / ${total} sélectionné${sel > 1 ? 's' : ''}`;
+}
+
+function qrSelectAll() {
+  document.querySelectorAll('#qr-select-list input[type=checkbox]').forEach(cb => cb.checked = true);
+  updateQrCount();
+}
+
+function qrSelectNone() {
+  document.querySelectorAll('#qr-select-list input[type=checkbox]').forEach(cb => cb.checked = false);
+  updateQrCount();
 }
 
 function printQR() {
