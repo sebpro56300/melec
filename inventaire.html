@@ -402,7 +402,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
     </div>
   </div>
   <button class="btn btn-secondary btn-sm" onclick="loadDemo()">▶ MODE DÉMO (sans Gist)</button>
-  <button class="btn btn-danger btn-sm" onclick="clearConfig()">🗑 VIDER LA CONFIG MÉMORISÉE</button>
+  <button class="btn btn-secondary btn-sm" style="margin-top:12px;width:100%;color:var(--red);border-color:var(--red)" onclick="clearConfig()">⚠ RÉINITIALISER LA CONFIG</button>
 </div>
 
 <!-- ═══════════════ APP ═══════════════ -->
@@ -413,6 +413,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
     </div>
     <div class="spacer"></div>
     <div id="conn-badge" class="conn-badge">···</div>
+    <button id="header-admin-btn" onclick="showAdminLogin()" class="btn btn-secondary btn-sm" style="display:none;font-size:11px;padding:5px 10px">⚙ Admin</button>
   </header>
 
   <!-- PAGE : INVENTAIRE -->
@@ -730,24 +731,21 @@ const CAT_ICONS = {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  // Priorité 1 : config admin mémorisée sur cet appareil → toujours admin
+  // Un seul mode de démarrage : config en localStorage = admin, sinon écran config
   const saved = localStorage.getItem(CFG_KEY);
   if (saved) {
-    cfg = JSON.parse(saved);
-    cfg.readerMode = false; // cet appareil est admin, jamais lecteur seul
-    if (localStorage.getItem('melec_inv_admin') === '1') isAdmin = true;
-    startApp();
-    return;
+    try {
+      cfg = JSON.parse(saved);
+      cfg.readerMode = false;
+      if (localStorage.getItem('melec_inv_admin') === '1') isAdmin = true;
+      startApp();
+      return;
+    } catch(e) {
+      localStorage.removeItem(CFG_KEY);
+      localStorage.removeItem('melec_inv_admin');
+    }
   }
-  // Priorité 2 : ?gist=ID dans l'URL → mode lecteur (pas de token, pas d'écriture)
-  const urlGist = new URLSearchParams(window.location.search).get('gist');
-  if (urlGist) {
-    cfg = { gistId: urlGist, tokenAdmin: null, readerMode: true };
-    isAdmin = false;
-    startApp();
-    return;
-  }
-  // Sinon : écran de configuration admin
+  // Pas de config : écran de configuration
   renderCatChips();
 });
 
@@ -790,11 +788,7 @@ async function startApp() {
 function clearConfig() {
   localStorage.removeItem(CFG_KEY);
   localStorage.removeItem('melec_inv_admin');
-  cfg = {};
-  document.getElementById('cfg-gist-id').value = '';
-  document.getElementById('cfg-token-admin').value = '';
-  document.getElementById('cfg-token-reader').value = '';
-  toast('🗑 Config effacée — resaisissez vos identifiants');
+  location.reload();
 }
 
 function loadDemo() {
@@ -926,18 +920,49 @@ function showPage(name, btn) {
 }
 
 function applyReaderMode() {
-  // Onglets Scanner et Admin : masqués en mode lecteur
   const navBtns = document.querySelectorAll('.nav-btn');
   navBtns.forEach(btn => {
     const page = btn.getAttribute('onclick')?.match(/showPage\('(\w+)'/)?.[1];
-    if (!isAdmin && (page === 'scanner' || page === 'admin')) {
-      btn.style.display = 'none';
-    } else {
-      btn.style.display = '';
-    }
+    btn.style.display = (!isAdmin && (page === 'scanner' || page === 'admin')) ? 'none' : '';
   });
-  // Bouton export Excel dans l'inventaire : toujours visible
-  // Bouton export Excel admin : masqué si lecteur (géré via isAdmin dans le DOM)
+  const adminBtn = document.getElementById('header-admin-btn');
+  if (adminBtn) adminBtn.style.display = (!isAdmin && cfg.readerMode) ? 'inline-flex' : 'none';
+}
+
+function showAdminLogin() {
+  const overlay = document.createElement('div');
+  overlay.id = 'admin-login-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:24px';
+  overlay.innerHTML = `
+    <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:360px;width:100%">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--amber);margin-bottom:16px">⚙ ACCÈS ADMIN</div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label>GIST ID</label>
+        <input id="login-gist" type="text" placeholder="abc123..." value="${cfg.gistId||''}">
+      </div>
+      <div class="form-group" style="margin-bottom:16px">
+        <label>TOKEN ADMIN</label>
+        <input id="login-token" type="password" placeholder="ghp_xxxxxxxxxxxx">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('admin-login-overlay').remove()">Annuler</button>
+        <button class="btn btn-primary" style="flex:1" onclick="loginAsAdmin()">CONNEXION</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+function loginAsAdmin() {
+  const gistId = document.getElementById('login-gist').value.trim();
+  const token  = document.getElementById('login-token').value.trim();
+  if (!gistId || !token) { toast('⚠ Gist ID et token requis'); return; }
+  cfg = { gistId, tokenAdmin: token, readerMode: false };
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  localStorage.setItem('melec_inv_admin', '1');
+  isAdmin = true;
+  document.getElementById('admin-login-overlay')?.remove();
+  loadFromGist().then(() => { renderAll(); doUnlockAdmin(); applyReaderMode(); });
 }
 
 function setConnBadge(ok) {
