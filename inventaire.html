@@ -13,8 +13,6 @@
 <script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <!-- QR Generator -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- Excel export (SheetJS) -->
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <!-- PDF export (jsPDF) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -2084,177 +2082,244 @@ function exportJSON() {
 }
 
 function exportXLSX() {
-  if (typeof XLSX === 'undefined') { toast('❌ SheetJS non chargé'); return; }
-  const wb = XLSX.utils.book_new();
+  // Export XLSX natif — pas de dépendance externe
+  // Génère un vrai fichier OpenXML (.xlsx) avec une feuille par catégorie
 
-  const HDR_FILL  = { fgColor: { rgb: 'B45309' } }; // ambre
-  const HDR_FONT  = { bold: true, color: { rgb: 'FFFFFF' }, name: 'Arial', sz: 10 };
-  const TITLE_FONT= { bold: true, color: { rgb: 'B45309' }, name: 'Arial', sz: 13 };
-  const MONO_FONT = { name: 'Courier New', sz: 9 };
-  const CENTER    = { horizontal: 'center', vertical: 'center' };
-  const BORDER    = { top:{style:'thin',color:{rgb:'CCCCCC'}}, bottom:{style:'thin',color:{rgb:'CCCCCC'}}, left:{style:'thin',color:{rgb:'CCCCCC'}}, right:{style:'thin',color:{rgb:'CCCCCC'}} };
-
-  // Colonnes calquées sur le modèle fourni :
-  // Catégorie | Numéro Région (= id) | Désignation | Marque | Type | N° Série | Année | CE | Contrôle | Qté totale | Qté dispo | Sorties | Seuil | Localisation | Nominatif
-  const HEADERS = ['Catégorie','Numéro / Code','Désignation','Marque','Type','Numéro Série','Année','CE','Contrôle','Qté totale','Qté disponible','Sorties','Seuil alerte','Localisation','Emprunt nominatif'];
-  const WIDTHS  = [18,14,32,20,16,16,8,6,10,10,12,8,12,26,16];
-
-  function styleHeader(ws, rowIdx, colCount) {
-    for (let C = 0; C < colCount; C++) {
-      const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
-      if (!ws[ref]) ws[ref] = { v: '', t: 's' };
-      ws[ref].s = { font: HDR_FONT, fill: HDR_FILL, alignment: CENTER, border: BORDER };
-    }
+  function escXML(v) {
+    if (v == null) return '';
+    return String(v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+      .replace(/'/g,'&apos;');
   }
 
-  function styleDataRow(ws, rowIdx, colCount, fillColor) {
-    for (let C = 0; C < colCount; C++) {
-      const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
-      if (!ws[ref]) ws[ref] = { v: '', t: 's' };
-      const s = { border: BORDER, font: { name: 'Arial', sz: 10 } };
-      if (fillColor) s.fill = { fgColor: { rgb: fillColor } };
-      ws[ref].s = s;
-    }
+  function colLetter(n) { // 0-indexed → A, B, … Z, AA…
+    let s = '';
+    n++;
+    while (n > 0) { n--; s = String.fromCharCode(65 + n % 26) + s; n = Math.floor(n / 26); }
+    return s;
   }
+
+  function makeSheet(headers, rows, title) {
+    const allRows = title ? [[title], [], headers, ...rows] : [headers, ...rows];
+    const nCols = headers.length;
+    const nRows = allRows.length;
+    let xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">`;
+    // Largeurs de colonnes
+    xml += '<cols>';
+    for (let c = 0; c < nCols; c++) {
+      const w = Math.min(40, Math.max(8, headers[c]?.length * 1.4 || 10));
+      xml += `<col min="${c+1}" max="${c+1}" width="${w}" customWidth="1"/>`;
+    }
+    xml += '</cols><sheetData>';
+    allRows.forEach((row, ri) => {
+      xml += `<row r="${ri+1}">`;
+      (Array.isArray(row) ? row : [row]).forEach((cell, ci) => {
+        if (cell == null && ci > 0) return;
+        const ref = `${colLetter(ci)}${ri+1}`;
+        const v = cell ?? '';
+        if (typeof v === 'number') {
+          xml += `<c r="${ref}" t="n"><v>${v}</v></c>`;
+        } else {
+          xml += `<c r="${ref}" t="inlineStr"><is><t>${escXML(v)}</t></is></c>`;
+        }
+      });
+      xml += '</row>';
+    });
+    xml += '</sheetData>';
+    if (title) xml += `<mergeCells count="1"><mergeCell ref="A1:${colLetter(nCols-1)}1"/></mergeCells>`;
+    xml += '</worksheet>';
+    return xml;
+  }
+
+  const HEADERS = ['Catégorie','Code','Désignation','N° Région','Marque','Type','N° Série','Année','CE','Contrôle','Qté totale','Qté disponible','Sorties','Seuil','Localisation','Nominatif'];
 
   function itemToRow(item) {
     return [
-      item.categorie || '',
-      item.id,
-      item.nom,
-      item.marque || '',
-      item.type_machine || '',
-      item.numero_serie || '',
-      item.annee || '',
-      item.ce || '',
-      item.controle || '',
-      item.quantite_totale,
-      item.quantite_dispo,
+      item.categorie||'', item.id, item.nom,
+      item.num_region||'', item.marque||'', item.type_machine||'',
+      item.num_serie||'', item.annee||'', item.ce||'', item.controle||'',
+      item.quantite_totale, item.quantite_dispo,
       item.quantite_totale - item.quantite_dispo,
-      item.seuil || 2,
-      item.localisation || '',
-      item.nominatif ? 'Oui' : 'Non',
+      item.seuil||2, item.localisation||'',
+      item.nominatif ? 'Oui' : 'Non'
     ];
   }
 
-  // ── UNE FEUILLE PAR CATÉGORIE ──────────────────────────────
-  const allCats = [...new Set(db.items.map(i => i.categorie || 'Autre'))].sort();
+  // Construire les feuilles
+  const sheets = [];
+  const allCats = [...new Set(db.items.map(i => i.categorie||'Autre'))].sort();
 
   allCats.forEach(cat => {
-    const items = db.items.filter(i => (i.categorie || 'Autre') === cat);
+    const items = db.items.filter(i => (i.categorie||'Autre') === cat);
     if (!items.length) return;
-
-    // Ligne 0 : titre atelier
-    // Ligne 1 : vide
-    // Ligne 2 : en-têtes colonnes
-    // Ligne 3+ : données
-    const aoa = [
-      [`Atelier Électricité — ${cat}`, ...Array(HEADERS.length - 1).fill(null)],
-      Array(HEADERS.length).fill(null),
-      HEADERS,
-      ...items.map(itemToRow),
-    ];
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = WIDTHS.map(w => ({ wch: w }));
-
-    // Fusion titre sur toute la largeur
-    ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: HEADERS.length - 1 } }];
-
-    // Style titre
-    const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
-    if (ws[titleRef]) ws[titleRef].s = { font: TITLE_FONT, alignment: CENTER };
-
-    // Style en-têtes (ligne 2 = index 2)
-    styleHeader(ws, 2, HEADERS.length);
-
-    // Style lignes de données
-    items.forEach((item, idx) => {
-      const rowIdx = 3 + idx;
-      const fillColor = item.quantite_dispo <= 0 ? 'FEE2E2'
-                      : (item.quantite_dispo < item.quantite_totale && item.quantite_dispo <= (item.seuil || 2)) ? 'FEF3C7'
-                      : (idx % 2 === 0 ? null : 'F8F7F2');
-      styleDataRow(ws, rowIdx, HEADERS.length, fillColor);
-
-      // Code en monospace
-      const codeRef = XLSX.utils.encode_cell({ r: rowIdx, c: 1 });
-      if (ws[codeRef]) ws[codeRef].s = { ...ws[codeRef].s, font: MONO_FONT, border: BORDER };
-
-      // Quantités centrées
-      [9,10,11,12].forEach(C => {
-        const ref = XLSX.utils.encode_cell({ r: rowIdx, c: C });
-        if (!ws[ref]) ws[ref] = { v: '', t: 's' };
-        ws[ref].s = { ...ws[ref].s, alignment: CENTER };
-      });
-    });
-
-    // Nom de feuille : 31 chars max, pas de caractères spéciaux
-    const sheetName = cat.substring(0, 31).replace(/[:\\/?*[\]]/g, '');
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    const rows = items.map(itemToRow);
+    const name = cat.substring(0,31).replace(/[:\\/?*[\]]/g,'');
+    sheets.push({ name, xml: makeSheet(HEADERS, rows, `Atelier Électricité — ${cat}`) });
   });
 
-  // ── FEUILLE HISTORIQUE ─────────────────────────────────────
-  const mvHeaders = ['Date','Heure','Code article','Désignation','Catégorie','Type mouvement','Quantité','Emprunteur / Utilisateur','Commentaire'];
+  // Historique
+  const mvHeaders = ['Date','Heure','Code','Désignation','Catégorie','Mouvement','Quantité','Utilisateur','Commentaire'];
   const mvRows = [...db.mouvements].reverse().map(m => {
     const item = db.items.find(i => i.id === m.item_id);
     const dt = m.date ? new Date(m.date) : null;
     return [
       dt ? dt.toLocaleDateString('fr-FR') : '',
-      dt ? dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '',
-      m.item_id,
-      item?.nom || '(article supprimé)',
-      item?.categorie || '',
-      m.type === 'out' ? 'Sortie' : 'Retour / Entrée',
-      m.quantite,
-      m.utilisateur || '',
-      m.commentaire || '',
+      dt ? dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '',
+      m.item_id, item?.nom||'(supprimé)', item?.categorie||'',
+      m.type==='out'?'Sortie':'Retour', m.quantite,
+      m.utilisateur||'', m.commentaire||''
     ];
   });
+  sheets.push({ name: 'Historique', xml: makeSheet(mvHeaders, mvRows, null) });
 
-  const wsMv = XLSX.utils.aoa_to_sheet([mvHeaders, ...mvRows]);
-  wsMv['!cols'] = [{wch:12},{wch:8},{wch:14},{wch:32},{wch:18},{wch:16},{wch:10},{wch:26},{wch:30}];
-  for (let C = 0; C < mvHeaders.length; C++) {
-    const ref = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (!wsMv[ref]) continue;
-    wsMv[ref].s = { font: { bold: true, color: { rgb: 'FFFFFF' }, name: 'Arial', sz: 10 }, fill: { fgColor: { rgb: '0D9488' } }, alignment: CENTER, border: BORDER };
-  }
-  mvRows.forEach((row, idx) => {
-    const isOut = row[5] === 'Sortie';
-    for (let C = 0; C < mvHeaders.length; C++) {
-      const ref = XLSX.utils.encode_cell({ r: idx + 1, c: C });
-      if (!wsMv[ref]) wsMv[ref] = { v: '', t: 's' };
-      wsMv[ref].s = { border: BORDER, font: { name: 'Arial', sz: 10 } };
-    }
-    const ref5 = XLSX.utils.encode_cell({ r: idx + 1, c: 5 });
-    wsMv[ref5].s = { fill: { fgColor: { rgb: isOut ? 'FEE2E2' : 'DCFCE7' } }, font: { color: { rgb: isOut ? 'B91C1C' : '15803D' }, bold: true, name: 'Arial', sz: 10 }, border: BORDER };
-  });
-  XLSX.utils.book_append_sheet(wb, wsMv, 'Historique');
-
-  // ── FEUILLE ARMOIRES ───────────────────────────────────────
-  const armHeaders = ['Désignation', 'Code article', 'Emplacement', 'Nb articles rangés'];
+  // Armoires
+  const armHeaders = ['Désignation','Code','Emplacement','Articles rangés'];
   const armRows = getArmoires().map(a => {
-    const nbItems = db.items.filter(i => i.armoire_id === a.id).length;
-    return [a.nom, a.id, a.localisation || '', nbItems];
+    const nb = db.items.filter(i => i.armoire_id === a.id).length;
+    return [a.nom, a.id, a.localisation||'', nb];
   });
-  const wsArm = XLSX.utils.aoa_to_sheet([armHeaders, ...armRows]);
-  wsArm['!cols'] = [{wch:26},{wch:16},{wch:28},{wch:16}];
-  for (let C = 0; C < armHeaders.length; C++) {
-    const ref = XLSX.utils.encode_cell({ r: 0, c: C });
-    if (!wsArm[ref]) continue;
-    wsArm[ref].s = { font: HDR_FONT, fill: { fgColor: { rgb: '1C2333' } }, alignment: CENTER, border: BORDER };
-  }
-  armRows.forEach((_, idx) => {
-    for (let C = 0; C < armHeaders.length; C++) {
-      const ref = XLSX.utils.encode_cell({ r: idx + 1, c: C });
-      if (!wsArm[ref]) wsArm[ref] = { v: '', t: 's' };
-      wsArm[ref].s = { border: BORDER, font: { name: 'Arial', sz: 10 } };
-    }
-  });
-  XLSX.utils.book_append_sheet(wb, wsArm, 'Armoires');
+  sheets.push({ name: 'Armoires', xml: makeSheet(armHeaders, armRows, null) });
 
-  const fname = 'MELEC-Inventaire-' + new Date().toISOString().slice(0,10) + '.xlsx';
-  XLSX.writeFile(wb, fname);
-  toast('📊 Export Excel — ' + allCats.length + ' feuilles');
+  // Assembler le ZIP (format XLSX = ZIP OpenXML)
+  const sharedStrings = '';
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${sheets.map((s,i)=>`<sheet name="${escXML(s.name)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>
+</workbook>`;
+
+  const relsXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${sheets.map((s,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('\n')}
+</Relationships>`;
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+${sheets.map((s,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('\n')}
+</Types>`;
+
+  const topRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`;
+
+  // Construire le ZIP via JSZip-like approach avec des blobs
+  // On utilise l'API native Compression Streams disponible sur les navigateurs modernes
+  async function buildXlsx() {
+    // Méthode simple : utiliser la technique du "fake zip" avec les fichiers concaténés
+    // On passe par une approche plus robuste : générer les fichiers et les zipper
+    const files = {
+      '[Content_Types].xml': contentTypes,
+      '_rels/.rels': topRels,
+      'xl/workbook.xml': workbookXml,
+      'xl/_rels/workbook.xml.rels': relsXml,
+    };
+    sheets.forEach((s, i) => {
+      files[`xl/worksheets/sheet${i+1}.xml`] = s.xml;
+    });
+
+    // Construire un ZIP minimal en pur JS
+    const zip = buildZip(files);
+    const blob = new Blob([zip], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'MELEC-Inventaire-' + new Date().toISOString().slice(0,10) + '.xlsx';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast('📊 Export Excel téléchargé — ' + sheets.length + ' feuilles');
+  }
+
+  function buildZip(files) {
+    // Implémentation ZIP minimaliste (store, pas de compression)
+    const encoder = new TextEncoder();
+    const entries = [];
+    let offset = 0;
+    const central = [];
+
+    for (const [name, content] of Object.entries(files)) {
+      const nameBytes = encoder.encode(name);
+      const dataBytes = typeof content === 'string' ? encoder.encode(content) : content;
+      const crc = crc32(dataBytes);
+      const size = dataBytes.length;
+
+      // Local file header
+      const local = new Uint8Array(30 + nameBytes.length + size);
+      const dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);  // signature
+      dv.setUint16(4, 20, true);           // version needed
+      dv.setUint16(6, 0, true);            // flags
+      dv.setUint16(8, 0, true);            // compression (store)
+      dv.setUint16(10, 0, true);           // mod time
+      dv.setUint16(12, 0, true);           // mod date
+      dv.setUint32(14, crc, true);         // CRC-32
+      dv.setUint32(18, size, true);        // compressed size
+      dv.setUint32(22, size, true);        // uncompressed size
+      dv.setUint16(26, nameBytes.length, true); // filename length
+      dv.setUint16(28, 0, true);           // extra length
+      local.set(nameBytes, 30);
+      local.set(dataBytes, 30 + nameBytes.length);
+      entries.push(local);
+
+      // Central directory entry
+      const cd = new Uint8Array(46 + nameBytes.length);
+      const cdv = new DataView(cd.buffer);
+      cdv.setUint32(0, 0x02014b50, true);
+      cdv.setUint16(4, 20, true);
+      cdv.setUint16(6, 20, true);
+      cdv.setUint16(8, 0, true);
+      cdv.setUint16(10, 0, true);
+      cdv.setUint16(12, 0, true);
+      cdv.setUint16(14, 0, true);
+      cdv.setUint32(16, crc, true);
+      cdv.setUint32(20, size, true);
+      cdv.setUint32(24, size, true);
+      cdv.setUint16(28, nameBytes.length, true);
+      cdv.setUint16(30, 0, true);
+      cdv.setUint16(32, 0, true);
+      cdv.setUint16(34, 0, true);
+      cdv.setUint16(36, 0, true);
+      cdv.setUint32(38, 0, true);
+      cdv.setUint32(42, offset, true);
+      cd.set(nameBytes, 46);
+      central.push(cd);
+      offset += local.length;
+    }
+
+    const centralSize = central.reduce((s, c) => s + c.length, 0);
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, entries.length, true);
+    ev.setUint16(10, entries.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    ev.setUint16(20, 0, true);
+
+    const all = [...entries, ...central, eocd];
+    const total = all.reduce((s, a) => s + a.length, 0);
+    const out = new Uint8Array(total);
+    let pos = 0;
+    for (const a of all) { out.set(a, pos); pos += a.length; }
+    return out;
+  }
+
+  function crc32(data) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < data.length; i++) {
+      crc ^= data[i];
+      for (let j = 0; j < 8; j++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  buildXlsx().catch(e => toast('❌ Erreur export : ' + e.message));
 }
 
 // ═══════════════════════════════════════════════════════════
