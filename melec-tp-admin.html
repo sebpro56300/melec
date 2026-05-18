@@ -5,1102 +5,1021 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MELEC — Gestion TPs</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+:root{
+  --bg:#0d1117;--bg2:#161b24;--bg3:#1e2635;
+  --border:#2a3347;--border2:#3a4a66;
+  --accent:#3b82f6;--accent2:#60a5fa;
+  --green:#22c55e;--orange:#f59e0b;--red:#ef4444;--purple:#a78bfa;--teal:#2dd4bf;
+  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
+  --r:10px;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
 
-  :root {
-    --bg:#0d1117;--bg2:#161b24;--bg3:#1e2635;
-    --border:#2a3347;--border2:#3a4a66;
-    --accent:#3b82f6;--accent2:#60a5fa;
-    --green:#22c55e;--orange:#f59e0b;--red:#ef4444;--purple:#a78bfa;
-    --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
-    --radius:10px;
-    --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+/* ── HEADER ── */
+header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:16px;height:52px;position:sticky;top:0;z-index:100;}
+.logo{font-family:var(--display);font-weight:800;font-size:14px;color:var(--accent2);letter-spacing:.05em;white-space:nowrap;}
+.logo span{color:var(--text3);font-weight:600;}
+.htabs{display:flex;gap:2px;margin-left:12px;}
+.htab{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:none;transition:all .15s;font-family:var(--sans);}
+.htab:hover{background:var(--bg3);color:var(--text);}
+.htab.active{background:var(--accent);color:#fff;}
+.hright{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.gst{font-size:11px;font-family:var(--mono);color:var(--text3);}
+.gst.ok::before{content:"● ";color:var(--green);}
+.gst.err::before{content:"● ";color:var(--red);}
+.gst.loading::before{content:"◌ ";color:var(--orange);}
 
-  /* HEADER */
-  header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;gap:20px;height:56px;position:sticky;top:0;z-index:100;}
-  .logo{font-family:var(--display);font-weight:800;font-size:15px;color:var(--accent2);letter-spacing:.05em;}
-  .logo span{color:var(--text3);font-weight:600;}
-  .header-tabs{display:flex;gap:2px;margin-left:20px;}
-  .htab{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border:none;background:none;transition:all .15s;font-family:var(--sans);}
-  .htab:hover{background:var(--bg3);color:var(--text);}
-  .htab.active{background:var(--accent);color:#fff;}
-  .header-right{margin-left:auto;display:flex;gap:10px;align-items:center;}
-  .gist-status{font-size:11px;font-family:var(--mono);color:var(--text3);}
-  .gist-status.ok::before{content:"● ";color:var(--green);}
-  .gist-status.err::before{content:"● ";color:var(--red);}
-  .gist-status.loading::before{content:"◌ ";color:var(--orange);}
+/* ── BUTTONS ── */
+.btn{padding:6px 13px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--sans);}
+.btn-p{background:var(--accent);color:#fff;}.btn-p:hover{background:#2563eb;}
+.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border);}.btn-g:hover{background:var(--bg3);color:var(--text);}
+.btn-d{background:transparent;color:var(--red);border:1px solid #3f1a1a;}.btn-d:hover{background:#1f0a0a;}
+.btn-t{background:var(--teal);color:#fff;}.btn-t:hover{background:#14b8a6;}
+.btn-sm{padding:3px 9px;font-size:11px;}
 
-  /* BUTTONS */
-  .btn{padding:7px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--sans);}
-  .btn-primary{background:var(--accent);color:#fff;}.btn-primary:hover{background:#2563eb;}
-  .btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border);}.btn-ghost:hover{background:var(--bg3);color:var(--text);}
-  .btn-danger{background:transparent;color:var(--red);border:1px solid #3f1a1a;}.btn-danger:hover{background:#1f0a0a;}
-  .btn-sm{padding:4px 10px;font-size:11px;}
+/* ── LAYOUT ── */
+.main{flex:1;display:flex;overflow:hidden;height:calc(100vh - 52px);}
+.sidebar{width:270px;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
+.sb-head{padding:12px 14px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.sb-title{font-family:var(--display);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);}
+.sb-filter{padding:7px;border-bottom:1px solid var(--border);}
+.sb-filter input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);font-size:12px;font-family:var(--sans);}
+.sb-filter input:focus{outline:none;border-color:var(--accent);}
+.sb-list{flex:1;overflow-y:auto;padding:6px;}
+.li{padding:9px 11px;border-radius:7px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .12s;position:relative;}
+.li:hover{background:var(--bg3);}
+.li.on{background:#1a2540;border-color:var(--accent);}
+.li-name{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:42px;}
+.li-meta{font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono);}
+.li-badge{position:absolute;top:9px;right:9px;font-size:10px;padding:1px 6px;border-radius:4px;font-family:var(--mono);}
+.bb{background:#111f3a;color:var(--accent2);}
+.bp{background:#1e1632;color:var(--purple);}
+.bt{background:#0d2520;color:var(--teal);}
+.bo{background:#251a0a;color:var(--orange);}
 
-  /* LAYOUT */
-  .main{flex:1;display:flex;overflow:hidden;height:calc(100vh - 56px);}
-  .sidebar{width:280px;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;}
-  .sidebar-header{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
-  .sidebar-title{font-family:var(--display);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);}
-  .sidebar-filter{padding:8px;border-bottom:1px solid var(--border);}
-  .sidebar-filter input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:12px;font-family:var(--sans);}
-  .sidebar-filter input:focus{outline:none;border-color:var(--accent);}
-  .sidebar-list{flex:1;overflow-y:auto;padding:8px;}
-  .list-item{padding:10px 12px;border-radius:8px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .12s;position:relative;}
-  .list-item:hover{background:var(--bg3);}
-  .list-item.active{background:#1a2540;border-color:var(--accent);}
-  .list-item-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:44px;}
-  .list-item-meta{font-size:11px;color:var(--text3);margin-top:2px;font-family:var(--mono);}
-  .list-badge{position:absolute;top:10px;right:10px;font-size:10px;padding:2px 6px;border-radius:4px;font-family:var(--mono);}
-  .b-blue{background:#111f3a;color:var(--accent2);}
-  .b-purple{background:#1e1632;color:var(--purple);}
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:22px;}
+.empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text3);}
+.empty-ico{font-size:44px;opacity:.35;}
 
-  /* CONTENT */
-  .content{flex:1;overflow-y:auto;padding:24px;}
-  .empty-state{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--text3);}
-  .empty-icon{font-size:48px;opacity:.4;}
+/* ── FORM CARD ── */
+.fc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:14px;}
+.fc-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--bg3);}
+.fc-title{font-family:var(--display);font-size:12px;font-weight:700;color:var(--text);}
+.fc-body{padding:16px;display:flex;flex-direction:column;gap:12px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fg.full{grid-column:1/-1;}
+label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);}
+input[type=text],input[type=url],input[type=number],textarea,select{
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:8px 11px;color:var(--text);font-size:12px;font-family:var(--sans);
+  transition:border-color .15s;width:100%;
+}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);}
+textarea{resize:vertical;min-height:72px;}
+select option{background:var(--bg2);}
 
-  /* FORM */
-  .form-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
-  .form-card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg3);}
-  .form-card-title{font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);}
-  .form-card-body{padding:18px;display:flex;flex-direction:column;gap:14px;}
-  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-  .form-group{display:flex;flex-direction:column;gap:6px;}
-  .form-group.full{grid-column:1/-1;}
-  label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);}
-  input[type=text],input[type=url],input[type=number],textarea,select{
-    background:var(--bg);border:1px solid var(--border);border-radius:6px;
-    padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--sans);
-    transition:border-color .15s;width:100%;
-  }
-  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);}
-  textarea{resize:vertical;min-height:80px;}
-  select option{background:var(--bg2);}
+/* ── NIVEAUX ── */
+.niv-grp{display:flex;gap:7px;flex-wrap:wrap;}
+.niv-pill{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid var(--border);color:var(--text2);background:var(--bg);transition:all .15s;user-select:none;}
+.niv-pill:hover{border-color:var(--accent2);color:var(--accent2);}
+.niv-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 
-  /* NIVEAUX */
-  .niveaux-group{display:flex;gap:8px;flex-wrap:wrap;}
-  .niveau-pill{
-    padding:7px 18px;border-radius:20px;font-size:13px;font-weight:600;
-    cursor:pointer;border:2px solid var(--border);color:var(--text2);
-    background:var(--bg);transition:all .15s;user-select:none;
-  }
-  .niveau-pill:hover{border-color:var(--accent2);color:var(--accent2);}
-  .niveau-pill.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+/* ── TAGS ── */
+.tags-wrap{display:flex;flex-wrap:wrap;gap:4px;min-height:26px;}
+.tag{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text2);}
+.tag .x{cursor:pointer;color:var(--text3);font-size:14px;margin-left:2px;line-height:1;}.tag .x:hover{color:var(--red);}
 
-  /* TAGS */
-  .tags-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;min-height:28px;}
-  .sys-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text2);}
-  .sys-tag .x{cursor:pointer;color:var(--text3);font-size:15px;margin-left:2px;line-height:1;}
-  .sys-tag .x:hover{color:var(--red);}
+/* ── RESSOURCE CARD dans TP ── */
+.res-card{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;}
+.res-icon{font-size:18px;flex-shrink:0;}
+.res-info{flex:1;min-width:0;}
+.res-title{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.res-meta{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
+.res-list{display:flex;flex-direction:column;gap:6px;}
 
-  /* RESSOURCES */
-  .res-row{display:grid;grid-template-columns:105px 1fr 1fr auto;gap:8px;align-items:center;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
-  .res-list{display:flex;flex-direction:column;gap:6px;}
-  .icon-btn{background:none;border:none;color:var(--text3);cursor:pointer;padding:4px 6px;border-radius:4px;font-size:14px;}
-  .icon-btn:hover{color:var(--red);background:#1f0a0a;}
+/* ── BIBLIOTHÈQUE — liste ressources ── */
+.bib-row{display:grid;grid-template-columns:32px 1fr auto auto;gap:10px;align-items:center;padding:9px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;}
+.bib-icon{font-size:18px;text-align:center;}
+.bib-info .bib-title{font-size:12px;font-weight:500;}
+.bib-info .bib-meta{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px;}
+.bib-actions{display:flex;gap:5px;flex-shrink:0;}
+.icon-btn{background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:4px;font-size:13px;color:var(--text3);}
+.icon-btn.del:hover{color:var(--red);background:#1f0a0a;}
+.icon-btn.link:hover{color:var(--accent2);background:#111f3a;}
 
-  /* DETAIL HEADER */
-  .detail-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;}
-  .detail-title{font-family:var(--display);font-size:22px;font-weight:800;color:var(--text);line-height:1.2;}
-  .detail-id{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px;}
-  .action-row{display:flex;gap:8px;flex-shrink:0;}
+/* ── DETAIL HEADER ── */
+.dh{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;gap:14px;}
+.dt{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text);line-height:1.2;}
+.did{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px;}
+.arow{display:flex;gap:7px;flex-shrink:0;}
 
-  /* QR */
-  .qr-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;gap:20px;margin-bottom:16px;}
-  .qr-url{font-family:var(--mono);font-size:11px;color:var(--text2);background:var(--bg);padding:8px 12px;border-radius:6px;border:1px solid var(--border);word-break:break-all;margin-bottom:10px;}
+/* ── QR ── */
+.qr-sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;align-items:center;gap:16px;margin-bottom:14px;}
+.qr-url{font-family:var(--mono);font-size:10px;color:var(--text2);background:var(--bg);padding:7px 10px;border-radius:5px;border:1px solid var(--border);word-break:break-all;margin-bottom:8px;}
 
-  /* STATS */
-  .stats-row{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
-  .stat-pill{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 16px;text-align:center;}
-  .stat-val{font-family:var(--display);font-size:20px;font-weight:800;color:var(--accent2);}
-  .stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;}
+/* ── STATS ── */
+.stats{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.sp{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:8px 14px;text-align:center;}
+.sv{font-family:var(--display);font-size:18px;font-weight:800;color:var(--accent2);}
+.sl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:1px;}
 
-  /* INFO BOX */
-  .info-box{background:var(--bg3);border-left:3px solid var(--orange);padding:12px 16px;border-radius:4px;font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;}
-  .info-box code{background:#111;padding:2px 5px;border-radius:3px;font-family:var(--mono);color:var(--accent2);}
-  .info-step{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;}
-  .info-num{background:var(--orange);color:#111;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px;}
+/* ── UPLOAD MODAL ── */
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;display:none;align-items:center;justify-content:center;}
+.modal-ov.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:540px;max-width:95vw;max-height:92vh;overflow-y:auto;padding:22px;}
+.modal-title{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:14px;}
+.modal-foot{display:flex;gap:7px;justify-content:flex-end;margin-top:16px;}
 
-  /* CONFIG */
-  .config-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;}
-  .config-title{font-family:var(--display);font-size:13px;font-weight:700;margin-bottom:14px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;}
+/* ── DROP ZONE ── */
+.dz{border:2px dashed var(--border2);border-radius:9px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);}
+.dz:hover,.dz.over{border-color:var(--accent);background:#111f3a;}
+.dz-ico{font-size:32px;margin-bottom:6px;}
+.dz-lbl{font-size:13px;color:var(--text2);}
+.dz-sub{font-size:11px;color:var(--text3);margin-top:3px;}
 
-  /* TOAST */
-  #toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;z-index:999;display:none;box-shadow:0 8px 32px rgba(0,0,0,.4);}
-  #toast.show{display:block;}
-  #toast.success{border-color:var(--green);}
-  #toast.error{border-color:var(--red);}
+/* ── UPLOAD ITEMS ── */
+.ufi{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:7px;}
+.ufi-top{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
+.ufi-name{font-size:12px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ufi-sz{font-size:10px;color:var(--text3);font-family:var(--mono);flex-shrink:0;}
+.ufi-st{font-size:10px;flex-shrink:0;font-family:var(--mono);}
+.ufi-st.pending{color:var(--text3);}
+.ufi-st.uploading{color:var(--orange);}
+.ufi-st.done{color:var(--green);}
+.ufi-st.error{color:var(--red);}
+.pbar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.pfill{height:100%;background:var(--accent);border-radius:2px;transition:width .25s;}
+.ufi-url{font-size:10px;font-family:var(--mono);color:var(--accent2);word-break:break-all;margin-top:5px;cursor:pointer;}
+.ufi-url:hover{text-decoration:underline;}
+.upload-err{background:#1f0a0a;border:1px solid var(--red);border-radius:6px;padding:9px 12px;font-size:11px;color:#fca5a5;font-family:var(--mono);margin-top:9px;white-space:pre-wrap;word-break:break-all;}
 
-  .flex-end{display:flex;justify-content:flex-end;gap:8px;}
-  .text-muted{color:var(--text3);font-size:12px;}
-  .mt8{margin-top:8px;}.mt16{margin-top:16px;}
-  ::-webkit-scrollbar{width:6px;}
-  ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+/* ── SELECT RESSOURCE MODAL ── */
+.res-pick-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--bg);cursor:pointer;margin-bottom:5px;transition:background .12s;}
+.res-pick-row:hover{background:var(--bg3);}
+.res-pick-row.picked{background:#1a2540;border-color:var(--accent);}
 
-  /* UPLOAD MODAL */
-  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:none;align-items:center;justify-content:center;}
-  .modal-overlay.open{display:flex;}
-  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:24px;}
-  .modal-title{font-family:var(--display);font-size:17px;font-weight:700;margin-bottom:18px;color:var(--text);}
-  .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+/* ── CONFIG ── */
+.cfg-sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px;}
+.cfg-title{font-family:var(--display);font-size:12px;font-weight:700;margin-bottom:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;}
 
-  /* DROP ZONE */
-  .drop-zone{
-    border:2px dashed var(--border2);border-radius:10px;padding:32px;text-align:center;
-    cursor:pointer;transition:all .2s;background:var(--bg);
-  }
-  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:#111f3a;}
-  .drop-zone .dz-icon{font-size:36px;margin-bottom:8px;}
-  .drop-zone .dz-label{font-size:13px;color:var(--text2);}
-  .drop-zone .dz-sub{font-size:11px;color:var(--text3);margin-top:4px;}
-
-  /* PROGRESS */
-  .upload-file-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;}
-  .ufi-top{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-  .ufi-name{font-size:13px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .ufi-size{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0;}
-  .ufi-status{font-size:11px;flex-shrink:0;font-family:var(--mono);}
-  .ufi-status.pending{color:var(--text3);}
-  .ufi-status.uploading{color:var(--orange);}
-  .ufi-status.done{color:var(--green);}
-  .ufi-status.error{color:var(--red);}
-  .progress-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
-  .progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s;}
-  .ufi-url{font-size:10px;font-family:var(--mono);color:var(--accent2);word-break:break-all;margin-top:6px;cursor:pointer;}
-  .ufi-url:hover{text-decoration:underline;}
-
-  /* RES ROW améliorée */
-  .res-row{display:grid;grid-template-columns:105px 1fr auto auto;gap:8px;align-items:center;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
-  .res-url-wrap{display:flex;align-items:center;gap:6px;}
-  .res-url-wrap input{flex:1;min-width:0;}
-  .btn-upload-inline{flex-shrink:0;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap;}
-  .btn-upload-inline:hover{border-color:var(--accent);color:var(--accent2);}
-
-  @media print{
-    body{background:#fff;color:#000;}
-    header,.sidebar,.action-row,.form-card,.stats-row{display:none!important;}
-    .qr-section{border:1px solid #ccc;background:#fff;color:#000;}
-    .content{padding:0;}
-  }
+/* ── MISC ── */
+.fe{display:flex;justify-content:flex-end;gap:7px;}
+.muted{color:var(--text3);font-size:11px;}
+.mt8{margin-top:8px;}.mt12{margin-top:12px;}
+::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media print{body{background:#fff;}header,.sidebar,.arow,.fc,.stats{display:none!important;}.qr-sec{border:1px solid #ccc;background:#fff;}.content{padding:0;}}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">MELEC <span>/ Gestion TPs</span></div>
-  <div class="header-tabs">
-    <button class="htab active" onclick="switchTab('systemes')">🖥️ Systèmes</button>
+  <div class="logo">MELEC <span>/ Admin TPs</span></div>
+  <div class="htabs">
+    <button class="htab active" onclick="switchTab('sys')">🖥️ Systèmes</button>
     <button class="htab" onclick="switchTab('tps')">🔬 TPs</button>
-    <button class="htab" onclick="switchTab('config')">⚙️ Config</button>
+    <button class="htab" onclick="switchTab('bib')">📚 Bibliothèque</button>
+    <button class="htab" onclick="switchTab('cfg')">⚙️ Config</button>
   </div>
-  <div class="header-right">
-    <span class="gist-status loading" id="gist-status">non connecté</span>
-    <button class="btn btn-ghost btn-sm" onclick="syncGist()">↑ Sauvegarder TPs</button>
+  <div class="hright">
+    <span class="gst loading" id="gst">non connecté</span>
+    <button class="btn btn-g btn-sm" onclick="syncAll()">↑ Sauvegarder</button>
   </div>
 </header>
 
 <div class="main">
-  <div class="sidebar" id="sb-systemes">
-    <div class="sidebar-header">
-      <span class="sidebar-title">Systèmes</span>
-    </div>
-    <div class="sidebar-filter">
-      <input type="text" id="f-sys" placeholder="Rechercher..." oninput="renderSys(this.value)">
-    </div>
-    <div class="sidebar-list" id="list-sys">
-      <div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">Chargement inventaire...</div>
-    </div>
+  <!-- SIDEBAR SYSTÈMES -->
+  <div class="sidebar" id="sb-sys">
+    <div class="sb-head"><span class="sb-title">Systèmes</span></div>
+    <div class="sb-filter"><input type="text" id="f-sys" placeholder="Rechercher..." oninput="renderSys(this.value)"></div>
+    <div class="sb-list" id="list-sys"><div style="padding:14px;color:var(--text3);font-size:11px;text-align:center;">Chargement...</div></div>
   </div>
 
+  <!-- SIDEBAR TPs -->
   <div class="sidebar" id="sb-tps" style="display:none">
-    <div class="sidebar-header">
-      <span class="sidebar-title">TPs</span>
-      <button class="btn btn-primary btn-sm" onclick="newTP(null)">+ Nouveau</button>
-    </div>
-    <div class="sidebar-filter">
-      <input type="text" id="f-tp" placeholder="Rechercher..." oninput="renderTPs(this.value)">
-    </div>
-    <div class="sidebar-list" id="list-tps"></div>
+    <div class="sb-head"><span class="sb-title">TPs</span><button class="btn btn-p btn-sm" onclick="newTP(null)">+ Nouveau</button></div>
+    <div class="sb-filter"><input type="text" id="f-tp" placeholder="Rechercher..." oninput="renderTPs(this.value)"></div>
+    <div class="sb-list" id="list-tps"></div>
+  </div>
+
+  <!-- SIDEBAR BIBLIOTHÈQUE -->
+  <div class="sidebar" id="sb-bib" style="display:none">
+    <div class="sb-head"><span class="sb-title">Bibliothèque</span><button class="btn btn-t btn-sm" onclick="openUploadModal(null)">⬆ Upload</button></div>
+    <div class="sb-filter"><input type="text" id="f-bib" placeholder="Rechercher..." oninput="renderBib(this.value)"></div>
+    <div class="sb-list" id="list-bib"></div>
   </div>
 
   <div class="content" id="content">
-    <div class="empty-state">
-      <div class="empty-icon">🔌</div>
-      <div style="font-size:14px;color:var(--text3);">Configurez le Gist (onglet Config) puis sélectionnez un système</div>
-    </div>
+    <div class="empty"><div class="empty-ico">🔌</div><div>Configurez le Gist puis sélectionnez un élément</div></div>
   </div>
 </div>
 
 <div id="toast"></div>
 
 <!-- MODAL UPLOAD -->
-<div class="modal-overlay" id="upload-modal">
+<div class="modal-ov" id="modal-upload">
   <div class="modal">
-    <div class="modal-title">📦 Uploader une ressource</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">
-      Fichiers uploadés sur <strong style="color:var(--accent2);">GitHub Releases</strong> — accessibles publiquement depuis n'importe quel réseau (mobile, lycée, domicile).
+    <div class="modal-title">📦 Uploader dans la bibliothèque</div>
+    <div class="muted" style="margin-bottom:12px;">Les fichiers sont stockés une seule fois et réutilisables dans tous les TPs.</div>
+    <div class="dz" id="dz" onclick="document.getElementById('fi').click()" ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
+      <div class="dz-ico">📂</div>
+      <div class="dz-lbl">Cliquez ou glissez vos fichiers</div>
+      <div class="dz-sub">PDF · Word · Excel · JPEG · PNG · TXT · max 100 Mo</div>
     </div>
-
-    <!-- Drop zone -->
-    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
-         ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
-      <div class="dz-icon">📂</div>
-      <div class="dz-label">Cliquez ou glissez vos fichiers ici</div>
-      <div class="dz-sub">PDF · Word · Excel · JPEG · PNG · TXT · max 100 Mo/fichier</div>
+    <input type="file" id="fi" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" style="display:none" onchange="filesSelected(this.files)">
+    <div id="upload-list" style="margin-top:12px;"></div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeUploadModal()">Fermer</button>
+      <button class="btn btn-t" id="btn-upload" onclick="runUploads()" disabled>⬆️ Uploader</button>
     </div>
-    <input type="file" id="file-input" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt" style="display:none" onchange="filesSelected(this.files)">
+  </div>
+</div>
 
-    <!-- Liste fichiers -->
-    <div id="upload-list" style="margin-top:14px;"></div>
-
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeUploadModal()">Fermer</button>
-      <button class="btn btn-primary" id="btn-do-upload" onclick="runUploads()" disabled>⬆️ Uploader</button>
+<!-- MODAL SÉLECTION RESSOURCE -->
+<div class="modal-ov" id="modal-pick">
+  <div class="modal">
+    <div class="modal-title">📚 Attacher une ressource</div>
+    <div class="sb-filter" style="padding:0;margin-bottom:10px;">
+      <input type="text" id="pick-filter" placeholder="Rechercher dans la bibliothèque..." oninput="renderPickList(this.value)" style="width:100%">
+    </div>
+    <div id="pick-list" style="max-height:340px;overflow-y:auto;"></div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closePick()">Annuler</button>
+      <button class="btn btn-p" onclick="confirmPick()">Attacher</button>
     </div>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
-// ═══════════════════════════════════════════════════════════════
-// CONFIG & STATE
-// ═══════════════════════════════════════════════════════════════
-const INV_GIST_ID   = '7199f3da76a616c61c7b7780409bf786';
-const INV_FILE_NAME = 'melec-inventaire.json';
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const INV_GIST = '7199f3da76a616c61c7b7780409bf786';
+const INV_FILE = 'melec-inventaire.json';
 
 let inventory = [];
-let tps       = [];
-let selSys    = null;
-let selTP     = null;
+let tps        = [];
+let ressources = []; // bibliothèque globale
+let selSys=null, selTP=null, selBib=null;
 let cfg = { token:'', tpGistId:'', uploadRepo:'', appUrl:'' };
 
-// ═══════════════════════════════════════════════════════════════
+// contexte upload
+let uploadQueue = [];
+let uploadTargetTP = null; // si ouvert depuis un TP, ID du TP
+
+// contexte sélection ressource
+let pickTargetTP   = null;
+let pickSelected   = null;
+
+// ═══════════════════════════════════════════════
 // INIT
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function init() {
-  const c = localStorage.getItem('melec_tp_cfg');
+  const c = localStorage.getItem('melec_cfg');
   if (c) cfg = Object.assign(cfg, JSON.parse(c));
   const t = localStorage.getItem('melec_tps');
-  if (t) { try { tps = JSON.parse(t); } catch(e){} }
+  if (t) try { tps = JSON.parse(t); } catch(e){}
+  const r = localStorage.getItem('melec_ressources');
+  if (r) try { ressources = JSON.parse(r); } catch(e){}
   loadInventaire();
-  if (cfg.token && cfg.tpGistId) loadTPs();
+  if (cfg.token && cfg.tpGistId) loadRemote();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // TABS
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function switchTab(tab) {
-  ['systemes','tps','config'].forEach((t,i) => {
+  ['sys','tps','bib','cfg'].forEach((t,i)=>{
     document.querySelectorAll('.htab')[i].classList.toggle('active', t===tab);
+    const sb = document.getElementById('sb-'+t);
+    if (sb) sb.style.display = t===tab ? 'flex':'none';
   });
-  document.getElementById('sb-systemes').style.display = tab==='systemes' ? 'flex':'none';
-  document.getElementById('sb-tps').style.display      = tab==='tps'      ? 'flex':'none';
-  if (tab==='config') showConfig(); else showEmpty();
+  if (tab==='cfg') showCfg(); else showEmpty();
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // GIST — INVENTAIRE (lecture seule)
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 async function loadInventaire() {
-  setStatus('loading','Chargement...');
+  setGst('loading','Chargement...');
   try {
-    const h = cfg.token ? { Authorization:`token ${cfg.token}` } : {};
-    const r = await fetch(`https://api.github.com/gists/${INV_GIST_ID}`, { headers:h });
+    const h = cfg.token ? {Authorization:`token ${cfg.token}`} : {};
+    const r = await fetch(`https://api.github.com/gists/${INV_GIST}`,{headers:h});
     if (!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
-    const raw = d.files[INV_FILE_NAME]?.content;
+    const raw = d.files[INV_FILE]?.content;
     if (!raw) throw new Error('Fichier inventaire introuvable');
-    const parsed = JSON.parse(raw);
-    inventory = parsed.items || [];
-    renderSys();
-    setStatus('ok','Inventaire OK');
-    toast('Inventaire chargé — '+inventory.length+' items','success');
+    inventory = (JSON.parse(raw)).items || [];
+    renderSys(); setGst('ok','Inventaire OK');
+    toast('Inventaire chargé — '+inventory.length+' items','s');
   } catch(e) {
-    setStatus('err','Err. inventaire');
-    toast('Inventaire : '+e.message,'error');
+    setGst('err','Err.inventaire');
+    toast('Inventaire : '+e.message,'e');
     renderSys();
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// GIST — TPs (lecture / écriture)
-// ═══════════════════════════════════════════════════════════════
-async function loadTPs() {
-  if (!cfg.token || !cfg.tpGistId) return;
+// ═══════════════════════════════════════════════
+// GIST — TPs + Ressources (lecture/écriture)
+// ═══════════════════════════════════════════════
+async function loadRemote() {
+  if (!cfg.token||!cfg.tpGistId) return;
   try {
-    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, {
-      headers:{ Authorization:`token ${cfg.token}` }
-    });
+    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`,{headers:{Authorization:`token ${cfg.token}`}});
     if (!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
-    if (d.files['tps.json']) {
-      tps = JSON.parse(d.files['tps.json'].content);
-      saveLocal();
-    }
-    renderTPs();
-    toast('TPs chargés ('+tps.length+')','success');
-  } catch(e) {
-    toast('TPs : '+e.message,'error');
-  }
+    if (d.files['tps.json'])        tps        = JSON.parse(d.files['tps.json'].content);
+    if (d.files['ressources.json']) ressources = JSON.parse(d.files['ressources.json'].content);
+    saveLocal(); renderTPs(); renderBib();
+    toast('TPs + bibliothèque chargés','s');
+  } catch(e) { toast('Chargement distant : '+e.message,'e'); }
 }
 
-async function syncGist() {
-  if (!cfg.token||!cfg.tpGistId) { toast('Configurez le Gist TP (onglet Config)','error'); return; }
-  setStatus('loading','Sauvegarde...');
+async function syncAll() {
+  if (!cfg.token||!cfg.tpGistId){toast('Configurez le Gist (Config)','e');return;}
+  setGst('loading','Sauvegarde...');
   try {
-    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, {
+    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`,{
       method:'PATCH',
-      headers:{ Authorization:`token ${cfg.token}`,'Content-Type':'application/json' },
-      body: JSON.stringify({ files:{ 'tps.json':{ content:JSON.stringify(tps,null,2) } } })
+      headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json'},
+      body:JSON.stringify({files:{
+        'tps.json':        {content:JSON.stringify(tps,null,2)},
+        'ressources.json': {content:JSON.stringify(ressources,null,2)}
+      }})
     });
     if (!r.ok) throw new Error('HTTP '+r.status);
-    setStatus('ok','Sauvegardé');
-    saveLocal();
-    toast('TPs sauvegardés ✓','success');
-  } catch(e) {
-    setStatus('err','Err. sync');
-    toast('Erreur : '+e.message,'error');
-  }
+    setGst('ok','Sauvegardé'); saveLocal();
+    toast('Sauvegardé sur GitHub ✓','s');
+  } catch(e) { setGst('err','Err.sync'); toast('Sync : '+e.message,'e'); }
 }
 
-function saveLocal() { localStorage.setItem('melec_tps', JSON.stringify(tps)); }
-function setStatus(cls,msg) {
-  const el=document.getElementById('gist-status');
-  el.className='gist-status '+cls; el.textContent=msg;
+function saveLocal() {
+  localStorage.setItem('melec_tps', JSON.stringify(tps));
+  localStorage.setItem('melec_ressources', JSON.stringify(ressources));
 }
+function dirty() { saveLocal(); }
+function setGst(c,m){const el=document.getElementById('gst');el.className='gst '+c;el.textContent=m;}
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // HELPERS INVENTAIRE
-// ═══════════════════════════════════════════════════════════════
-function byCat(cat) { return inventory.filter(i=>i.categorie===cat); }
-const getSystems     = ()=>byCat('Systèmes didactiques');
-const getArmoires    = ()=>byCat('Armoires');
-const getMesure      = ()=>byCat('Appareils de mesure');
-const getAppareillage= ()=>byCat('Appareillage');
-const getOutils      = ()=>byCat('Outils');
+// ═══════════════════════════════════════════════
+const byCat = cat => inventory.filter(i=>i.categorie===cat);
+const getSystems      = ()=>byCat('Systèmes didactiques');
+const getArmoires     = ()=>byCat('Armoires');
+const getMesure       = ()=>byCat('Appareils de mesure');
+const getAppareillage = ()=>byCat('Appareillage');
+const getOutils       = ()=>byCat('Outils');
 
-// ═══════════════════════════════════════════════════════════════
-// RENDER SIDEBARS
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// RESSOURCES — BIBLIOTHÈQUE
+// ═══════════════════════════════════════════════
+const TYPE_ICON = {pdf:'📄',word:'📝',excel:'📊',image:'🖼️',video:'🎬',txt:'📃',lien:'🔗'};
+
+function genRID() { return 'RES'+Date.now().toString(36).toUpperCase(); }
+
+function renderBib(filter='') {
+  const f=(filter||'').toLowerCase();
+  const list=ressources.filter(r=>!f||(r.titre||'').toLowerCase().includes(f));
+  const el=document.getElementById('list-bib');
+  if (!list.length){
+    el.innerHTML='<div style="padding:14px;color:var(--text3);font-size:11px;text-align:center;">'+(ressources.length?'Aucun résultat':'Bibliothèque vide — uploadez des fichiers')+'</div>';
+    return;
+  }
+  el.innerHTML=list.map(r=>{
+    const usedBy=tps.filter(t=>(t.ressources||[]).includes(r.id)).length;
+    return `<div class="li${selBib===r.id?' on':''}" onclick="selectBib('${r.id}')">
+      <div class="li-name">${TYPE_ICON[r.type]||'📄'} ${esc(r.titre)}</div>
+      <div class="li-meta">${r.id} · ${r.type}</div>
+      <span class="li-badge bt">${usedBy} TP${usedBy!==1?'s':''}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectBib(id) {
+  selBib=id;
+  renderBib(document.getElementById('f-bib').value);
+  showBibDetail(id);
+}
+
+function showBibDetail(id) {
+  const r=ressources.find(x=>x.id===id);
+  if (!r) return;
+  const usedBy=tps.filter(t=>(t.ressources||[]).includes(id));
+
+  document.getElementById('content').innerHTML=`
+    <div class="dh">
+      <div>
+        <div class="dt">${TYPE_ICON[r.type]||'📄'} ${esc(r.titre)}</div>
+        <div class="did">${r.id} · ${r.type}</div>
+      </div>
+      <div class="arow">
+        <a href="${esc(r.url)}" target="_blank" class="btn btn-g btn-sm">🔗 Ouvrir</a>
+        <button class="btn btn-g btn-sm" onclick="editBib('${id}')">✏️ Modifier</button>
+        <button class="btn btn-d btn-sm" onclick="deleteBib('${id}')">Supprimer</button>
+      </div>
+    </div>
+
+    <div class="fc">
+      <div class="fc-head"><span>📄</span><span class="fc-title">Informations</span></div>
+      <div class="fc-body">
+        <div class="frow">
+          <div class="fg"><label>Titre</label><input type="text" id="bib-titre" value="${esc(r.titre)}"></div>
+          <div class="fg"><label>Type</label>
+            <select id="bib-type">
+              ${['pdf','word','excel','image','video','txt','lien'].map(t=>`<option value="${t}" ${r.type===t?'selected':''}>${TYPE_ICON[t]} ${t}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="fg full"><label>URL (raw.githubusercontent.com ou lien externe)</label>
+          <input type="url" id="bib-url" value="${esc(r.url||'')}">
+        </div>
+        <div class="fg full"><label>Description (optionnelle)</label>
+          <textarea id="bib-desc">${esc(r.description||'')}</textarea>
+        </div>
+        <div class="fe"><button class="btn btn-p" onclick="saveBib('${id}')">💾 Enregistrer</button></div>
+      </div>
+    </div>
+
+    <div class="fc">
+      <div class="fc-head"><span>🔬</span><span class="fc-title">Utilisée dans ${usedBy.length} TP${usedBy.length!==1?'s':''}</span></div>
+      <div class="fc-body">
+        ${usedBy.length ? usedBy.map(tp=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+            <div>
+              <div style="font-size:12px;font-weight:500;">${esc(tp.titre||'(sans titre)')}</div>
+              <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${tp.id} · ${(tp.niveaux||[]).join(', ')||'—'}</div>
+            </div>
+            <button class="btn btn-g btn-sm" onclick="switchTab('tps');selectTP('${tp.id}')">Ouvrir →</button>
+          </div>`).join('')
+        : '<div class="muted">Non utilisée dans aucun TP.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function editBib(id) { selectBib(id); } // déjà en mode édition inline
+
+function saveBib(id) {
+  const r=ressources.find(x=>x.id===id);
+  if (!r) return;
+  r.titre      = document.getElementById('bib-titre').value;
+  r.type       = document.getElementById('bib-type').value;
+  r.url        = document.getElementById('bib-url').value;
+  r.description= document.getElementById('bib-desc').value;
+  dirty(); renderBib(document.getElementById('f-bib').value);
+  toast('Ressource sauvegardée','s');
+}
+
+function deleteBib(id) {
+  const usedBy=tps.filter(t=>(t.ressources||[]).includes(id));
+  if (usedBy.length) {
+    if (!confirm(`Cette ressource est utilisée dans ${usedBy.length} TP(s). La détacher et supprimer ?`)) return;
+    tps.forEach(tp=>{ tp.ressources=(tp.ressources||[]).filter(r=>r!==id); });
+  } else {
+    if (!confirm('Supprimer cette ressource de la bibliothèque ?')) return;
+  }
+  ressources=ressources.filter(x=>x.id!==id);
+  selBib=null; dirty(); renderBib(); renderTPs(); showEmpty();
+  toast('Ressource supprimée','s');
+}
+
+// ═══════════════════════════════════════════════
+// SYSTÈMES
+// ═══════════════════════════════════════════════
 function renderSys(filter='') {
   const f=(filter||'').toLowerCase();
   const list=getSystems().filter(s=>!f||s.nom.toLowerCase().includes(f));
   const el=document.getElementById('list-sys');
-  if (!list.length) {
-    el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">'
-      +(inventory.length?'Aucun système trouvé':'Inventaire non chargé')+'</div>';
-    return;
-  }
+  if (!list.length){el.innerHTML='<div style="padding:14px;color:var(--text3);font-size:11px;text-align:center;">'+(inventory.length?'Aucun résultat':'Inventaire non chargé')+'</div>';return;}
   el.innerHTML=list.map(s=>{
     const n=tps.filter(t=>(t.systemes||[]).includes(s.id)).length;
-    return `<div class="list-item${selSys===s.id?' active':''}" onclick="selectSys('${s.id}')">
-      <div class="list-item-name">${esc(s.nom)}</div>
-      <div class="list-item-meta">${s.id} · ${esc(s.localisation||'—')}</div>
-      <span class="list-badge b-blue">${n} TP${n!==1?'s':''}</span>
+    return `<div class="li${selSys===s.id?' on':''}" onclick="selectSys('${s.id}')">
+      <div class="li-name">${esc(s.nom)}</div>
+      <div class="li-meta">${s.id} · ${esc(s.localisation||'—')}</div>
+      <span class="li-badge bb">${n} TP${n!==1?'s':''}</span>
     </div>`;
   }).join('');
 }
+
+function selectSys(id) {
+  selSys=id; renderSys(document.getElementById('f-sys').value); showSysDetail(id);
+}
+
+function showSysDetail(id) {
+  const s=inventory.find(x=>x.id===id); if (!s) return;
+  const qrUrl=(cfg.appUrl||'https://[url-app-eleve]')+'?sys='+(s.qr_code||s.id);
+  const linked=tps.filter(t=>(t.systemes||[]).includes(id));
+
+  document.getElementById('content').innerHTML=`
+    <div class="dh">
+      <div><div class="dt">${esc(s.nom)}</div><div class="did">${s.id} · QR: ${s.qr_code||s.id}</div></div>
+      <div class="arow"><button class="btn btn-g btn-sm" onclick="window.print()">🖨️ QR</button></div>
+    </div>
+    <div class="stats">
+      <div class="sp"><div class="sv">${linked.length}</div><div class="sl">TPs liés</div></div>
+      <div class="sp"><div class="sv">${esc(s.localisation||'—')}</div><div class="sl">Localisation</div></div>
+      <div class="sp"><div class="sv">${s.quantite_dispo||'?'}/${s.quantite_totale||'?'}</div><div class="sl">Dispo</div></div>
+    </div>
+    <div class="qr-sec">
+      <canvas id="qr-cv" width="120" height="120" style="border-radius:5px;background:#fff;flex-shrink:0;"></canvas>
+      <div style="flex:1;">
+        <div style="font-family:var(--display);font-size:12px;font-weight:700;margin-bottom:7px;">QR Code — ${esc(s.nom)}</div>
+        <div class="qr-url">${qrUrl}</div>
+        <div style="display:flex;gap:7px;">
+          <button class="btn btn-g btn-sm" onclick="copyTxt('${qrUrl}')">Copier URL</button>
+          <button class="btn btn-g btn-sm" onclick="window.print()">🖨️ Imprimer</button>
+        </div>
+      </div>
+    </div>
+    <div class="fc">
+      <div class="fc-head"><span>🔬</span><span class="fc-title">TPs rattachés</span>
+        <button class="btn btn-p btn-sm" style="margin-left:auto" onclick="newTP('${id}')">+ Créer TP lié</button>
+      </div>
+      <div class="fc-body">
+        ${linked.length ? linked.map(tp=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
+            <div>
+              <div style="font-size:12px;font-weight:500;">${esc(tp.titre||'(sans titre)')}</div>
+              <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${tp.id} · ${(tp.niveaux||[]).join(', ')||'—'} · ${tp.duree_h||'?'}h</div>
+            </div>
+            <button class="btn btn-g btn-sm" onclick="switchTab('tps');selectTP('${tp.id}')">Ouvrir →</button>
+          </div>`).join('')
+        :'<div class="muted">Aucun TP lié.</div>'}
+      </div>
+    </div>`;
+
+  setTimeout(()=>{try{QRCode.toCanvas(document.getElementById('qr-cv'),qrUrl,{width:120,margin:1,color:{dark:'#000',light:'#fff'}});}catch(e){}},50);
+}
+
+// ═══════════════════════════════════════════════
+// TPs
+// ═══════════════════════════════════════════════
+function genTID() { return 'TP'+Date.now().toString(36).toUpperCase(); }
 
 function renderTPs(filter='') {
   const f=(filter||'').toLowerCase();
   const list=tps.filter(t=>!f||(t.titre||'').toLowerCase().includes(f));
   const el=document.getElementById('list-tps');
-  if (!list.length) {
-    el.innerHTML='<div style="padding:16px;color:var(--text3);font-size:12px;text-align:center;">Aucun TP — créez-en un →</div>';
-    return;
-  }
+  if (!list.length){el.innerHTML='<div style="padding:14px;color:var(--text3);font-size:11px;text-align:center;">Aucun TP — créez-en un →</div>';return;}
   el.innerHTML=list.map(tp=>{
     const niv=(tp.niveaux||[]).join(', ')||'—';
-    const res=(tp.ressources||[]).length;
-    return `<div class="list-item${selTP===tp.id?' active':''}" onclick="selectTP('${tp.id}')">
-      <div class="list-item-name">${esc(tp.titre||'(sans titre)')}</div>
-      <div class="list-item-meta">${tp.id} · ${niv}</div>
-      <span class="list-badge b-purple">${res} res.</span>
+    const rc=(tp.ressources||[]).length;
+    return `<div class="li${selTP===tp.id?' on':''}" onclick="selectTP('${tp.id}')">
+      <div class="li-name">${esc(tp.titre||'(sans titre)')}</div>
+      <div class="li-meta">${tp.id} · ${niv}</div>
+      <span class="li-badge bp">${rc} res.</span>
     </div>`;
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
-// SYSTÈMES — affichage détail
-// ═══════════════════════════════════════════════════════════════
-function selectSys(id) {
-  selSys=id;
-  renderSys(document.getElementById('f-sys').value);
-  showSysDetail(id);
-}
-
-function showSysDetail(id) {
-  const s=inventory.find(x=>x.id===id);
-  if (!s) return;
-  const appUrl=cfg.appUrl||'https://[url-app-eleve]';
-  const qrVal=s.qr_code||s.id;
-  const qrUrl=`${appUrl}?sys=${qrVal}`;
-  const linked=tps.filter(t=>(t.systemes||[]).includes(id));
-
-  document.getElementById('content').innerHTML=`
-    <div class="detail-header">
-      <div>
-        <div class="detail-title">${esc(s.nom)}</div>
-        <div class="detail-id">${s.id} · QR: ${qrVal} · ${esc(s.categorie)}</div>
-      </div>
-      <div class="action-row">
-        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimer QR</button>
-      </div>
-    </div>
-
-    <div class="stats-row">
-      <div class="stat-pill"><div class="stat-val">${linked.length}</div><div class="stat-lbl">TPs liés</div></div>
-      <div class="stat-pill"><div class="stat-val">${esc(s.localisation||'—')}</div><div class="stat-lbl">Localisation</div></div>
-      <div class="stat-pill"><div class="stat-val">${s.quantite_dispo}/${s.quantite_totale}</div><div class="stat-lbl">Dispo</div></div>
-    </div>
-
-    <div class="qr-section">
-      <canvas id="qr-cv" width="130" height="130" style="border-radius:6px;background:#fff;"></canvas>
-      <div style="flex:1;">
-        <div style="font-family:var(--display);font-size:13px;font-weight:700;margin-bottom:8px;">QR Code — ${esc(s.nom)}</div>
-        <div class="qr-url">${qrUrl}</div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-ghost btn-sm" onclick="copyTxt('${qrUrl}')">Copier URL</button>
-          <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Imprimer</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-card">
-      <div class="form-card-header">
-        <span>🔬</span><span class="form-card-title">TPs rattachés</span>
-        <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="newTP('${id}')">+ Créer un TP lié</button>
-      </div>
-      <div class="form-card-body">
-        ${linked.length ? linked.map(tp=>`
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;">
-            <div>
-              <div style="font-size:13px;font-weight:500;">${esc(tp.titre||'(sans titre)')}</div>
-              <div style="font-size:11px;color:var(--text3);font-family:var(--mono);">${tp.id} · ${(tp.niveaux||[]).join(', ')||'—'} · ${tp.duree_h||'?'}h</div>
-            </div>
-            <button class="btn btn-ghost btn-sm" onclick="switchTab('tps');selectTP('${tp.id}')">Ouvrir →</button>
-          </div>`).join('')
-        : '<div class="text-muted">Aucun TP lié. Créez-en un ou associez un TP existant depuis l\'onglet TPs.</div>'}
-      </div>
-    </div>
-  `;
-
-  setTimeout(()=>{
-    try { QRCode.toCanvas(document.getElementById('qr-cv'),qrUrl,{width:130,margin:1,color:{dark:'#000',light:'#fff'}}); }
-    catch(e){}
-  },60);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// TPs — CRUD
-// ═══════════════════════════════════════════════════════════════
-function genTPId() { return 'TP'+Date.now().toString(36).toUpperCase(); }
-
 function newTP(preSys) {
-  const tp={ id:genTPId(), titre:'', description:'', objectifs:'', niveaux:[], systemes:preSys?[preSys]:[], duree_h:2, ressources:[] };
-  tps.push(tp); selTP=tp.id;
-  saveLocal(); renderTPs();
-  switchTab('tps');
-  showTPForm(tp.id);
+  const tp={id:genTID(),titre:'',description:'',objectifs:'',niveaux:[],systemes:preSys?[preSys]:[],duree_h:2,ressources:[]};
+  tps.push(tp); selTP=tp.id; dirty(); renderTPs(); switchTab('tps'); showTPForm(tp.id);
 }
 
 function selectTP(id) {
-  selTP=id;
-  switchTab('tps');
-  renderTPs(document.getElementById('f-tp').value);
-  showTPForm(id);
+  selTP=id; switchTab('tps'); renderTPs(document.getElementById('f-tp').value); showTPForm(id);
 }
 
 function showTPForm(id) {
-  const tp=tps.find(x=>x.id===id);
-  if (!tp) return;
+  const tp=tps.find(x=>x.id===id); if (!tp) return;
   const NIVEAUX=['2nde','1ère','Terminale'];
   const systems=getSystems();
+  const tpRes=ressources.filter(r=>(tp.ressources||[]).includes(r.id));
 
   document.getElementById('content').innerHTML=`
-    <div class="detail-header">
-      <div>
-        <div class="detail-title" id="tp-th">${esc(tp.titre||'Nouveau TP')}</div>
-        <div class="detail-id">${tp.id}</div>
-      </div>
-      <div class="action-row">
-        <button class="btn btn-ghost btn-sm" onclick="saveTP('${id}')">💾 Enregistrer</button>
-        <button class="btn btn-danger btn-sm" onclick="delTP('${id}')">Supprimer</button>
+    <div class="dh">
+      <div><div class="dt" id="tp-th">${esc(tp.titre||'Nouveau TP')}</div><div class="did">${tp.id}</div></div>
+      <div class="arow">
+        <button class="btn btn-g btn-sm" onclick="saveTP('${id}')">💾 Enregistrer</button>
+        <button class="btn btn-d btn-sm" onclick="delTP('${id}')">Supprimer</button>
       </div>
     </div>
 
-    <div class="form-card">
-      <div class="form-card-header"><span>🔬</span><span class="form-card-title">Informations</span></div>
-      <div class="form-card-body">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Titre du TP</label>
-            <input type="text" id="tp-titre" value="${esc(tp.titre)}" placeholder="Ex: Câblage d'un circuit de puissance"
+    <div class="fc">
+      <div class="fc-head"><span>🔬</span><span class="fc-title">Informations</span></div>
+      <div class="fc-body">
+        <div class="frow">
+          <div class="fg"><label>Titre</label>
+            <input type="text" id="tp-titre" value="${esc(tp.titre)}" placeholder="Ex: Câblage circuit de puissance"
               oninput="document.getElementById('tp-th').textContent=this.value||'Nouveau TP'">
           </div>
-          <div class="form-group">
-            <label>Durée (heures)</label>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <input type="number" id="tp-duree" value="${tp.duree_h||2}" min="0.5" max="20" step="0.5" style="max-width:100px;">
-              <span style="font-size:12px;color:var(--text3);">h</span>
+          <div class="fg"><label>Durée</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="number" id="tp-duree" value="${tp.duree_h||2}" min="0.5" max="20" step="0.5" style="max-width:90px;">
+              <span class="muted">heure(s)</span>
             </div>
           </div>
         </div>
-
-        <div class="form-group full">
-          <label>Niveaux concernés</label>
-          <div class="niveaux-group" id="niv-grp">
-            ${NIVEAUX.map(n=>`<div class="niveau-pill${(tp.niveaux||[]).includes(n)?' on':''}" onclick="this.classList.toggle('on')">${n}</div>`).join('')}
+        <div class="fg full"><label>Niveaux</label>
+          <div class="niv-grp" id="niv-grp">
+            ${NIVEAUX.map(n=>`<div class="niv-pill${(tp.niveaux||[]).includes(n)?' on':''}" onclick="this.classList.toggle('on')">${n}</div>`).join('')}
           </div>
         </div>
-
-        <div class="form-group full">
-          <label>Systèmes didactiques associés</label>
+        <div class="fg full"><label>Systèmes associés</label>
           <div class="tags-wrap" id="sys-tags">
-            ${(tp.systemes||[]).map(sid=>{
-              const s=inventory.find(x=>x.id===sid);
-              return `<span class="sys-tag">${esc(s?s.nom:sid)}<span class="x" onclick="rmSys('${id}','${sid}')">×</span></span>`;
-            }).join('')}
+            ${(tp.systemes||[]).map(sid=>{const s=inventory.find(x=>x.id===sid);return `<span class="tag">${esc(s?s.nom:sid)}<span class="x" onclick="rmSys('${id}','${sid}')">×</span></span>`;}).join('')}
           </div>
           <select onchange="addSys('${id}',this)">
             <option value="">+ Associer un système...</option>
-            ${systems.filter(s=>!(tp.systemes||[]).includes(s.id)).map(s=>
-              `<option value="${s.id}">${esc(s.nom)} (${s.id})</option>`
-            ).join('')}
+            ${systems.filter(s=>!(tp.systemes||[]).includes(s.id)).map(s=>`<option value="${s.id}">${esc(s.nom)} (${s.id})</option>`).join('')}
           </select>
         </div>
-
-        <div class="form-group full">
-          <label>Description</label>
-          <textarea id="tp-desc" placeholder="Description générale...">${esc(tp.description||'')}</textarea>
-        </div>
-        <div class="form-group full">
-          <label>Objectifs pédagogiques</label>
-          <textarea id="tp-obj" placeholder="À l'issue du TP, l'élève sera capable de...">${esc(tp.objectifs||'')}</textarea>
-        </div>
+        <div class="fg full"><label>Description</label><textarea id="tp-desc" placeholder="Description générale...">${esc(tp.description||'')}</textarea></div>
+        <div class="fg full"><label>Objectifs pédagogiques</label><textarea id="tp-obj" placeholder="À l'issue du TP, l'élève sera capable de...">${esc(tp.objectifs||'')}</textarea></div>
       </div>
     </div>
 
-    <div class="form-card">
-      <div class="form-card-header">
-        <span>📄</span><span class="form-card-title">Ressources</span>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="showUploadHelp()">❓ Où stocker les fichiers ?</button>
+    <div class="fc">
+      <div class="fc-head">
+        <span>📚</span><span class="fc-title">Ressources attachées (${tpRes.length})</span>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="btn btn-g btn-sm" onclick="openPickModal('${id}')">+ Depuis la bibliothèque</button>
+          <button class="btn btn-t btn-sm" onclick="openUploadModal('${id}')">⬆ Upload nouveau</button>
+        </div>
       </div>
-      <div class="form-card-body">
+      <div class="fc-body">
         <div class="res-list" id="res-list">
-          ${(tp.ressources||[]).map((r,i)=>resRow(r,i,id)).join('')}
+          ${tpRes.length ? tpRes.map(r=>`
+            <div class="res-card">
+              <div class="res-icon">${TYPE_ICON[r.type]||'📄'}</div>
+              <div class="res-info">
+                <div class="res-title">${esc(r.titre)}</div>
+                <div class="res-meta">${r.id} · <a href="${esc(r.url)}" target="_blank" style="color:var(--accent2);">${esc(r.url.substring(0,60))}${r.url.length>60?'…':''}</a></div>
+              </div>
+              <button class="icon-btn link" onclick="switchTab('bib');selectBib('${r.id}')" title="Voir dans la bibliothèque">🔗</button>
+              <button class="icon-btn del" onclick="detachRes('${id}','${r.id}')" title="Détacher">✕</button>
+            </div>`).join('')
+          : '<div class="muted">Aucune ressource attachée. Utilisez les boutons ci-dessus.</div>'}
         </div>
-        <button class="btn btn-ghost btn-sm mt8" onclick="addRes('${id}')">+ Ajouter une ressource</button>
       </div>
     </div>
 
-    <div class="flex-end mt8">
-      <button class="btn btn-primary" onclick="saveTP('${id}')">💾 Enregistrer les modifications</button>
-    </div>
+    <div class="fe mt8"><button class="btn btn-p" onclick="saveTP('${id}')">💾 Enregistrer les modifications</button></div>
   `;
 }
 
-function resRow(r,i,tpId) {
-  return `<div class="res-row" id="rr-${i}">
-    <select id="rt-${i}">
-      <option value="pdf"   ${r.type==='pdf'  ?'selected':''}>📄 PDF</option>
-      <option value="word"  ${r.type==='word' ?'selected':''}>📝 Word</option>
-      <option value="excel" ${r.type==='excel'?'selected':''}>📊 Excel</option>
-      <option value="image" ${r.type==='image'?'selected':''}>🖼️ Image</option>
-      <option value="video" ${r.type==='video'?'selected':''}>🎬 Vidéo</option>
-      <option value="lien"  ${r.type==='lien' ?'selected':''}>🔗 Lien</option>
-      <option value="txt"   ${r.type==='txt'  ?'selected':''}>📃 Texte</option>
-    </select>
-    <input type="text" id="rn-${i}" value="${esc(r.titre||'')}" placeholder="Titre de la ressource">
-    <div class="res-url-wrap">
-      <input type="url" id="ru-${i}" value="${esc(r.url||'')}" placeholder="URL ou uploader →">
-      <button class="btn-upload-inline" onclick="openUploadModal('${tpId}',${i})">📤 Upload</button>
-    </div>
-    <button class="icon-btn" onclick="rmRes('${tpId}',${i})">✕</button>
-  </div>`;
+// ─── actions TP ──────────────────────────────
+function saveTPSilent(id) {
+  const tp=tps.find(x=>x.id===id); if (!tp||!document.getElementById('tp-titre')) return;
+  tp.titre      =document.getElementById('tp-titre').value;
+  tp.duree_h    =parseFloat(document.getElementById('tp-duree').value)||2;
+  tp.description=document.getElementById('tp-desc').value;
+  tp.objectifs  =document.getElementById('tp-obj').value;
+  tp.niveaux    =[...document.querySelectorAll('#niv-grp .niv-pill.on')].map(el=>el.textContent.trim());
 }
 
-// ─── actions sur systèmes / ressources ───────────────────────
-function addSys(tpId, sel) {
-  if (!sel.value) return;
-  saveTPSilent(tpId);
-  const tp=tps.find(x=>x.id===tpId);
-  if (!tp) return;
+function saveTP(id) { saveTPSilent(id); dirty(); renderTPs(document.getElementById('f-tp').value); toast('TP sauvegardé ✓','s'); }
+
+function delTP(id) {
+  if (!confirm('Supprimer ce TP ?')) return;
+  tps=tps.filter(x=>x.id!==id); selTP=null; dirty(); renderTPs(); showEmpty(); toast('TP supprimé','s');
+}
+
+function addSys(tpId,sel) {
+  if (!sel.value) return; saveTPSilent(tpId);
+  const tp=tps.find(x=>x.id===tpId); if (!tp) return;
   tp.systemes=tp.systemes||[];
   if (!tp.systemes.includes(sel.value)) tp.systemes.push(sel.value);
-  saveLocal(); showTPForm(tpId);
+  dirty(); showTPForm(tpId);
 }
 
 function rmSys(tpId,sysId) {
   saveTPSilent(tpId);
   const tp=tps.find(x=>x.id===tpId);
-  if (tp) { tp.systemes=(tp.systemes||[]).filter(s=>s!==sysId); saveLocal(); showTPForm(tpId); }
+  if (tp) { tp.systemes=(tp.systemes||[]).filter(s=>s!==sysId); dirty(); showTPForm(tpId); }
 }
 
-function addRes(tpId) {
+function detachRes(tpId,resId) {
   saveTPSilent(tpId);
   const tp=tps.find(x=>x.id===tpId);
-  if (!tp) return;
+  if (tp) { tp.ressources=(tp.ressources||[]).filter(r=>r!==resId); dirty(); showTPForm(tpId); toast('Ressource détachée','s'); }
+}
+
+// ═══════════════════════════════════════════════
+// MODAL — SÉLECTION RESSOURCE (bibliothèque → TP)
+// ═══════════════════════════════════════════════
+function openPickModal(tpId) {
+  saveTPSilent(tpId); pickTargetTP=tpId; pickSelected=null;
+  document.getElementById('pick-filter').value='';
+  renderPickList('');
+  document.getElementById('modal-pick').classList.add('open');
+}
+
+function closePick() { document.getElementById('modal-pick').classList.remove('open'); }
+
+function renderPickList(filter='') {
+  const f=(filter||'').toLowerCase();
+  const tp=tps.find(x=>x.id===pickTargetTP);
+  const already=(tp?.ressources)||[];
+  const list=ressources.filter(r=>!already.includes(r.id)&&(!f||(r.titre||'').toLowerCase().includes(f)));
+  const el=document.getElementById('pick-list');
+  if (!list.length){el.innerHTML='<div class="muted" style="padding:12px;text-align:center;">'+(ressources.length?'Toutes les ressources sont déjà attachées ou filtrées':'Bibliothèque vide — uploadez d\'abord des fichiers')+'</div>';return;}
+  el.innerHTML=list.map(r=>`
+    <div class="res-pick-row${pickSelected===r.id?' picked':''}" onclick="pickSelected='${r.id}';renderPickList(document.getElementById('pick-filter').value)">
+      <div style="font-size:18px;">${TYPE_ICON[r.type]||'📄'}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;">${esc(r.titre)}</div>
+        <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${r.id} · ${r.type}${r.description?' · '+esc(r.description.substring(0,40)):''}</div>
+      </div>
+      ${pickSelected===r.id?'<div style="color:var(--accent);font-size:16px;">✓</div>':''}
+    </div>`).join('');
+}
+
+function confirmPick() {
+  if (!pickSelected) { toast('Sélectionnez une ressource','e'); return; }
+  const tp=tps.find(x=>x.id===pickTargetTP); if (!tp) return;
   tp.ressources=tp.ressources||[];
-  tp.ressources.push({type:'pdf',titre:'',url:''});
-  saveLocal(); showTPForm(tpId);
+  if (!tp.ressources.includes(pickSelected)) tp.ressources.push(pickSelected);
+  dirty(); closePick(); showTPForm(pickTargetTP);
+  toast('Ressource attachée ✓','s');
 }
 
-function rmRes(tpId,idx) {
-  saveTPSilent(tpId);
-  const tp=tps.find(x=>x.id===tpId);
-  if (tp) { tp.ressources.splice(idx,1); saveLocal(); showTPForm(tpId); }
+// ═══════════════════════════════════════════════
+// UPLOAD — bibliothèque centralisée
+// ═══════════════════════════════════════════════
+function openUploadModal(tpId) {
+  if (selTP) saveTPSilent(selTP);
+  uploadTargetTP=tpId; uploadQueue=[];
+  document.getElementById('upload-list').innerHTML='';
+  const errEl=document.getElementById('upload-err');if(errEl)errEl.remove();
+  document.getElementById('btn-upload').disabled=true;
+  document.getElementById('fi').value='';
+  document.getElementById('modal-upload').classList.add('open');
 }
 
-// ─── save silent (lit le DOM) ─────────────────────────────────
-function saveTPSilent(id) {
-  const tp=tps.find(x=>x.id===id);
-  if (!tp||!document.getElementById('tp-titre')) return;
-  tp.titre      =document.getElementById('tp-titre').value;
-  tp.duree_h    =parseFloat(document.getElementById('tp-duree').value)||2;
-  tp.description=document.getElementById('tp-desc').value;
-  tp.objectifs  =document.getElementById('tp-obj').value;
-  tp.niveaux    =[...document.querySelectorAll('#niv-grp .niveau-pill.on')].map(el=>el.textContent.trim());
-  (tp.ressources||[]).forEach((_,i)=>{
-    const t=document.getElementById('rt-'+i);
-    const n=document.getElementById('rn-'+i);
-    const u=document.getElementById('ru-'+i);
-    if (t) tp.ressources[i].type =t.value;
-    if (n) tp.ressources[i].titre=n.value;
-    if (u) tp.ressources[i].url  =u.value;
+function closeUploadModal() { document.getElementById('modal-upload').classList.remove('open'); }
+
+function dzOver(e){e.preventDefault();document.getElementById('dz').classList.add('over');}
+function dzLeave(){document.getElementById('dz').classList.remove('over');}
+function dzDrop(e){e.preventDefault();dzLeave();filesSelected(e.dataTransfer.files);}
+
+function filesSelected(files) {
+  if (!files||!files.length) return;
+  [...files].forEach(f=>uploadQueue.push({file:f,status:'pending',url:'',progress:0}));
+  renderUploadList();
+  document.getElementById('btn-upload').disabled=false;
+}
+
+function renderUploadList() {
+  const el=document.getElementById('upload-list');
+  if (!uploadQueue.length){el.innerHTML='';return;}
+  const labels={pending:'en attente',uploading:'envoi...',done:'✓ uploadé',error:'✕ erreur'};
+  el.innerHTML=uploadQueue.map((item,i)=>`
+    <div class="ufi" id="ufi-${i}">
+      <div class="ufi-top">
+        <div class="ufi-name" title="${esc(item.file.name)}">${esc(item.file.name)}</div>
+        <div class="ufi-sz">${fmtSize(item.file.size)}</div>
+        <div class="ufi-st ${item.status}" id="ust-${i}">${labels[item.status]}</div>
+      </div>
+      <div class="pbar"><div class="pfill" id="upb-${i}" style="width:${item.progress}%"></div></div>
+      ${item.url?`<div class="ufi-url" onclick="copyTxt('${item.url}')" title="Copier">${item.url}</div>`:''}
+    </div>`).join('');
+}
+
+function fmtSize(b){if(b<1024)return b+' o';if(b<1048576)return (b/1024).toFixed(1)+' Ko';return (b/1048576).toFixed(1)+' Mo';}
+
+function updUFI(i) {
+  const item=uploadQueue[i];
+  const labels={pending:'en attente',uploading:'envoi...',done:'✓ uploadé',error:'✕ erreur'};
+  const st=document.getElementById('ust-'+i);
+  const pb=document.getElementById('upb-'+i);
+  const box=document.getElementById('ufi-'+i);
+  if(st){st.textContent=labels[item.status];st.className='ufi-st '+item.status;}
+  if(pb){pb.style.width=item.progress+'%';pb.style.background=item.status==='error'?'var(--red)':item.status==='done'?'var(--green)':'var(--accent)';}
+  if(item.url&&box&&!box.querySelector('.ufi-url')){
+    const d=document.createElement('div');d.className='ufi-url';d.title='Copier';d.textContent=item.url;d.onclick=()=>copyTxt(item.url);box.appendChild(d);
+  }
+}
+
+function showUploadErr(msg) {
+  let el=document.getElementById('upload-err');
+  if(!el){el=document.createElement('div');el.id='upload-err';el.className='upload-err';document.getElementById('upload-list').before(el);}
+  el.textContent='✕ '+msg;
+}
+
+async function runUploads() {
+  if (!cfg.token){toast('Token manquant (Config)','e');return;}
+  if (!cfg.uploadRepo){toast('Dépôt de stockage non configuré (Config)','e');return;}
+  const errEl=document.getElementById('upload-err');if(errEl)errEl.remove();
+  document.getElementById('btn-upload').disabled=true;
+
+  for (let i=0;i<uploadQueue.length;i++) {
+    const item=uploadQueue[i];
+    if (item.status==='done') continue;
+    try {
+      item.status='uploading';item.progress=5;updUFI(i);
+      item.url = await uploadToContents(item.file,i);
+      item.status='done';item.progress=100;updUFI(i);
+
+      // Créer la ressource dans la bibliothèque
+      const ext=item.file.name.split('.').pop().toLowerCase();
+      const typeMap={pdf:'pdf',doc:'word',docx:'word',xls:'excel',xlsx:'excel',jpg:'image',jpeg:'image',png:'image',txt:'txt'};
+      const newRes={
+        id: genRID(),
+        titre: item.file.name.replace(/\.[^.]+$/,''),
+        type: typeMap[ext]||'lien',
+        url: item.url,
+        description: '',
+        uploadedAt: new Date().toISOString().slice(0,10)
+      };
+      ressources.push(newRes);
+      dirty();
+
+      // Si upload déclenché depuis un TP → attacher automatiquement
+      if (uploadTargetTP) {
+        const tp=tps.find(x=>x.id===uploadTargetTP);
+        if (tp) { tp.ressources=tp.ressources||[]; tp.ressources.push(newRes.id); dirty(); }
+      }
+    } catch(e) {
+      item.status='error';item.progress=0;updUFI(i);
+      showUploadErr('Upload "'+item.file.name+'" échoué :\n'+e.message);
+      toast('Erreur : '+e.message,'e');
+    }
+  }
+
+  const done=uploadQueue.filter(x=>x.status==='done');
+  if (done.length) {
+    renderBib(document.getElementById('f-bib').value);
+    if (uploadTargetTP) { renderTPs(); setTimeout(()=>showTPForm(uploadTargetTP),300); }
+    toast(done.length+' fichier(s) ajouté(s) à la bibliothèque ✓','s');
+  }
+  document.getElementById('btn-upload').disabled=uploadQueue.every(x=>x.status==='done');
+}
+
+// ─── API GitHub Contents (CORS-OK) ───────────
+async function uploadToContents(file, queueIdx) {
+  const [owner,repo]=cfg.uploadRepo.split('/');
+  if (!owner||!repo) throw new Error('Format dépôt invalide (owner/repo)');
+
+  const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path='ressources/'+Date.now()+'_'+safe;
+  const apiUrl=`https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+
+  const b64=await toBase64(file,queueIdx);
+
+  // Vérifier existence (pour éviter conflit)
+  let sha;
+  try{const c=await fetch(apiUrl,{headers:{Authorization:`token ${cfg.token}`,'X-GitHub-Api-Version':'2022-11-28'}});if(c.ok){const d=await c.json();sha=d.sha;}}catch(e){}
+
+  const body={message:'MELEC upload — '+file.name,content:b64};
+  if (sha) body.sha=sha;
+
+  let res;
+  try {
+    res=await fetch(apiUrl,{method:'PUT',headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'},body:JSON.stringify(body)});
+  } catch(e){throw new Error('Réseau inaccessible : '+e.message);}
+
+  if (res.status===401) throw new Error('Token invalide (401)');
+  if (res.status===403) throw new Error('Accès refusé (403) — scope "repo" requis sur le token');
+  if (res.status===404) throw new Error('Dépôt introuvable (404) — vérifiez "'+cfg.uploadRepo+'"');
+  if (!res.ok){let d='HTTP '+res.status;try{const e=await res.json();d=e.message||d;}catch(e){}throw new Error(d);}
+
+  const data=await res.json();
+  return data.content.download_url;
+}
+
+function toBase64(file,queueIdx) {
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onprogress=e=>{
+      if(e.lengthComputable&&uploadQueue[queueIdx]){
+        uploadQueue[queueIdx].progress=Math.round(e.loaded/e.total*75);updUFI(queueIdx);
+      }
+    };
+    reader.onload=e=>{
+      if(uploadQueue[queueIdx]){uploadQueue[queueIdx].progress=80;updUFI(queueIdx);}
+      resolve(e.target.result.split(',')[1]);
+    };
+    reader.onerror=()=>reject(new Error('Lecture impossible'));
+    reader.readAsDataURL(file);
   });
 }
 
-function saveTP(id) {
-  saveTPSilent(id); saveLocal();
-  renderTPs(document.getElementById('f-tp').value);
-  renderSys(document.getElementById('f-sys').value);
-  toast('TP sauvegardé localement ✓','success');
-}
-
-function delTP(id) {
-  if (!confirm('Supprimer ce TP ?')) return;
-  tps=tps.filter(x=>x.id!==id); selTP=null;
-  saveLocal(); renderTPs(); showEmpty();
-  toast('TP supprimé','success');
-}
-
-// ═══════════════════════════════════════════════════════════════
-// AIDE UPLOAD FICHIERS
-// ═══════════════════════════════════════════════════════════════
-function showUploadHelp() {
-  // Insère avant le premier .form-card visible
-  const target=document.querySelector('.form-card');
-  if (!target) return;
-  if (document.getElementById('upload-help')) { document.getElementById('upload-help').remove(); return; }
-  const div=document.createElement('div');
-  div.id='upload-help';
-  div.className='form-card';
-  div.style.cssText='margin-bottom:16px;border-color:var(--orange);';
-  div.innerHTML=`
-    <div class="form-card-header" style="background:#251a0a;border-color:var(--orange);">
-      <span>📦</span>
-      <span class="form-card-title" style="color:var(--orange);">Où stocker les fichiers des ressources ?</span>
-      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="this.closest('#upload-help').remove()">✕ Fermer</button>
-    </div>
-    <div class="form-card-body">
-      <div class="info-box" style="border-color:var(--accent2);">
-        <strong style="color:var(--accent2);">✅ Solution recommandée : GitHub Releases</strong><br>
-        Gratuit · Permanent · Accessible depuis le réseau lycée · Même compte GitHub que le Gist
-      </div>
-      <div style="font-family:var(--display);font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Marche à suivre</div>
-      <div class="info-step"><div class="info-num">1</div><div>Aller sur <strong>github.com</strong> → votre dépôt (ou créer un nouveau : <strong>melec-ressources</strong>)</div></div>
-      <div class="info-step"><div class="info-num">2</div><div>Cliquer <strong>Releases</strong> (colonne droite) → <strong>Draft a new release</strong></div></div>
-      <div class="info-step"><div class="info-num">3</div><div>Créer un tag (ex: <code>v1.0</code>), glisser les fichiers dans la zone <em>"Attach binaries"</em></div></div>
-      <div class="info-step"><div class="info-num">4</div><div>Publier → clic droit sur chaque fichier → <strong>Copier le lien</strong> → coller dans le champ URL ci-dessus</div></div>
-      <div class="info-box mt8">
-        📁 Formats : PDF, JPEG, PNG, Excel (.xlsx), Word (.docx), texte (.txt)<br>
-        📦 Limite : <strong>100 Mo par fichier</strong>, volume total illimité<br>
-        🔗 URL type : <code>github.com/compte/repo/releases/download/v1.0/fichier.pdf</code>
-      </div>
-    </div>
-  `;
-  target.parentElement.insertBefore(div,target);
-  div.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // CONFIG
-// ═══════════════════════════════════════════════════════════════
-function showConfig() {
+// ═══════════════════════════════════════════════
+function showCfg() {
   document.getElementById('content').innerHTML=`
-    <div class="detail-header"><div><div class="detail-title">Configuration</div></div></div>
+    <div class="dh"><div><div class="dt">Configuration</div></div></div>
 
-    <div class="config-section">
-      <div class="config-title">🔑 Connexion GitHub</div>
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div class="form-group">
-          <label>Token GitHub (Personal Access Token)</label>
+    <div class="cfg-sec">
+      <div class="cfg-title">🔑 Connexion GitHub</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="fg">
+          <label>Token GitHub</label>
           <input type="text" id="c-tok" value="${esc(cfg.token||'')}" placeholder="ghp_xxxxxxxxxxxx">
-          <div class="text-muted mt8">github.com → Settings → Developer settings → Personal access tokens → scopes requis : <code>gist</code> + <code>repo</code> (pour l'upload de fichiers)</div>
+          <div class="muted mt8">Settings → Developer settings → Personal access tokens → scopes : <code>gist</code> + <code>repo</code></div>
         </div>
-        <div class="form-group">
-          <label>ID du Gist pour tps.json</label>
-          <input type="text" id="c-gist" value="${esc(cfg.tpGistId||'')}" placeholder="ID du Gist (peut être le même que l'inventaire)">
-          <div class="text-muted mt8">ID inventaire existant : <code>${INV_GIST_ID}</code></div>
+        <div class="fg">
+          <label>ID du Gist (tps.json + ressources.json)</label>
+          <input type="text" id="c-gist" value="${esc(cfg.tpGistId||'')}" placeholder="ID du Gist">
+          <div class="muted mt8">ID inventaire : <code>${INV_GIST}</code> (vous pouvez utiliser ce même Gist)</div>
         </div>
-        <div class="form-group">
+        <div class="fg">
           <label>Dépôt de stockage des fichiers (owner/repo)</label>
-          <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="ex: sebpro56300/melec-ressources">
-          <div class="text-muted mt8">Dépôt GitHub <strong>public</strong> où seront stockés les fichiers (dossier <code>ressources/</code>). Les fichiers seront accessibles via <code>raw.githubusercontent.com</code> depuis n'importe quel réseau.</div>
+          <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="ex: sebpro56300/ressources">
+          <div class="muted mt8">Dépôt <strong>public</strong>. Les fichiers seront stockés dans <code>ressources/</code> et accessibles via <code>raw.githubusercontent.com</code> depuis tout réseau.</div>
         </div>
-        <div class="form-group">
+        <div class="fg">
           <label>URL de l'app élève</label>
           <input type="text" id="c-url" value="${esc(cfg.appUrl||'')}" placeholder="https://...github.io/melec-eleve.html">
-          <div class="text-muted mt8">QR code généré : <code>[URL]?sys=[QR_CODE_SYSTÈME]</code></div>
+          <div class="muted mt8">QR code : <code>[URL]?sys=[ID_SYSTÈME]</code></div>
         </div>
-        <div class="flex-end">
-          <button class="btn btn-ghost" onclick="testGist()">🔄 Tester</button>
-          <button class="btn btn-primary" onclick="saveConfig()">Enregistrer</button>
+        <div class="fe">
+          <button class="btn btn-g" onclick="testCfg()">🔄 Tester</button>
+          <button class="btn btn-p" onclick="saveCfg()">Enregistrer</button>
         </div>
       </div>
     </div>
 
-    <div class="config-section">
-      <div class="config-title">📊 État de l'inventaire</div>
-      <div class="stats-row">
-        <div class="stat-pill"><div class="stat-val">${getSystems().length}</div><div class="stat-lbl">Systèmes</div></div>
-        <div class="stat-pill"><div class="stat-val">${getArmoires().length}</div><div class="stat-lbl">Armoires</div></div>
-        <div class="stat-pill"><div class="stat-val">${getMesure().length}</div><div class="stat-lbl">Mesure</div></div>
-        <div class="stat-pill"><div class="stat-val">${getAppareillage().length}</div><div class="stat-lbl">Appareillage</div></div>
-        <div class="stat-pill"><div class="stat-val">${getOutils().length}</div><div class="stat-lbl">Outils</div></div>
-        <div class="stat-pill"><div class="stat-val">${tps.length}</div><div class="stat-lbl">TPs créés</div></div>
+    <div class="cfg-sec">
+      <div class="cfg-title">📊 État</div>
+      <div class="stats">
+        <div class="sp"><div class="sv">${getSystems().length}</div><div class="sl">Systèmes</div></div>
+        <div class="sp"><div class="sv">${tps.length}</div><div class="sl">TPs</div></div>
+        <div class="sp"><div class="sv">${ressources.length}</div><div class="sl">Ressources</div></div>
+        <div class="sp"><div class="sv">${getArmoires().length}</div><div class="sl">Armoires</div></div>
+        <div class="sp"><div class="sv">${getMesure().length}</div><div class="sl">Mesure</div></div>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="loadInventaire()">↻ Recharger l'inventaire</button>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button class="btn btn-g btn-sm" onclick="loadInventaire()">↻ Recharger inventaire</button>
+        <button class="btn btn-g btn-sm" onclick="loadRemote()">↻ Recharger TPs/Ressources</button>
+      </div>
     </div>
 
-    <div class="config-section">
-      <div class="config-title">💾 Import / Export TPs</div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="exportTPs()">⬇️ Exporter tps.json</button>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('imp').click()">⬆️ Importer tps.json</button>
+    <div class="cfg-sec">
+      <div class="cfg-title">💾 Import / Export</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <button class="btn btn-g btn-sm" onclick="exportAll()">⬇️ Exporter tout (JSON)</button>
+        <button class="btn btn-g btn-sm" onclick="document.getElementById('imp').click()">⬆️ Importer JSON</button>
         <input type="file" id="imp" accept=".json" style="display:none" onchange="handleImport(event)">
       </div>
     </div>
   `;
 }
 
-function saveConfig() {
-  cfg.token      = document.getElementById('c-tok').value.trim();
-  cfg.tpGistId   = document.getElementById('c-gist').value.trim();
-  cfg.uploadRepo = document.getElementById('c-repo').value.trim();
-  cfg.appUrl     = document.getElementById('c-url').value.trim();
-  localStorage.setItem('melec_tp_cfg',JSON.stringify(cfg));
-  toast('Configuration enregistrée','success');
+function saveCfg() {
+  cfg.token      =document.getElementById('c-tok').value.trim();
+  cfg.tpGistId   =document.getElementById('c-gist').value.trim();
+  cfg.uploadRepo =document.getElementById('c-repo').value.trim();
+  cfg.appUrl     =document.getElementById('c-url').value.trim();
+  localStorage.setItem('melec_cfg',JSON.stringify(cfg));
+  toast('Configuration enregistrée','s');
   loadInventaire();
-  if (cfg.tpGistId) loadTPs();
+  if (cfg.tpGistId) loadRemote();
 }
 
-async function testGist() {
-  const tok =document.getElementById('c-tok').value.trim();
+async function testCfg() {
+  const tok=document.getElementById('c-tok').value.trim();
   const gist=document.getElementById('c-gist').value.trim();
-  if (!tok||!gist) { toast('Renseignez token et ID','error'); return; }
-  setStatus('loading','Test...');
-  try {
+  if (!tok||!gist){toast('Renseignez token et Gist ID','e');return;}
+  setGst('loading','Test...');
+  try{
     const r=await fetch(`https://api.github.com/gists/${gist}`,{headers:{Authorization:`token ${tok}`}});
     if (!r.ok) throw new Error('HTTP '+r.status);
-    setStatus('ok','OK'); toast('Connexion Gist OK ✓','success');
-  } catch(e) { setStatus('err','Erreur'); toast('Erreur : '+e.message,'error'); }
+    setGst('ok','OK'); toast('Connexion Gist OK ✓','s');
+  }catch(e){setGst('err','Erreur');toast('Erreur : '+e.message,'e');}
 }
 
-function exportTPs() {
+function exportAll() {
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(tps,null,2)],{type:'application/json'}));
-  a.download='tps.json'; a.click();
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({tps,ressources},null,2)],{type:'application/json'}));
+  a.download='melec-export.json';a.click();
 }
 
 function handleImport(e) {
-  const f=e.target.files[0]; if (!f) return;
+  const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=ev=>{ try {
+  r.onload=ev=>{try{
     const d=JSON.parse(ev.target.result);
-    tps=Array.isArray(d)?d:(d.tps||[]);
-    saveLocal(); renderTPs(); showConfig();
-    toast('TPs importés ('+tps.length+')','success');
-  } catch(err) { toast('Erreur JSON : '+err.message,'error'); } };
+    if(d.tps)        tps=d.tps;
+    if(d.ressources) ressources=d.ressources;
+    dirty();renderTPs();renderBib();showCfg();
+    toast('Import OK — '+tps.length+' TPs, '+ressources.length+' ressources','s');
+  }catch(err){toast('Erreur JSON : '+err.message,'e');}};
   r.readAsText(f);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 // UTILS
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════
 function showEmpty() {
-  document.getElementById('content').innerHTML=`
-    <div class="empty-state">
-      <div class="empty-icon">🔌</div>
-      <div style="font-size:14px;color:var(--text3);">Sélectionnez un élément ou créez-en un nouveau</div>
-    </div>`;
+  document.getElementById('content').innerHTML=`<div class="empty"><div class="empty-ico">🔌</div><div>Sélectionnez un élément</div></div>`;
 }
-
-function esc(s) {
-  if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function copyTxt(t) { navigator.clipboard.writeText(t).then(()=>toast('Copié !','success')); }
-
-function toast(msg,type='success') {
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function copyTxt(t){navigator.clipboard.writeText(t).then(()=>toast('Copié !','s'));}
+function toast(msg,type='s'){
   const el=document.getElementById('toast');
-  el.textContent=(type==='success'?'✓ ':'✕ ')+msg;
-  el.className='toast show '+type;
-  clearTimeout(el._t);
-  el._t=setTimeout(()=>el.classList.remove('show'),3200);
+  el.textContent=(type==='s'?'✓ ':'✕ ')+msg;
+  el.style.cssText='position:fixed;bottom:22px;right:22px;background:var(--bg3);border:1px solid '+(type==='s'?'var(--green)':'var(--red)')+';border-radius:7px;padding:10px 16px;font-size:12px;z-index:999;box-shadow:0 6px 24px rgba(0,0,0,.4);display:block;';
+  clearTimeout(el._t);el._t=setTimeout(()=>el.style.display='none',3200);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MODULE UPLOAD — GitHub Releases API
-// ═══════════════════════════════════════════════════════════════
-// Contexte de l'upload en cours (TP + index ressource ciblée)
-let uploadCtx = { tpId: null, resIdx: null };
-// Files en attente d'upload
-let uploadQueue = []; // [{file, status:'pending'|'uploading'|'done'|'error', url:'', progress:0}]
-
-// ─── Ouverture / fermeture ────────────────────────────────────
-function openUploadModal(tpId, resIdx) {
-  // Sauvegarde le TP d'abord pour ne pas perdre les saisies
-  saveTPSilent(tpId);
-  uploadCtx = { tpId, resIdx };
-  uploadQueue = [];
-  document.getElementById('upload-list').innerHTML = '';
-  document.getElementById('btn-do-upload').disabled = true;
-  document.getElementById('upload-modal').classList.add('open');
-}
-
-function closeUploadModal() {
-  document.getElementById('upload-modal').classList.remove('open');
-  uploadQueue = [];
-}
-
-// ─── Drop zone ────────────────────────────────────────────────
-function dzOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('drag-over'); }
-function dzLeave()  { document.getElementById('drop-zone').classList.remove('drag-over'); }
-function dzDrop(e)  { e.preventDefault(); dzLeave(); filesSelected(e.dataTransfer.files); }
-
-function filesSelected(files) {
-  if (!files || !files.length) return;
-  [...files].forEach(f => {
-    uploadQueue.push({ file: f, status: 'pending', url: '', progress: 0 });
-  });
-  renderUploadList();
-  document.getElementById('btn-do-upload').disabled = false;
-}
-
-function renderUploadList() {
-  const el = document.getElementById('upload-list');
-  if (!uploadQueue.length) { el.innerHTML = ''; return; }
-  el.innerHTML = uploadQueue.map((item, i) => {
-    const size = formatSize(item.file.size);
-    const statusLabel = { pending:'en attente', uploading:'upload...', done:'✓ uploadé', error:'✕ erreur' }[item.status];
-    return `<div class="upload-file-item" id="ufi-${i}">
-      <div class="ufi-top">
-        <div class="ufi-name" title="${esc(item.file.name)}">${esc(item.file.name)}</div>
-        <div class="ufi-size">${size}</div>
-        <div class="ufi-status ${item.status}" id="ufi-st-${i}">${statusLabel}</div>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" id="ufi-pb-${i}" style="width:${item.progress}%"></div></div>
-      ${item.url ? `<div class="ufi-url" onclick="copyTxt('${item.url}')" title="Cliquer pour copier">${item.url}</div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function formatSize(bytes) {
-  if (bytes < 1024) return bytes + ' o';
-  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' Ko';
-  return (bytes/1024/1024).toFixed(1) + ' Mo';
-}
-
-// ─── Affichage erreur dans la modale ─────────────────────────
-function showModalError(msg) {
-  let el = document.getElementById('upload-error');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'upload-error';
-    el.style.cssText = 'background:#1f0a0a;border:1px solid var(--red);border-radius:6px;padding:10px 14px;font-size:12px;color:#fca5a5;font-family:var(--mono);margin-top:10px;white-space:pre-wrap;word-break:break-all;';
-    document.getElementById('upload-list').before(el);
-  }
-  el.textContent = '✕ ' + msg;
-}
-function clearModalError() {
-  const el = document.getElementById('upload-error');
-  if (el) el.remove();
-}
-
-// ─── Workflow upload ──────────────────────────────────────────
-async function runUploads() {
-  if (!cfg.token) { toast('Token GitHub manquant (onglet Config)', 'error'); return; }
-  if (!cfg.uploadRepo) { toast('Dépôt de stockage non configuré (onglet Config)', 'error'); return; }
-
-  clearModalError();
-  document.getElementById('btn-do-upload').disabled = true;
-
-  // 1. Obtenir ou créer la release "melec-ressources"
-  let releaseId;
-  try {
-    releaseId = await getOrCreateRelease();
-  } catch(e) {
-    showModalError('Étape 1/2 — Création release échouée :\n' + e.message);
-    toast('Erreur release : ' + e.message, 'error');
-    document.getElementById('btn-do-upload').disabled = false;
-    return;
-  }
-
-  // 2. Uploader chaque fichier en séquence
-  for (let i = 0; i < uploadQueue.length; i++) {
-    const item = uploadQueue[i];
-    if (item.status === 'done') continue;
-    try {
-      item.status = 'uploading'; item.progress = 5;
-      updateUFI(i);
-      const url = await uploadAsset(releaseId, item.file, i);
-      item.url = url; item.status = 'done'; item.progress = 100;
-      updateUFI(i);
-      // Upload ciblé sur une ressource précise → remplir l'URL dans le formulaire
-      if (uploadCtx.resIdx !== null && uploadQueue.length === 1) {
-        const urlField = document.getElementById('ru-' + uploadCtx.resIdx);
-        if (urlField) { urlField.value = url; saveTPSilent(uploadCtx.tpId); }
-      }
-    } catch(e) {
-      item.status = 'error'; item.progress = 0;
-      item.errorMsg = e.message;
-      updateUFI(i);
-      showModalError('Étape 2/2 — Upload "' + item.file.name + '" échoué :\n' + e.message);
-      toast('Erreur upload : ' + e.message, 'error');
-    }
-  }
-
-  // 3. Plusieurs fichiers → ajouter comme nouvelles ressources
-  const done = uploadQueue.filter(x => x.status === 'done');
-  if (done.length > 1 || (done.length === 1 && uploadCtx.resIdx === null)) {
-    const tp = tps.find(x => x.id === uploadCtx.tpId);
-    if (tp) {
-      done.forEach(item => {
-        const ext = item.file.name.split('.').pop().toLowerCase();
-        const typeMap = { pdf:'pdf', doc:'word', docx:'word', xls:'excel', xlsx:'excel', jpg:'image', jpeg:'image', png:'image', txt:'txt' };
-        tp.ressources = tp.ressources || [];
-        tp.ressources.push({ type: typeMap[ext]||'lien', titre: item.file.name.replace(/\.[^.]+$/,''), url: item.url });
-      });
-      saveLocal();
-      toast(done.length + ' ressource(s) ajoutée(s) au TP', 'success');
-    }
-  }
-
-  if (done.length === uploadQueue.length) toast('Upload terminé ✓', 'success');
-  document.getElementById('btn-do-upload').disabled = uploadQueue.every(x => x.status === 'done');
-  setTimeout(() => { showTPForm(uploadCtx.tpId); }, 400);
-}
-
-function updateUFI(i) {
-  const item = uploadQueue[i];
-  const statusLabel = { pending:'en attente', uploading:'upload...', done:'✓ uploadé', error:'✕ erreur' }[item.status];
-  const st = document.getElementById('ufi-st-' + i);
-  const pb = document.getElementById('ufi-pb-' + i);
-  const box = document.getElementById('ufi-' + i);
-  if (st) { st.textContent = statusLabel; st.className = 'ufi-status ' + item.status; }
-  if (pb) pb.style.width = item.progress + '%';
-  if (pb) pb.style.background = item.status === 'error' ? 'var(--red)' : item.status === 'done' ? 'var(--green)' : 'var(--accent)';
-  if (item.url && box) {
-    const existing = box.querySelector('.ufi-url');
-    if (!existing) {
-      const d = document.createElement('div');
-      d.className = 'ufi-url'; d.title = 'Cliquer pour copier';
-      d.textContent = item.url; d.onclick = () => copyTxt(item.url);
-      box.appendChild(d);
-    }
-  }
-}
-
-// ─── API GitHub : Upload via Contents (CORS-compatible) ───────
-// On n'utilise PAS uploads.github.com (bloqué CORS depuis le navigateur).
-// On pousse le fichier encodé en base64 via l'API Contents → raw.githubusercontent.com
-async function uploadAsset(releaseId_unused, file, queueIdx) {
-  const [owner, repo] = cfg.uploadRepo.split('/');
-  if (!owner || !repo) throw new Error('Format dépôt invalide — attendu: owner/repo');
-
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = 'ressources/' + Date.now() + '_' + safeName;
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-
-  // 1. Lire en base64
-  const b64 = await readFileBase64(file, queueIdx);
-
-  // 2. Vérifier si le fichier existe déjà (pour récupérer son sha)
-  let sha = undefined;
-  try {
-    const check = await fetch(apiUrl, {
-      headers: { Authorization: `token ${cfg.token}`, 'X-GitHub-Api-Version': '2022-11-28' }
-    });
-    if (check.ok) { const d = await check.json(); sha = d.sha; }
-  } catch(e) {}
-
-  // 3. PUT du fichier
-  const body = { message: 'Upload MELEC — ' + file.name, content: b64 };
-  if (sha) body.sha = sha;
-
-  let res;
-  try {
-    res = await fetch(apiUrl, {
-      method: 'PUT',
-      headers: {
-        Authorization: `token ${cfg.token}`,
-        'Content-Type': 'application/json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
-      body: JSON.stringify(body)
-    });
-  } catch(netErr) {
-    throw new Error('Réseau inaccessible (api.github.com) : ' + netErr.message);
-  }
-
-  if (res.status === 401) throw new Error('Token invalide ou expiré (401)');
-  if (res.status === 403) throw new Error('Accès refusé (403) — le token doit avoir le scope "repo"');
-  if (res.status === 404) throw new Error('Dépôt introuvable (404) — vérifiez "' + cfg.uploadRepo + '"');
-
-  if (!res.ok) {
-    let detail = 'HTTP ' + res.status;
-    try { const e = await res.json(); detail = e.message || detail; } catch(e) {}
-    throw new Error(detail);
-  }
-
-  const data = await res.json();
-  // URL publique permanente, accessible sans auth depuis n'importe quel réseau
-  return data.content.download_url;
-}
-
-// readFileBase64 — encode le fichier en base64 pur (sans préfixe data:...)
-function readFileBase64(file, queueIdx) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onprogress = e => {
-      if (e.lengthComputable && uploadQueue[queueIdx]) {
-        uploadQueue[queueIdx].progress = Math.round((e.loaded / e.total) * 75);
-        updateUFI(queueIdx);
-      }
-    };
-    reader.onload = e => {
-      if (uploadQueue[queueIdx]) { uploadQueue[queueIdx].progress = 80; updateUFI(queueIdx); }
-      // result = "data:application/pdf;base64,XXXXXXX" → on garde seulement la partie après la virgule
-      const b64 = e.target.result.split(',')[1];
-      resolve(b64);
-    };
-    reader.onerror = () => reject(new Error('Lecture fichier impossible'));
-    reader.readAsDataURL(file); // readAsDataURL → base64 natif
-  });
-}
-
-// getOrCreateRelease gardé en stub (plus utilisé mais appelé dans runUploads)
-async function getOrCreateRelease() { return null; }
-
-// ─── GO ───────────────────────────────────────────────────────
 init();
 </script>
 </body>
