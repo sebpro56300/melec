@@ -277,7 +277,7 @@ let inventory = [];
 let tps       = [];
 let selSys    = null;
 let selTP     = null;
-let cfg = { token:'', tpGistId:'', appUrl:'' };
+let cfg = { token:'', tpGistId:'', uploadRepo:'', appUrl:'' };
 
 // ═══════════════════════════════════════════════════════════════
 // INIT
@@ -742,12 +742,17 @@ function showConfig() {
         <div class="form-group">
           <label>Token GitHub (Personal Access Token)</label>
           <input type="text" id="c-tok" value="${esc(cfg.token||'')}" placeholder="ghp_xxxxxxxxxxxx">
-          <div class="text-muted mt8">github.com → Settings → Developer settings → Personal access tokens → scope <code>gist</code></div>
+          <div class="text-muted mt8">github.com → Settings → Developer settings → Personal access tokens → scopes requis : <code>gist</code> + <code>repo</code> (pour l'upload de fichiers)</div>
         </div>
         <div class="form-group">
           <label>ID du Gist pour tps.json</label>
           <input type="text" id="c-gist" value="${esc(cfg.tpGistId||'')}" placeholder="ID du Gist (peut être le même que l'inventaire)">
           <div class="text-muted mt8">ID inventaire existant : <code>${INV_GIST_ID}</code></div>
+        </div>
+        <div class="form-group">
+          <label>Dépôt de stockage des fichiers (owner/repo)</label>
+          <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="ex: sebpro56300/melec-ressources">
+          <div class="text-muted mt8">Dépôt GitHub <strong>public</strong> où seront uploadés les fichiers via Releases. Créez-le sur github.com si besoin.</div>
         </div>
         <div class="form-group">
           <label>URL de l'app élève</label>
@@ -786,9 +791,10 @@ function showConfig() {
 }
 
 function saveConfig() {
-  cfg.token    =document.getElementById('c-tok').value.trim();
-  cfg.tpGistId =document.getElementById('c-gist').value.trim();
-  cfg.appUrl   =document.getElementById('c-url').value.trim();
+  cfg.token      = document.getElementById('c-tok').value.trim();
+  cfg.tpGistId   = document.getElementById('c-gist').value.trim();
+  cfg.uploadRepo = document.getElementById('c-repo').value.trim();
+  cfg.appUrl     = document.getElementById('c-url').value.trim();
   localStorage.setItem('melec_tp_cfg',JSON.stringify(cfg));
   toast('Configuration enregistrée','success');
   loadInventaire();
