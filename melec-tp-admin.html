@@ -752,7 +752,7 @@ function showConfig() {
         <div class="form-group">
           <label>Dépôt de stockage des fichiers (owner/repo)</label>
           <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="ex: sebpro56300/melec-ressources">
-          <div class="text-muted mt8">Dépôt GitHub <strong>public</strong> où seront uploadés les fichiers via Releases. Créez-le sur github.com si besoin.</div>
+          <div class="text-muted mt8">Dépôt GitHub <strong>public</strong> où seront stockés les fichiers (dossier <code>ressources/</code>). Les fichiers seront accessibles via <code>raw.githubusercontent.com</code> depuis n'importe quel réseau.</div>
         </div>
         <div class="form-group">
           <label>URL de l'app élève</label>
@@ -1019,134 +1019,86 @@ function updateUFI(i) {
   }
 }
 
-// ─── API GitHub : Release ─────────────────────────────────────
-async function getOrCreateRelease() {
+// ─── API GitHub : Upload via Contents (CORS-compatible) ───────
+// On n'utilise PAS uploads.github.com (bloqué CORS depuis le navigateur).
+// On pousse le fichier encodé en base64 via l'API Contents → raw.githubusercontent.com
+async function uploadAsset(releaseId_unused, file, queueIdx) {
   const [owner, repo] = cfg.uploadRepo.split('/');
-  if (!owner || !repo) throw new Error('Format dépôt invalide — attendu: owner/repo (ex: sebpro56300/ressources)');
+  if (!owner || !repo) throw new Error('Format dépôt invalide — attendu: owner/repo');
 
-  const tag = 'melec-ressources';
-  const headers = {
-    Authorization: `token ${cfg.token}`,
-    'Content-Type': 'application/json',
-    'X-GitHub-Api-Version': '2022-11-28'
-  };
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = 'ressources/' + Date.now() + '_' + safeName;
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-  // Chercher une release existante avec ce tag
-  let listRes;
+  // 1. Lire en base64
+  const b64 = await readFileBase64(file, queueIdx);
+
+  // 2. Vérifier si le fichier existe déjà (pour récupérer son sha)
+  let sha = undefined;
   try {
-    listRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`, { headers });
+    const check = await fetch(apiUrl, {
+      headers: { Authorization: `token ${cfg.token}`, 'X-GitHub-Api-Version': '2022-11-28' }
+    });
+    if (check.ok) { const d = await check.json(); sha = d.sha; }
+  } catch(e) {}
+
+  // 3. PUT du fichier
+  const body = { message: 'Upload MELEC — ' + file.name, content: b64 };
+  if (sha) body.sha = sha;
+
+  let res;
+  try {
+    res = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: {
+        Authorization: `token ${cfg.token}`,
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      body: JSON.stringify(body)
+    });
   } catch(netErr) {
     throw new Error('Réseau inaccessible (api.github.com) : ' + netErr.message);
   }
 
-  if (listRes.status === 401) throw new Error('Token invalide ou expiré (401) — vérifiez votre token GitHub');
-  if (listRes.status === 403) throw new Error('Accès refusé (403) — le token doit avoir le scope "repo"');
-  if (listRes.status === 404) throw new Error('Dépôt introuvable (404) — vérifiez "' + cfg.uploadRepo + '" et que le dépôt est public');
-  if (!listRes.ok) throw new Error('Erreur API GitHub : HTTP ' + listRes.status);
-
-  const releases = await listRes.json();
-  const existing = releases.find(r => r.tag_name === tag);
-  if (existing) return existing.id;
-
-  // Créer la release — nécessite qu'il existe au moins un commit dans le repo
-  const createRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`, {
-    method: 'POST', headers,
-    body: JSON.stringify({
-      tag_name: tag,
-      name: 'MELEC Ressources pédagogiques',
-      body: 'Fichiers uploadés depuis l\'app MELEC Admin',
-      draft: false,
-      prerelease: false
-    })
-  });
-
-  if (!createRes.ok) {
-    let detail = 'HTTP ' + createRes.status;
-    try {
-      const errJson = await createRes.json();
-      detail = errJson.message || detail;
-      if (errJson.errors) detail += ' — ' + errJson.errors.map(e => e.code + ': ' + e.field).join(', ');
-    } catch(e) {}
-    if (createRes.status === 422) detail += '\n→ Le dépôt doit contenir au moins un fichier/commit pour créer une release. Ajoutez un README sur github.com.';
-    throw new Error(detail);
-  }
-
-  const created = await createRes.json();
-  return created.id;
-}
-
-// ─── API GitHub : Upload asset ────────────────────────────────
-async function uploadAsset(releaseId, file, queueIdx) {
-  const [owner, repo] = cfg.uploadRepo.split('/');
-
-  // Nommer le fichier avec timestamp pour éviter les doublons
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const assetName = Date.now() + '_' + safeName;
-  const uploadUrl = `https://uploads.github.com/repos/${owner}/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(assetName)}`;
-
-  const buffer = await readFileBuffer(file, queueIdx);
-
-  let res;
-  try {
-    res = await fetch(uploadUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `token ${cfg.token}`,
-        'Content-Type': getMimeType(file.name),
-        'X-GitHub-Api-Version': '2022-11-28'
-      },
-      body: buffer
-    });
-  } catch(netErr) {
-    // uploads.github.com peut être bloqué par certains proxies/CORS
-    throw new Error('Réseau bloqué vers uploads.github.com : ' + netErr.message + '\n→ Vérifiez que l\'app est servie en HTTPS et que votre réseau autorise uploads.github.com');
-  }
+  if (res.status === 401) throw new Error('Token invalide ou expiré (401)');
+  if (res.status === 403) throw new Error('Accès refusé (403) — le token doit avoir le scope "repo"');
+  if (res.status === 404) throw new Error('Dépôt introuvable (404) — vérifiez "' + cfg.uploadRepo + '"');
 
   if (!res.ok) {
     let detail = 'HTTP ' + res.status;
-    try {
-      const errJson = await res.json();
-      detail = errJson.message || detail;
-      if (errJson.errors) detail += ' — ' + JSON.stringify(errJson.errors);
-    } catch(e) {}
+    try { const e = await res.json(); detail = e.message || detail; } catch(e) {}
     throw new Error(detail);
   }
 
   const data = await res.json();
-  return data.browser_download_url;
+  // URL publique permanente, accessible sans auth depuis n'importe quel réseau
+  return data.content.download_url;
 }
 
-function readFileBuffer(file, queueIdx) {
+// readFileBase64 — encode le fichier en base64 pur (sans préfixe data:...)
+function readFileBase64(file, queueIdx) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onprogress = e => {
-      if (e.lengthComputable) {
-        const pct = Math.round((e.loaded / e.total) * 80); // 0→80% = lecture
-        if (uploadQueue[queueIdx]) { uploadQueue[queueIdx].progress = pct; updateUFI(queueIdx); }
+      if (e.lengthComputable && uploadQueue[queueIdx]) {
+        uploadQueue[queueIdx].progress = Math.round((e.loaded / e.total) * 75);
+        updateUFI(queueIdx);
       }
     };
     reader.onload = e => {
-      if (uploadQueue[queueIdx]) { uploadQueue[queueIdx].progress = 85; updateUFI(queueIdx); }
-      resolve(e.target.result);
+      if (uploadQueue[queueIdx]) { uploadQueue[queueIdx].progress = 80; updateUFI(queueIdx); }
+      // result = "data:application/pdf;base64,XXXXXXX" → on garde seulement la partie après la virgule
+      const b64 = e.target.result.split(',')[1];
+      resolve(b64);
     };
     reader.onerror = () => reject(new Error('Lecture fichier impossible'));
-    reader.readAsArrayBuffer(file);
+    reader.readAsDataURL(file); // readAsDataURL → base64 natif
   });
 }
 
-function getMimeType(filename) {
-  const ext = filename.split('.').pop().toLowerCase();
-  const map = {
-    pdf: 'application/pdf',
-    doc: 'application/msword',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    xls: 'application/vnd.ms-excel',
-    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    txt: 'text/plain'
-  };
-  return map[ext] || 'application/octet-stream';
-}
+// getOrCreateRelease gardé en stub (plus utilisé mais appelé dans runUploads)
+async function getOrCreateRelease() { return null; }
 
 // ─── GO ───────────────────────────────────────────────────────
 init();
