@@ -702,7 +702,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
 const CFG_KEY = 'melec_inv_cfg';
 
 // ⚙ CONFIGURATION — remplacer par votre Gist ID
-const GIST_ID_PUBLIC = '7199f3da76a616c61c7b7780409bf786';
+const GIST_ID_PUBLIC = 'VOTRE_GIST_ID_ICI';
 
 let cfg = {};
 let db = { items: [], mouvements: [] };
@@ -782,6 +782,13 @@ function showResetConfig() {
 async function startApp() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
+  // Garantir que cfg contient le token depuis localStorage
+  if (!cfg.tokenAdmin) {
+    try {
+      const saved = localStorage.getItem(CFG_KEY);
+      if (saved) { const c = JSON.parse(saved); cfg = { ...c, ...cfg, tokenAdmin: c.tokenAdmin }; }
+    } catch(e) {}
+  }
   await loadFromGist();
   renderAll();
   updateBadge();
@@ -874,6 +881,17 @@ async function loadFromGist() {
 
 async function syncGist(silent = false) {
   if (cfg.demo) { if (!silent) toast('Mode démo — pas de sauvegarde'); return; }
+  // Recharger le token depuis localStorage au cas où cfg a été réinitialisé
+  if (!cfg.tokenAdmin) {
+    try {
+      const saved = localStorage.getItem(CFG_KEY);
+      if (saved) { const c = JSON.parse(saved); cfg.tokenAdmin = c.tokenAdmin; cfg.gistId = cfg.gistId || c.gistId; }
+    } catch(e) {}
+  }
+  if (!cfg.tokenAdmin) {
+    if (!silent) toast('⚠ Token admin manquant — reconnectez-vous');
+    return;
+  }
   try {
     const fname = 'melec-inventaire.json';
     const body = { files: { [fname]: { content: JSON.stringify(db, null, 2) } } };
