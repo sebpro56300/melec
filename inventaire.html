@@ -706,7 +706,7 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
 const CFG_KEY = 'melec_inv_cfg';
 
 // ⚙ CONFIGURATION — remplacer par votre Gist ID
-const GIST_ID_PUBLIC = 'VOTRE_GIST_ID_ICI';
+const GIST_ID_PUBLIC = '7199f3da76a616c61c7b7780409bf786';
 
 let cfg = {};
 let db = { items: [], mouvements: [] };
@@ -742,7 +742,7 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       cfg = JSON.parse(saved);
       // Sécurité : si le gistId sauvegardé est le placeholder, vider et reconfigurer
-      if (!cfg.gistId || cfg.gistId === 'VOTRE_GIST_ID_ICI') {
+      if (!cfg.gistId || cfg.gistId === '7199f3da76a616c61c7b7780409bf786') {
         localStorage.removeItem(CFG_KEY);
         localStorage.removeItem('melec_inv_admin');
         renderCatChips();
@@ -758,7 +758,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
   // Priorité 2 : Gist ID codé en dur → mode lecteur direct, rien à saisir
-  if (GIST_ID_PUBLIC && GIST_ID_PUBLIC !== 'VOTRE_GIST_ID_ICI') {
+  if (GIST_ID_PUBLIC && GIST_ID_PUBLIC !== '7199f3da76a616c61c7b7780409bf786') {
     cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: null, readerMode: true };
     isAdmin = false;
     startApp();
