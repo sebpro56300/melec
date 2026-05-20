@@ -378,10 +378,6 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
     <div class="card-title" style="margin-bottom:4px">🔐 CONNEXION ADMIN</div>
     <div style="font-size:11px;color:var(--grey);margin-bottom:14px">Saisissez votre Gist ID et token pour accéder à toutes les fonctions.</div>
     <div class="form-group" style="margin-bottom:10px">
-      <label>GIST ID</label>
-      <input id="cfg-gist-id" type="text" placeholder="abc123def456..." autocomplete="off" spellcheck="false">
-    </div>
-    <div class="form-group" style="margin-bottom:10px">
       <label>TOKEN ADMIN</label>
       <input id="cfg-token-admin" type="password" placeholder="ghp_xxxxxxxxxxxx">
     </div>
@@ -736,18 +732,12 @@ const CAT_ICONS = {
 //  INIT
 // ═══════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  // Priorité 1 : token admin mémorisé sur cet appareil → mode admin complet
+  // Admin mémorisé → démarrage direct, token conservé, jamais de re-saisie
   const saved = localStorage.getItem(CFG_KEY);
   if (saved) {
     try {
       cfg = JSON.parse(saved);
-      // Sécurité : si le gistId sauvegardé est le placeholder, vider et reconfigurer
-      if (!cfg.gistId || cfg.gistId === '7199f3da76a616c61c7b7780409bf786') {
-        localStorage.removeItem(CFG_KEY);
-        localStorage.removeItem('melec_inv_admin');
-        renderCatChips();
-        return;
-      }
+      cfg.gistId = GIST_ID_PUBLIC; // Gist ID toujours en dur
       cfg.readerMode = false;
       if (localStorage.getItem('melec_inv_admin') === '1') isAdmin = true;
       startApp();
@@ -757,23 +747,16 @@ window.addEventListener('DOMContentLoaded', () => {
       localStorage.removeItem('melec_inv_admin');
     }
   }
-  // Priorité 2 : Gist ID codé en dur → mode lecteur direct, rien à saisir
-  if (GIST_ID_PUBLIC && GIST_ID_PUBLIC !== '7199f3da76a616c61c7b7780409bf786') {
-    cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: null, readerMode: true };
-    isAdmin = false;
-    startApp();
-    return;
-  }
-  // Sinon : écran de configuration (premier lancement)
-  renderCatChips();
+  // Pas de config admin → mode lecteur automatique (Gist ID en dur, lecture seule)
+  cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: null, readerMode: true };
+  isAdmin = false;
+  startApp();
 });
 
 function saveConfig() {
-  const token  = document.getElementById('cfg-token-admin').value.trim();
-  const gistId = document.getElementById('cfg-gist-id').value.trim();
-  if (!token)  { toast('⚠ Token admin requis'); return; }
-  if (!gistId) { toast('⚠ Gist ID requis'); return; }
-  cfg = { gistId, tokenAdmin: token, readerMode: false };
+  const token = document.getElementById('cfg-token-admin').value.trim();
+  if (!token) { toast('⚠ Token admin requis'); return; }
+  cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: token, readerMode: false };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   isAdmin = true;
   localStorage.setItem('melec_inv_admin', '1');
@@ -971,10 +954,6 @@ function showAdminLogin() {
   overlay.innerHTML = `
     <div style="background:var(--navy2);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:320px;width:100%">
       <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--amber);margin-bottom:16px">🔐 ACCÈS ADMIN</div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label>GIST ID</label>
-        <input id="login-gist" type="text" placeholder="abc123..." value="${cfg.gistId||''}">
-      </div>
       <div class="form-group" style="margin-bottom:16px">
         <label>TOKEN ADMIN</label>
         <input id="login-token" type="password" placeholder="ghp_xxxxxxxxxxxx">
@@ -990,11 +969,9 @@ function showAdminLogin() {
 }
 
 function loginAsAdmin() {
-  const gistId = document.getElementById('login-gist').value.trim();
-  const token  = document.getElementById('login-token').value.trim();
-  if (!gistId) { toast('⚠ Gist ID requis'); return; }
-  if (!token)  { toast('⚠ Token requis'); return; }
-  cfg = { gistId, tokenAdmin: token, readerMode: false };
+  const token = document.getElementById('login-token').value.trim();
+  if (!token) { toast('⚠ Token requis'); return; }
+  cfg = { gistId: GIST_ID_PUBLIC, tokenAdmin: token, readerMode: false };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   localStorage.setItem('melec_inv_admin', '1');
   isAdmin = true;
