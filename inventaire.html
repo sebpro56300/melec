@@ -876,32 +876,48 @@ async function loadFromGist() {
 }
 
 async function syncGist(silent = false) {
-  if (cfg.demo) { if (!silent) toast('Mode démo — pas de sauvegarde'); return; }
-  // Recharger le token depuis localStorage au cas où cfg a été réinitialisé
+  if (cfg.demo) { toast('Mode démo — pas de sauvegarde'); return; }
+
+  // Toujours recharger le token depuis localStorage
+  try {
+    const saved = localStorage.getItem(CFG_KEY);
+    if (saved) {
+      const c = JSON.parse(saved);
+      if (c.tokenAdmin) cfg.tokenAdmin = c.tokenAdmin;
+      if (c.gistId)     cfg.gistId     = c.gistId;
+    }
+  } catch(e) {}
+
+  cfg.gistId = GIST_ID_PUBLIC; // Gist ID toujours en dur
+
   if (!cfg.tokenAdmin) {
-    try {
-      const saved = localStorage.getItem(CFG_KEY);
-      if (saved) { const c = JSON.parse(saved); cfg.tokenAdmin = c.tokenAdmin; cfg.gistId = cfg.gistId || c.gistId; }
-    } catch(e) {}
-  }
-  if (!cfg.tokenAdmin) {
-    if (!silent) toast('⚠ Token admin manquant — reconnectez-vous');
+    toast('⚠ Token manquant — cliquez ⚙ Admin et connectez-vous');
     return;
   }
+
   try {
     const fname = 'melec-inventaire.json';
-    const body = { files: { [fname]: { content: JSON.stringify(db, null, 2) } } };
-    const r = await fetch(`https://api.github.com/gists/${cfg.gistId}`, {
-      method: 'PATCH', headers: gistHeaders(), body: JSON.stringify(body)
+    const payload = JSON.stringify(db, null, 2);
+    const body = { files: { [fname]: { content: payload } } };
+    const r = await fetch('https://api.github.com/gists/' + GIST_ID_PUBLIC, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': 'token ' + cfg.tokenAdmin,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
     });
     if (r.ok) {
-      if (!silent) toast('✅ Sauvegardé sur Gist');
+      toast('✅ Sauvegardé');
       setConnBadge(true);
     } else {
       const err = await r.json().catch(() => ({}));
-      toast('❌ Erreur sauvegarde : ' + (err.message || r.status));
+      toast('❌ ' + r.status + ' : ' + (err.message || 'erreur API'));
     }
-  } catch(e) { toast('❌ Connexion échouée : ' + e.message); }
+  } catch(e) {
+    toast('❌ Réseau : ' + e.message);
+  }
 }
 
 function scheduleSave() {
