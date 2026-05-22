@@ -517,8 +517,8 @@ async function loadEleves() {
     const r=await fetch(`https://api.github.com/gists/${cfg.suiviGistId}`,{headers:{Authorization:`token ${cfg.token}`}});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    if(d.files['eleves.json']) {
-      const raw=JSON.parse(d.files['eleves.json'].content);
+    if(d.files['melec-data.json']) {
+      const raw=JSON.parse(d.files['melec-data.json'].content);
       eleves=Array.isArray(raw)?raw:(raw.eleves||[]);
       toast('Élèves chargés ('+eleves.length+')','s');
     }
@@ -1299,7 +1299,7 @@ function showCfg(){
         </div>
         <div class="fg"><label>Gist ID — App melec-suivi (élèves)</label>
           <input type="text" id="c-suivi" value="${esc(cfg.suiviGistId||'')}" placeholder="ID du Gist melec-suivi">
-          <div class="muted mt8">Utilisé pour charger la liste des élèves (eleves.json)</div>
+          <div class="muted mt8">Utilisé pour charger la liste des élèves (melec-data.json)</div>
         </div>
         <div class="fg"><label>Dépôt de stockage fichiers (owner/repo)</label>
           <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="sebpro56300/ressources">
