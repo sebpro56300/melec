@@ -14,11 +14,18 @@
   --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
   --r:10px;--mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;
 }
+/* ── RESET & BASE ── */
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+html,body{height:100%;overflow:hidden;} /* clé : pas de scroll sur body */
+body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
 
-/* HEADER */
-header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 18px;display:flex;align-items:center;gap:14px;height:52px;position:sticky;top:0;z-index:100;}
+/* ── HEADER ── */
+header{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0 18px;display:flex;align-items:center;gap:14px;
+  height:52px;flex-shrink:0; /* pas sticky — il est déjà hors du scroll */
+  z-index:100;
+}
 .logo{font-family:var(--display);font-weight:800;font-size:14px;color:var(--accent2);letter-spacing:.05em;white-space:nowrap;}
 .logo span{color:var(--text3);font-weight:600;}
 .htabs{display:flex;gap:2px;margin-left:10px;}
@@ -31,7 +38,7 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 18p
 .gst.err::before{content:"● ";color:var(--red);}
 .gst.loading::before{content:"◌ ";color:var(--orange);}
 
-/* BUTTONS */
+/* ── BUTTONS ── */
 .btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--sans);}
 .btn-p{background:var(--accent);color:#fff;}.btn-p:hover{background:#2563eb;}
 .btn-g{background:transparent;color:var(--text2);border:1px solid var(--border);}.btn-g:hover{background:var(--bg3);color:var(--text);}
@@ -40,15 +47,75 @@ header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 18p
 .btn-o{background:var(--orange);color:#111;}.btn-o:hover{background:#d97706;}
 .btn-sm{padding:3px 8px;font-size:11px;}
 
-/* LAYOUT */
-.main{flex:1;display:flex;overflow:hidden;height:calc(100vh - 52px);}
-.sidebar{width:265px;border-right:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;}
-.sb-head{padding:11px 13px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:6px;}
+/* ── LAYOUT — zones de scroll indépendantes ── */
+.main{
+  flex:1;           /* prend tout l'espace restant sous le header */
+  display:flex;
+  overflow:hidden;  /* les enfants gèrent leur propre scroll */
+  min-height:0;     /* fix Firefox : permet à flex:1 de réduire sous le contenu */
+}
+
+/* SIDEBAR */
+.sidebar{
+  width:265px;flex-shrink:0;
+  border-right:1px solid var(--border);
+  background:var(--bg2);
+  display:flex;flex-direction:column;
+  overflow:hidden;  /* scroll uniquement dans .sb-list */
+  min-height:0;
+}
+.sb-head{padding:11px 13px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:6px;flex-shrink:0;}
 .sb-title{font-family:var(--display);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text2);}
-.sb-filter{padding:6px;border-bottom:1px solid var(--border);}
+.sb-filter{padding:6px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .sb-filter input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:12px;font-family:var(--sans);}
 .sb-filter input:focus{outline:none;border-color:var(--accent);}
-.sb-list{flex:1;overflow-y:auto;padding:5px;}
+.sb-list{flex:1;overflow-y:auto;padding:5px;min-height:0;}
+
+/* CONTENT — scroll indépendant */
+/* (défini plus bas, après les autres styles) */
+
+/* ── MOBILE — bottom nav bar ── */
+@media(max-width:700px){
+  /* header simplifié */
+  header{padding:0 12px;gap:8px;}
+  .htabs{display:none;} /* remplacé par la bottom bar */
+  .logo span{display:none;}
+
+  /* bottom nav */
+  .mobile-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    background:var(--bg2);border-top:1px solid var(--border);
+    z-index:200;height:54px;
+  }
+  .mobile-nav button{
+    flex:1;background:none;border:none;color:var(--text3);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:2px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+    cursor:pointer;transition:color .15s;padding:0;font-family:var(--sans);
+  }
+  .mobile-nav button .mico{font-size:18px;line-height:1;}
+  .mobile-nav button.active{color:var(--accent2);}
+  .mobile-nav button:hover{color:var(--text);}
+
+  /* main occupe tout sauf header + bottom nav */
+  .main{flex-direction:column;padding-bottom:54px;}
+
+  /* sur mobile : sidebar plein écran ou cachée */
+  .sidebar{
+    width:100%;border-right:none;border-bottom:1px solid var(--border);
+    max-height:45vh; /* moitié écran max */
+    transition:max-height .25s ease;
+  }
+  .sidebar.sb-hidden{max-height:0;overflow:hidden;border-bottom:none;}
+  .content{flex:1;overflow-y:auto;padding:14px;min-height:0;}
+
+  /* toggles sidebar sur mobile */
+  .sb-toggle{display:flex;}
+}
+@media(min-width:701px){
+  .mobile-nav{display:none;}
+  .sb-toggle{display:none;}
+}
 .li{padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .12s;position:relative;}
 .li:hover{background:var(--bg3);}
 .li.on{background:#1a2540;border-color:var(--accent);}
@@ -450,8 +517,8 @@ async function loadEleves() {
     const r=await fetch(`https://api.github.com/gists/${cfg.suiviGistId}`,{headers:{Authorization:`token ${cfg.token}`}});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    if(d.files['melec-data.json']) {
-      const raw=JSON.parse(d.files['melec-data.json'].content);
+    if(d.files['eleves.json']) {
+      const raw=JSON.parse(d.files['eleves.json'].content);
       eleves=Array.isArray(raw)?raw:(raw.eleves||[]);
       toast('Élèves chargés ('+eleves.length+')','s');
     }
@@ -1232,7 +1299,7 @@ function showCfg(){
         </div>
         <div class="fg"><label>Gist ID — App melec-suivi (élèves)</label>
           <input type="text" id="c-suivi" value="${esc(cfg.suiviGistId||'')}" placeholder="ID du Gist melec-suivi">
-          <div class="muted mt8">Utilisé pour charger la liste des élèves (melec-data.json)</div>
+          <div class="muted mt8">Utilisé pour charger la liste des élèves (eleves.json)</div>
         </div>
         <div class="fg"><label>Dépôt de stockage fichiers (owner/repo)</label>
           <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="sebpro56300/ressources">
