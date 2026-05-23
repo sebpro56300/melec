@@ -203,6 +203,41 @@ header{
 .tree-rub.on{background:#1a2540;color:var(--accent2);font-weight:600;}
 .tree-rub .count{margin-left:auto;font-size:10px;font-family:var(--mono);color:var(--text3);}
 
+/* ── ÉVALUATION — code couleur ── */
+:root{
+  --eval-bleu:#3b82f6;--eval-rouge:#ef4444;
+  --eval-orange:#f59e0b;--eval-vclair:#86efac;--eval-vfonce:#16a34a;
+}
+.eval-dots{display:flex;gap:5px;align-items:center;}
+.eval-dot{
+  width:24px;height:24px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:all .15s;flex-shrink:0;
+}
+.eval-dot:hover{transform:scale(1.18);}
+.eval-dot.sel{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.35),0 0 0 4px rgba(0,0,0,.3);}
+.eval-dot.bleu      {background:var(--eval-bleu);}
+.eval-dot.rouge     {background:var(--eval-rouge);}
+.eval-dot.orange    {background:var(--eval-orange);}
+.eval-dot.vclair    {background:var(--eval-vclair);}
+.eval-dot.vfonce    {background:var(--eval-vfonce);}
+
+/* compétence card */
+.comp-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:7px;}
+.comp-head{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg3);border-bottom:1px solid var(--border);}
+.comp-code{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);background:#111f3a;padding:2px 7px;border-radius:4px;flex-shrink:0;}
+.comp-lib{font-size:12px;font-weight:600;flex:1;}
+.comp-toggle{font-size:10px;color:var(--text3);cursor:pointer;padding:3px 6px;border-radius:4px;border:1px solid var(--border);background:none;transition:transform .2s;flex-shrink:0;}
+.comp-toggle:hover{background:var(--bg2);}
+.comp-body{padding:10px 12px;display:flex;flex-direction:column;gap:5px;}
+
+/* critère row */
+.crit-row{display:flex;align-items:center;gap:8px;padding:6px 9px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;}
+.crit-lib{font-size:12px;flex:1;min-width:0;}
+.crit-lib input{background:transparent;border:none;font-size:12px;color:var(--text);width:100%;padding:0;font-family:var(--sans);}
+.crit-lib input:focus{outline:none;border-bottom:1px solid var(--accent);}
+.crit-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:4px;flex-shrink:0;}
+.crit-del:hover{color:var(--red);background:#1f0a0a;}
+
 /* CONTENT */
 .content{flex:1;overflow-y:auto;padding:20px;}
 .empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text3);}
@@ -867,6 +902,16 @@ function showTPForm(id){
         : '<div class="muted">Aucune ressource. Utilisez les boutons ci-dessus.</div>'}
       </div>
     </div>
+    <div class="fc" id="fc-comp">
+      <div class="fc-head">
+        <span>🎯</span>
+        <span class="fc-title">Compétences évaluées (${(tp.competences||[]).length})</span>
+        <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="addComp('${id}')">+ Compétence</button>
+      </div>
+      <div class="fc-body" id="comp-list">
+        ${renderCompList(id)}
+      </div>
+    </div>
     <div class="fe mt8"><button class="btn btn-p" onclick="saveTP('${id}')">💾 Enregistrer</button></div>`;
 }
 
@@ -883,6 +928,128 @@ function delTP(id){if(!confirm('Supprimer ce TP ?'))return;tps=tps.filter(x=>x.i
 function addSys(tpId,sel){if(!sel.value)return;saveTPSilent(tpId);const tp=tps.find(x=>x.id===tpId);if(!tp)return;tp.systemes=tp.systemes||[];if(!tp.systemes.includes(sel.value))tp.systemes.push(sel.value);dirty();showTPForm(tpId);}
 function rmSys(tpId,sid){saveTPSilent(tpId);const tp=tps.find(x=>x.id===tpId);if(tp){tp.systemes=(tp.systemes||[]).filter(s=>s!==sid);dirty();showTPForm(tpId);}}
 function detachRes(tpId,rid){saveTPSilent(tpId);const tp=tps.find(x=>x.id===tpId);if(tp){tp.ressources=(tp.ressources||[]).filter(r=>r!==rid);dirty();showTPForm(tpId);toast('Détachée','s');}}
+
+// ═══════════════════════════════════════════════════════════════
+// COMPÉTENCES & CRITÈRES
+// ═══════════════════════════════════════════════════════════════
+const EVAL_COULEURS=['bleu','rouge','orange','vclair','vfonce'];
+
+function genCID(){return 'C'+Date.now().toString(36).toUpperCase();}
+function genKID(){return 'K'+Date.now().toString(36).toUpperCase();}
+
+function renderCompList(tpId){
+  const tp=tps.find(x=>x.id===tpId);
+  if(!tp||(tp.competences||[]).length===0)
+    return '<div class="muted">Aucune compétence définie. Cliquez sur "+ Compétence" pour commencer.</div>';
+
+  return (tp.competences||[]).map((comp,ci)=>`
+    <div class="comp-card" id="comp-${comp.id}">
+      <div class="comp-head">
+        <span class="comp-code" contenteditable="true" onblur="updateCompCode('${tpId}','${comp.id}',this.textContent)" title="Cliquer pour modifier le code">${esc(comp.code||'C?')}</span>
+        <span class="comp-lib" contenteditable="true" onblur="updateCompLib('${tpId}','${comp.id}',this.textContent)" title="Cliquer pour modifier le libellé">${esc(comp.libelle||'Libellé de la compétence')}</span>
+        <button class="comp-toggle" onclick="toggleComp('${comp.id}')">▶</button>
+        <button class="crit-del" onclick="delComp('${tpId}','${comp.id}')" title="Supprimer la compétence">✕</button>
+      </div>
+      <div class="comp-body" id="cbody-${comp.id}" style="display:none;">
+        ${(comp.criteres||[]).map((cr,ki)=>`
+          <div class="crit-row" id="crit-${cr.id}">
+            <div class="crit-lib">
+              <input type="text" value="${esc(cr.libelle||'')}" placeholder="Libellé du critère..."
+                onchange="updateCritLib('${tpId}','${comp.id}','${cr.id}',this.value)">
+            </div>
+            <button class="crit-del" onclick="delCrit('${tpId}','${comp.id}','${cr.id}')" title="Supprimer">✕</button>
+          </div>`).join('')}
+        <button class="btn btn-g btn-sm" style="align-self:flex-start;margin-top:4px;"
+          onclick="addCrit('${tpId}','${comp.id}')">+ Critère</button>
+      </div>
+    </div>`).join('');
+}
+
+function toggleComp(compId){
+  const body=document.getElementById('cbody-'+compId);
+  const btn=document.querySelector(`#comp-${compId} .comp-toggle`);
+  if(!body)return;
+  const open=body.style.display==='none';
+  body.style.display=open?'flex':'none';
+  body.style.flexDirection='column';
+  if(btn) btn.style.transform=open?'rotate(90deg)':'rotate(0deg)';
+}
+
+function addComp(tpId){
+  saveTPSilent(tpId);
+  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
+  tp.competences=tp.competences||[];
+  tp.competences.push({id:genCID(),code:'C'+(tp.competences.length+1),libelle:'',criteres:[]});
+  dirty();
+  document.getElementById('comp-list').innerHTML=renderCompList(tpId);
+  // Ouvrir la dernière compétence ajoutée
+  const last=tp.competences[tp.competences.length-1];
+  toggleComp(last.id);
+  // Mettre à jour le compteur dans le header
+  const h=document.querySelector('#fc-comp .fc-title');
+  if(h) h.textContent=`Compétences évaluées (${tp.competences.length})`;
+}
+
+function delComp(tpId,compId){
+  if(!confirm('Supprimer cette compétence et ses critères ?'))return;
+  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
+  tp.competences=(tp.competences||[]).filter(c=>c.id!==compId);
+  dirty();
+  document.getElementById('comp-list').innerHTML=renderCompList(tpId);
+  const h=document.querySelector('#fc-comp .fc-title');
+  if(h) h.textContent=`Compétences évaluées (${tp.competences.length})`;
+}
+
+function updateCompCode(tpId,compId,val){
+  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
+  const comp=(tp.competences||[]).find(c=>c.id===compId);
+  if(comp){comp.code=val.trim();dirty();}
+}
+
+function updateCompLib(tpId,compId,val){
+  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
+  const comp=(tp.competences||[]).find(c=>c.id===compId);
+  if(comp){comp.libelle=val.trim();dirty();}
+}
+
+function addCrit(tpId,compId){
+  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
+  const comp=(tp.competences||[]).find(c=>c.id===compId);if(!comp)return;
+  comp.criteres=comp.criteres||[];
+  const newCrit={id:genKID(),libelle:''};
+  comp.criteres.push(newCrit);
+  dirty();
+  // Insérer la nouvelle ligne avant le bouton + Critère
+  const body=document.getElementById('cbody-'+compId);
+  if(!body)return;
+  const addBtn=body.querySelector('button');
+  const row=document.createElement('div');
+  row.className='crit-row';row.id='crit-'+newCrit.id;
+  row.innerHTML=`
+    <div class="crit-lib">
+      <input type="text" value="" placeholder="Libellé du critère..." autofocus
+        onchange="updateCritLib('${tpId}','${compId}','${newCrit.id}',this.value)">
+    </div>
+    <button class="crit-del" onclick="delCrit('${tpId}','${compId}','${newCrit.id}')" title="Supprimer">✕</button>`;
+  body.insertBefore(row,addBtn);
+  row.querySelector('input').focus();
+}
+
+function delCrit(tpId,compId,critId){
+  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
+  const comp=(tp.competences||[]).find(c=>c.id===compId);if(!comp)return;
+  comp.criteres=(comp.criteres||[]).filter(k=>k.id!==critId);
+  dirty();
+  const row=document.getElementById('crit-'+critId);
+  if(row) row.remove();
+}
+
+function updateCritLib(tpId,compId,critId,val){
+  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
+  const comp=(tp.competences||[]).find(c=>c.id===compId);if(!comp)return;
+  const crit=(comp.criteres||[]).find(k=>k.id===critId);
+  if(crit){crit.libelle=val.trim();dirty();}
+}
 
 // ═══════════════════════════════════════════════════════════════
 // BIBLIOTHÈQUE — arbre niveau / rubrique
