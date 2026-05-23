@@ -642,11 +642,21 @@ async function loadEleves() {
     const r=await fetch(`https://api.github.com/gists/${cfg.suiviGistId}`,{headers:{Authorization:`token ${cfg.token}`}});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    if(d.files['melec-data.json']) {
-      const raw=JSON.parse(d.files['melec-data.json'].content);
-      eleves=Array.isArray(raw)?raw:(raw.eleves||[]);
-      toast('Élèves chargés ('+eleves.length+')','s');
-    }
+    // Le fichier s'appelle melec-data.json, les élèves sont dans data.eleves[]
+    const fileName=Object.keys(d.files).find(f=>f.includes('melec-data')||f.includes('eleves'));
+    if(!fileName) throw new Error('Fichier élèves introuvable dans le Gist');
+    const raw=JSON.parse(d.files[fileName].content);
+    // Structure : {eleves:[...]} ou [{...}] directement
+    const arr=Array.isArray(raw)?raw:(raw.eleves||[]);
+    eleves=arr.map(e=>({
+      id:  e.id,
+      nom: (e.name||'')+(e.prenom?' '+e.prenom:''),  // "NOM Prénom"
+      name: e.name||'',
+      prenom: e.prenom||'',
+      // level = "1MELEC" | "2MELEC" | "T-MELEC" → on s'en sert comme classe
+      classe: e.level||e.classe||'Sans classe'
+    }));
+    toast('Élèves chargés ('+eleves.length+')','s');
   } catch(e){toast('Élèves : '+e.message,'e');}
 }
 
@@ -1349,24 +1359,25 @@ function openAffModal(materielId){
 
   document.getElementById('aff-modal-title').textContent=(type==='annuelle'?'📅':'⏱️')+' Affecter — '+item?.nom;
 
-  // Construire le select élèves groupé par classe
+  // Construire le select élèves groupé par classe (level)
   let eleveOptions='';
   if(eleves.length){
-    // Grouper par classe
     const classes={};
     eleves.forEach(e=>{
-      const cl=e.classe||e.group||e.niveau||'Sans classe';
+      const cl=e.classe||'Sans classe';
       if(!classes[cl]) classes[cl]=[];
       classes[cl].push(e);
     });
-    const sorted=Object.keys(classes).sort();
+    // Ordre fixe des classes
+    const ordre=['2MELEC','1MELEC','T-MELEC'];
+    const sorted=[...ordre.filter(c=>classes[c]),...Object.keys(classes).filter(c=>!ordre.includes(c)).sort()];
     eleveOptions=sorted.map(cl=>{
       const opts=classes[cl].map(e=>{
-        const nom=e.nom||(e.prenom||'')+' '+(e.nom_famille||'');
-        const sel=activeAff?.eleveId===String(e.id||nom)?'selected':'';
-        return `<option value="${esc(String(e.id||nom))}" ${sel}>${esc(nom.trim())}</option>`;
+        const display=e.name&&e.prenom?e.name+' '+e.prenom:e.nom||e.name||e.id;
+        const sel=activeAff?.eleveId===String(e.id)?'selected':'';
+        return `<option value="${esc(String(e.id))}" ${sel}>${esc(display)}</option>`;
       }).join('');
-      return `<optgroup label="${esc(cl)}">${opts}</optgroup>`;
+      return `<optgroup label="── ${esc(cl)} ──">${opts}</optgroup>`;
     }).join('');
   } else {
     eleveOptions='<option value="">Aucun élève chargé — voir Config</option>';
@@ -1402,7 +1413,7 @@ function confirmAff(){
   const sel=document.getElementById('aff-eleve');
   const eleveId=sel.value;
   const eleveNom=sel.options[sel.selectedIndex]?.text||eleveId;
-  if(!eleveId){toast('Sélectionnez un élève','e');return;}
+  if(!eleveId||eleveId===''){toast('Sélectionnez un élève','e');return;}
 
   // Supprimer l'affectation active existante si annuelle (une seule à la fois)
   if(type==='annuelle'&&activeAff) affectations=affectations.filter(a=>a.id!==activeAff.id);
@@ -1459,7 +1470,7 @@ function showCfg(){
         </div>
         <div class="fg"><label>Gist ID — App melec-suivi (élèves)</label>
           <input type="text" id="c-suivi" value="${esc(cfg.suiviGistId||'')}" placeholder="ID du Gist melec-suivi">
-          <div class="muted mt8">Utilisé pour charger la liste des élèves (melec-data.json)</div>
+          <div class="muted mt8">Gist contenant <code>melec-data.json</code> — ID : <code>a953954f369f7fad1597e2a6da38578c</code></div>
         </div>
         <div class="fg"><label>Dépôt de stockage fichiers (owner/repo)</label>
           <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="sebpro56300/ressources">
