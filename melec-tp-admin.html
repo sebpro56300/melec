@@ -76,45 +76,108 @@ header{
 
 /* ── MOBILE — bottom nav bar ── */
 @media(max-width:700px){
-  /* header simplifié */
-  header{padding:0 12px;gap:8px;}
-  .htabs{display:none;} /* remplacé par la bottom bar */
+  header{padding:0 10px;gap:6px;}
+  .htabs{display:none;}
   .logo span{display:none;}
+  .hright .gst{display:none;} /* pas de place sur petit écran */
+
+  /* layout mobile : colonne, content prend le reste */
+  .main{
+    flex-direction:column;
+    padding-bottom:54px; /* espace pour la bottom nav */
+  }
+
+  /* sidebar mobile : hauteur fixe, scrollable, rétractable */
+  .sidebar{
+    width:100%;
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    height:42vh;
+    min-height:0;
+    flex-shrink:0;
+    transition:height .25s ease, border .25s;
+  }
+  .sidebar.sb-hidden{height:0;overflow:hidden;border-bottom:none;}
+
+  /* content prend le reste */
+  .content{
+    flex:1;
+    overflow-y:auto;
+    padding:12px;
+    min-height:0;
+  }
+
+  /* grilles → 1 colonne */
+  .frow,.frow3{grid-template-columns:1fr;}
+  .fg.full{grid-column:1;}
+
+  /* boutons d'action empilés */
+  .arow{flex-wrap:wrap;}
+  .dh{flex-direction:column;gap:8px;}
+  .dh .arow{width:100%;}
+
+  /* modales plein écran sur mobile */
+  .modal{width:100%;max-width:100%;margin:0;border-radius:12px 12px 0 0;position:fixed;bottom:0;left:0;right:0;max-height:85vh;}
+  .modal-ov{align-items:flex-end;}
 
   /* bottom nav */
   .mobile-nav{
-    display:flex;position:fixed;bottom:0;left:0;right:0;
+    display:flex;
+    position:fixed;bottom:0;left:0;right:0;
     background:var(--bg2);border-top:1px solid var(--border);
     z-index:200;height:54px;
+    safe-area-inset-bottom: env(safe-area-inset-bottom);
   }
   .mobile-nav button{
     flex:1;background:none;border:none;color:var(--text3);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:2px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
-    cursor:pointer;transition:color .15s;padding:0;font-family:var(--sans);
+    gap:2px;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+    cursor:pointer;transition:color .15s;padding:4px 0;font-family:var(--sans);
+    -webkit-tap-highlight-color:transparent;
   }
-  .mobile-nav button .mico{font-size:18px;line-height:1;}
+  .mobile-nav button .mico{font-size:20px;line-height:1;}
   .mobile-nav button.active{color:var(--accent2);}
-  .mobile-nav button:hover{color:var(--text);}
 
-  /* main occupe tout sauf header + bottom nav */
-  .main{flex-direction:column;padding-bottom:54px;}
-
-  /* sur mobile : sidebar plein écran ou cachée */
-  .sidebar{
-    width:100%;border-right:none;border-bottom:1px solid var(--border);
-    max-height:45vh; /* moitié écran max */
-    transition:max-height .25s ease;
+  /* bouton toggle sidebar (affiché en mobile) */
+  .sb-toggle{
+    display:flex;
+    width:100%;background:var(--bg3);border:none;border-bottom:1px solid var(--border);
+    padding:6px 12px;color:var(--text2);font-size:11px;font-weight:600;
+    cursor:pointer;align-items:center;gap:6px;font-family:var(--sans);
+    flex-shrink:0;
   }
-  .sidebar.sb-hidden{max-height:0;overflow:hidden;border-bottom:none;}
-  .content{flex:1;overflow-y:auto;padding:14px;min-height:0;}
+  .sb-toggle .arr{transition:transform .2s;font-size:10px;}
+  .sb-toggle.collapsed .arr{transform:rotate(-90deg);}
 
-  /* toggles sidebar sur mobile */
-  .sb-toggle{display:flex;}
+  /* résumé de sélection dans le toggle */
+  .sb-toggle .sel-label{
+    margin-left:auto;font-size:10px;
+    color:var(--accent2);font-family:var(--mono);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;
+  }
 }
+
+/* paysage mobile */
+@media(max-width:900px) and (orientation:landscape) and (max-height:500px){
+  .main{flex-direction:row;padding-bottom:0;}
+  .sidebar{width:240px;height:100%;border-right:1px solid var(--border);border-bottom:none;}
+  .sidebar.sb-hidden{width:0;height:100%;overflow:hidden;border:none;}
+  .content{flex:1;overflow-y:auto;padding:12px;}
+  /* bottom nav en side nav en paysage */
+  .mobile-nav{
+    display:flex;flex-direction:column;
+    position:fixed;right:0;top:0;bottom:0;left:auto;
+    width:52px;height:100%;border-top:none;border-left:1px solid var(--border);
+  }
+  .mobile-nav button{flex:1;font-size:7px;}
+  .mobile-nav button .mico{font-size:17px;}
+  .main{padding-right:52px;padding-bottom:0;}
+}
+
 @media(min-width:701px){
   .mobile-nav{display:none;}
   .sb-toggle{display:none;}
+  .content{flex:1;overflow-y:auto;padding:20px;min-height:0;}
 }
 .li{padding:8px 10px;border-radius:6px;cursor:pointer;border:1px solid transparent;margin-bottom:2px;transition:all .12s;position:relative;}
 .li:hover{background:var(--bg3);}
@@ -288,9 +351,32 @@ code{background:var(--bg3);padding:1px 5px;border-radius:3px;font-family:var(--m
   </div>
 </header>
 
+<!-- BOTTOM NAV MOBILE -->
+<nav class="mobile-nav" id="mobile-nav">
+  <button onclick="switchTab('sys')" id="mnav-sys">
+    <span class="mico">🖥️</span>Systèmes
+  </button>
+  <button onclick="switchTab('tps')" id="mnav-tps">
+    <span class="mico">🔬</span>TPs
+  </button>
+  <button onclick="switchTab('bib')" id="mnav-bib">
+    <span class="mico">📚</span>Biblio
+  </button>
+  <button onclick="switchTab('aff')" id="mnav-aff">
+    <span class="mico">🔧</span>Affect.
+  </button>
+  <button onclick="switchTab('cfg')" id="mnav-cfg">
+    <span class="mico">⚙️</span>Config
+  </button>
+</nav>
+
 <div class="main">
   <!-- SIDEBAR SYSTÈMES -->
   <div class="sidebar" id="sb-sys">
+    <button class="sb-toggle" id="sbt-sys" onclick="toggleSb('sys')">
+      <span class="arr">▼</span> Systèmes
+      <span class="sel-label" id="sbl-sys"></span>
+    </button>
     <div class="sb-head"><span class="sb-title">Systèmes</span></div>
     <div class="sb-filter"><input id="f-sys" type="text" placeholder="Rechercher..." oninput="renderSys(this.value)"></div>
     <div class="sb-list" id="list-sys"><div style="padding:14px;color:var(--text3);font-size:11px;text-align:center;">Chargement...</div></div>
@@ -298,6 +384,10 @@ code{background:var(--bg3);padding:1px 5px;border-radius:3px;font-family:var(--m
 
   <!-- SIDEBAR TPs -->
   <div class="sidebar" id="sb-tps" style="display:none">
+    <button class="sb-toggle" id="sbt-tps" onclick="toggleSb('tps')">
+      <span class="arr">▼</span> TPs
+      <span class="sel-label" id="sbl-tps"></span>
+    </button>
     <div class="sb-head"><span class="sb-title">TPs</span><button class="btn btn-p btn-sm" onclick="newTP(null)">+ Nouveau</button></div>
     <div class="sb-filter"><input id="f-tp" type="text" placeholder="Rechercher..." oninput="renderTPs(this.value)"></div>
     <div class="sb-list" id="list-tps"></div>
@@ -305,6 +395,10 @@ code{background:var(--bg3);padding:1px 5px;border-radius:3px;font-family:var(--m
 
   <!-- SIDEBAR BIBLIOTHÈQUE (arbre niveau/rubrique) -->
   <div class="sidebar" id="sb-bib" style="display:none">
+    <button class="sb-toggle" id="sbt-bib" onclick="toggleSb('bib')">
+      <span class="arr">▼</span> Bibliothèque
+      <span class="sel-label" id="sbl-bib"></span>
+    </button>
     <div class="sb-head">
       <span class="sb-title">Bibliothèque</span>
       <button class="btn btn-t btn-sm" onclick="openUploadModal(null)">⬆ Upload</button>
@@ -315,6 +409,10 @@ code{background:var(--bg3);padding:1px 5px;border-radius:3px;font-family:var(--m
 
   <!-- SIDEBAR AFFECTATIONS -->
   <div class="sidebar" id="sb-aff" style="display:none">
+    <button class="sb-toggle" id="sbt-aff" onclick="toggleSb('aff')">
+      <span class="arr">▼</span> Matériel
+      <span class="sel-label" id="sbl-aff"></span>
+    </button>
     <div class="sb-head"><span class="sb-title">Matériel</span></div>
     <div class="sb-filter"><input id="f-aff" type="text" placeholder="Rechercher..." oninput="renderAffSidebar(this.value)"></div>
     <div class="sb-list" id="list-aff"></div>
@@ -469,7 +567,12 @@ function init() {
 // ═══════════════════════════════════════════════════════════════
 function switchTab(tab) {
   ['sys','tps','bib','aff','cfg'].forEach((t,i)=>{
+    // desktop tabs
     document.querySelectorAll('.htab')[i].classList.toggle('active',t===tab);
+    // mobile bottom nav
+    const mb=document.getElementById('mnav-'+t);
+    if(mb) mb.classList.toggle('active',t===tab);
+    // sidebars
     const sb=document.getElementById('sb-'+t);
     if(sb) sb.style.display=t===tab?'flex':'none';
   });
@@ -477,6 +580,28 @@ function switchTab(tab) {
   else if(tab==='bib'){renderBibTree();showEmpty();}
   else if(tab==='aff'){renderAffSidebar();showEmpty();}
   else showEmpty();
+  // Mobile : rouvrir la sidebar par défaut au changement d'onglet
+  if(window.innerWidth<=700){
+    const sb=document.getElementById('sb-'+tab);
+    const btn=document.getElementById('sbt-'+tab);
+    if(sb){sb.classList.remove('sb-hidden');}
+    if(btn){btn.classList.remove('collapsed');}
+  }
+}
+
+// Toggle sidebar (mobile uniquement)
+function toggleSb(tab){
+  const sb=document.getElementById('sb-'+tab);
+  const btn=document.getElementById('sbt-'+tab);
+  if(!sb||!btn)return;
+  const hidden=sb.classList.toggle('sb-hidden');
+  btn.classList.toggle('collapsed',hidden);
+}
+
+// Met à jour le label résumé dans le toggle sidebar mobile
+function setSbLabel(tab,label){
+  const el=document.getElementById('sbl-'+tab);
+  if(el) el.textContent=label||'';
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -700,20 +825,36 @@ function showTPForm(id){
         </div>
       </div>
       <div class="fc-body">
-        <div class="res-list">
-          ${tpRes.length?tpRes.map(r=>`
-            <div class="res-card">
-              <div class="res-icon">${TYPE_ICON[r.type]||'📄'}</div>
-              <div class="res-info">
-                <div class="res-title">${esc(r.titre)}</div>
-                <div class="res-crumb">${esc(r.niveau||'—')} › ${esc(r.rubrique||'—')}</div>
-                <div class="res-meta"><a href="${esc(r.url)}" target="_blank" style="color:var(--accent2);">${esc(r.url.substring(0,55))}${r.url.length>55?'…':''}</a></div>
+        ${tpRes.length ? (() => {
+          // Grouper par rubrique
+          const grouped = {};
+          RUBRIQUES.forEach(r=>grouped[r]=[]);
+          grouped['Autre']=[];
+          tpRes.forEach(r=>{
+            const k=RUBRIQUES.includes(r.rubrique)?r.rubrique:'Autre';
+            grouped[k].push(r);
+          });
+          return [...RUBRIQUES,'Autre'].filter(k=>grouped[k].length>0).map(k=>`
+            <div style="margin-bottom:4px;">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);">
+                ${rubIcon(k)} ${k}
               </div>
-              <button class="icon-btn link" onclick="switchTab('bib');selectBib('${r.niveau||''}','${r.rubrique||''}','${r.id}')" title="Voir dans la bibliothèque">🔗</button>
-              <button class="icon-btn del" onclick="detachRes('${id}','${r.id}')" title="Détacher">✕</button>
-            </div>`).join('')
-          :'<div class="muted">Aucune ressource. Utilisez les boutons ci-dessus.</div>'}
-        </div>
+              <div class="res-list">
+                ${grouped[k].map(r=>`
+                  <div class="res-card">
+                    <div class="res-icon">${TYPE_ICON[r.type]||'📄'}</div>
+                    <div class="res-info">
+                      <div class="res-title">${esc(r.titre)}</div>
+                      <div class="res-crumb">${esc(r.niveau||'—')} › ${esc(r.rubrique||'—')}</div>
+                      <div class="res-meta"><a href="${esc(r.url)}" target="_blank" style="color:var(--accent2);">${esc(r.url.substring(0,50))}${r.url.length>50?'…':''}</a></div>
+                    </div>
+                    <button class="icon-btn link" onclick="switchTab('bib');selectBib('${r.niveau||''}','${r.rubrique||''}','${r.id}')" title="Voir dans la bibliothèque">🔗</button>
+                    <button class="icon-btn del" onclick="detachRes('${id}','${r.id}')" title="Détacher">✕</button>
+                  </div>`).join('')}
+              </div>
+            </div>`).join('');
+        })()
+        : '<div class="muted">Aucune ressource. Utilisez les boutons ci-dessus.</div>'}
       </div>
     </div>
     <div class="fe mt8"><button class="btn btn-p" onclick="saveTP('${id}')">💾 Enregistrer</button></div>`;
@@ -1208,9 +1349,28 @@ function openAffModal(materielId){
 
   document.getElementById('aff-modal-title').textContent=(type==='annuelle'?'📅':'⏱️')+' Affecter — '+item?.nom;
 
-  const eleveOptions=eleves.length
-    ? eleves.map(e=>{const nom=e.nom||e.prenom+' '+(e.nom_famille||'');return `<option value="${e.id||nom}" ${activeAff?.eleveId===e.id?'selected':''}>${esc(nom)}</option>`;}).join('')
-    : '<option value="">Aucun élève chargé — voir Config</option>';
+  // Construire le select élèves groupé par classe
+  let eleveOptions='';
+  if(eleves.length){
+    // Grouper par classe
+    const classes={};
+    eleves.forEach(e=>{
+      const cl=e.classe||e.group||e.niveau||'Sans classe';
+      if(!classes[cl]) classes[cl]=[];
+      classes[cl].push(e);
+    });
+    const sorted=Object.keys(classes).sort();
+    eleveOptions=sorted.map(cl=>{
+      const opts=classes[cl].map(e=>{
+        const nom=e.nom||(e.prenom||'')+' '+(e.nom_famille||'');
+        const sel=activeAff?.eleveId===String(e.id||nom)?'selected':'';
+        return `<option value="${esc(String(e.id||nom))}" ${sel}>${esc(nom.trim())}</option>`;
+      }).join('');
+      return `<optgroup label="${esc(cl)}">${opts}</optgroup>`;
+    }).join('');
+  } else {
+    eleveOptions='<option value="">Aucun élève chargé — voir Config</option>';
+  }
 
   document.getElementById('aff-modal-body').innerHTML=`
     <div class="fg"><label>Élève</label>
