@@ -959,7 +959,7 @@ function renderCompList(tpId){
             </div>
             <button class="crit-del" onclick="delCrit('${tpId}','${comp.id}','${cr.id}')" title="Supprimer">✕</button>
           </div>`).join('')}
-        <button class="btn btn-g btn-sm" style="align-self:flex-start;margin-top:4px;"
+        <button class="btn btn-g btn-sm btn-add-crit" style="align-self:flex-start;margin-top:4px;"
           onclick="addCrit('${tpId}','${comp.id}')">+ Critère</button>
       </div>
     </div>`).join('');
@@ -1019,16 +1019,17 @@ function addCrit(tpId,compId){
   const newCrit={id:genKID(),libelle:''};
   comp.criteres.push(newCrit);
   dirty();
-  // Insérer la nouvelle ligne avant le bouton + Critère
   const body=document.getElementById('cbody-'+compId);
   if(!body)return;
-  const addBtn=body.querySelector('button');
+  // Cibler précisément le bouton + Critère via sa classe dédiée
+  const addBtn=body.querySelector('.btn-add-crit');
   const row=document.createElement('div');
   row.className='crit-row';row.id='crit-'+newCrit.id;
   row.innerHTML=`
     <div class="crit-lib">
-      <input type="text" value="" placeholder="Libellé du critère..." autofocus
-        onchange="updateCritLib('${tpId}','${compId}','${newCrit.id}',this.value)">
+      <input type="text" value="" placeholder="Libellé du critère..."
+        onchange="updateCritLib('${tpId}','${compId}','${newCrit.id}',this.value)"
+        oninput="updateCritLib('${tpId}','${compId}','${newCrit.id}',this.value)">
     </div>
     <button class="crit-del" onclick="delCrit('${tpId}','${compId}','${newCrit.id}')" title="Supprimer">✕</button>`;
   body.insertBefore(row,addBtn);
