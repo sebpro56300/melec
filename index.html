@@ -90,7 +90,7 @@ body{display:flex;flex-direction:column;}
 #sidebar{
   width:var(--sidebar-w);flex-shrink:0;
   background:var(--bg2);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;overflow:hidden;
+  display:flex;flex-direction:column;overflow-y:auto;min-height:0;
 }
 .sb-section{padding:10px 8px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);}
 .sb-item{
@@ -107,7 +107,7 @@ body{display:flex;flex-direction:column;}
 /* CONTENT */
 #content{
   flex:1;overflow-y:auto;padding:20px;min-height:0;
-  display:flex;flex-direction:column;gap:0;
+  display:flex;flex-direction:column;
 }
 
 /* ══ COMPOSANTS UI ═══════════════════════════════════ */
@@ -442,6 +442,54 @@ select option{background:var(--bg2);}
   </div>
 </div>
 
+<!-- MODAL ÉVALUATION COMPÉTENCES -->
+<div class="modal-ov" id="modal-eval">
+  <div class="modal" style="width:640px;max-width:98vw;">
+    <div class="modal-title" id="eval-title">📋 Évaluation</div>
+    <div id="eval-body" style="display:flex;flex-direction:column;gap:12px;"></div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-eval')">Fermer</button>
+      <button class="btn btn-p" onclick="saveEval()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COURS -->
+<div class="modal-ov" id="modal-cours">
+  <div class="modal">
+    <div class="modal-title">📖 Ajouter un cours</div>
+    <div class="fg">
+      <label>Depuis la bibliothèque (Cours)</label>
+      <select id="cours-ressource-sel">
+        <option value="">-- Choisir un cours existant --</option>
+      </select>
+      <div class="hint">Ou saisissez un intitulé libre ci-dessous</div>
+    </div>
+    <div class="fg">
+      <label>Intitulé libre (si pas dans la bibliothèque)</label>
+      <input type="text" id="cours-titre-input" placeholder="Ex: Cours sur les habilitations électriques">
+    </div>
+    <div class="frow">
+      <div class="fg">
+        <label>Date</label>
+        <input type="date" id="cours-date">
+      </div>
+      <div class="fg">
+        <label>Classe</label>
+        <select id="cours-classe-sel">
+          <option value="2MELEC">2nde MELEC</option>
+          <option value="1MELEC">1ère MELEC</option>
+          <option value="T-MELEC">Terminale MELEC</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-cours')">Annuler</button>
+      <button class="btn btn-p" onclick="saveCours()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -473,12 +521,12 @@ let data = {
   appel: [],
   habilitations: {},
   pfmp: [],
-  notes: {},       // notesEns par teacherId
+  notes: {},
   bons: [],
   cours: [],
-  // depuis tp-admin gist
+  ressources: [],  // depuis ressources.json (tp-admin gist, lecture seule)
   tps: [],
-  sessions: [],    // tp-sessions.json
+  sessions: [],
 };
 let confirmCb = null;
 let editCtx = {}; // contexte d'édition en cours
@@ -556,8 +604,9 @@ async function loadRemote() {
       const r2 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
       if (r2.ok) {
         const g2 = await r2.json();
-        data.tps      = g2.files['tps.json']      ? JSON.parse(g2.files['tps.json'].content)      : [];
-        data.sessions = g2.files['tp-sessions.json'] ? JSON.parse(g2.files['tp-sessions.json'].content) : [];
+        data.tps       = g2.files['tps.json']         ? JSON.parse(g2.files['tps.json'].content)         : [];
+        data.sessions  = g2.files['tp-sessions.json'] ? JSON.parse(g2.files['tp-sessions.json'].content) : [];
+        data.ressources= g2.files['ressources.json']  ? JSON.parse(g2.files['ressources.json'].content)  : [];
       }
     }
 
@@ -1173,6 +1222,10 @@ function renderHab() {
 
   setContent(`
     ${pageHeader('Habilitations Électriques','B0 / B1V / BR — '+classeLabel(state.classe))}
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <a href="https://esst-inrs.fr/gestion/" target="_blank" class="btn btn-g btn-sm">🔗 Console INRS (gestion nationale)</a>
+      <a href="https://v3.e-prevention.fr/et/login" target="_blank" class="btn btn-g btn-sm">🔗 e-prévention (suivi élèves)</a>
+    </div>
     <div class="card">
       <div class="card-body" style="padding:0;">
         ${elv.length ? `<table class="hab-table">
@@ -1193,22 +1246,26 @@ function toggleHab(eleveId, type, field) {
 }
 
 // ════════════════════════════════════════════════════════════
-// TPs — ASSIGNATION
+// TPs — ASSIGNATION + ÉVALUATION
 // ════════════════════════════════════════════════════════════
 function renderTPs() {
   const cl = state.classe;
   const sessions = sessionsByClasse();
+  const EVAL_COLS=['bleu','rouge','orange','vclair','vfonce'];
+
   const rows = sessions.map(s=>{
     const tp = data.tps.find(t=>t.id===s.tpId);
     const e  = data.eleves.find(x=>x.id===s.eleveId);
     const pct = s.seances>0 ? Math.round((s.seancesDone||0)/s.seances*100):0;
+    const nCompEval = Object.keys(s.evaluations||{}).filter(k=>(s.evaluations[k]?.niveauGlobal||'')!=='').length;
+    const nCompTotal = (tp?.competences||[]).length;
     return `<tr>
       <td><strong>${esc(tp?tp.titre:s.tpId)}</strong></td>
       <td>${esc(e?e.nom+' '+e.prenom:s.eleveId)}</td>
       <td class="td-mono">${s.date||'—'}</td>
       <td>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
             <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;"></div>
           </div>
           <span style="font-size:10px;font-family:var(--mono);color:var(--text2);">${s.seancesDone||0}/${s.seances||'?'}</span>
@@ -1220,10 +1277,20 @@ function renderTPs() {
           '<span class="badge b-gray">Assigné</span>'}
       </td>
       <td>
-        <button class="btn btn-g btn-sm" onclick="addSeance('${s.id}')">+1 séance</button>
+        ${nCompTotal>0
+          ? `<span class="badge ${nCompEval===nCompTotal?'b-green':nCompEval>0?'b-orange':'b-gray'}"
+              style="cursor:pointer" onclick="openEvalModal('${s.id}')"
+              title="Ouvrir l'évaluation">
+              🎯 ${nCompEval}/${nCompTotal}
+            </span>`
+          : '<span class="badge b-gray" title="Aucune compétence définie sur ce TP">—</span>'}
+      </td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-g btn-sm" onclick="addSeance('${s.id}')">+1</button>
         <button class="btn btn-g btn-sm" onclick="toggleStatutTP('${s.id}')">
-          ${s.statut==='termine'?'Rouvrir':'Terminer'}
+          ${s.statut==='termine'?'↺':'✓'}
         </button>
+        <button class="btn btn-g btn-sm" onclick="openEvalModal('${s.id}')">📋</button>
         <button class="btn btn-d btn-sm" onclick="deleteSession('${s.id}')">✕</button>
       </td>
     </tr>`;
@@ -1231,12 +1298,15 @@ function renderTPs() {
 
   setContent(`
     ${pageHeader('Travaux Pratiques','Assignations — '+classeLabel(cl),`
-      <button class="btn btn-g btn-sm" onclick="window.open('melec-tp-admin.html','_blank')">🔗 Gérer la bibliothèque</button>
-      <button class="btn btn-p" onclick="openAssignTPModal()">+ Assigner un TP</button>`)}
+      <button class="btn btn-g btn-sm" onclick="window.open('melec-tp-admin.html','_blank')">🔗 Bibliothèque</button>
+      <button class="btn btn-p" onclick="openAssignTPModal()">+ Assigner</button>`)}
     <div class="card">
       <div class="card-body" style="padding:0;">
         ${sessions.length ? `<table>
-          <thead><tr><th>TP</th><th>Élève</th><th>Date</th><th>Progression</th><th>Statut</th><th>Actions</th></tr></thead>
+          <thead><tr>
+            <th>TP</th><th>Élève</th><th>Date</th><th>Séances</th>
+            <th>Statut</th><th>Éval.</th><th>Actions</th>
+          </tr></thead>
           <tbody>${rows}</tbody>
         </table>` : `<div class="empty">
           <div class="ei">🔬</div>
@@ -1284,14 +1354,19 @@ function saveAssignTP() {
   const selected = [...document.querySelectorAll('#assign-eleves input:checked')].map(i=>i.value);
   if (!selected.length) { toast('Sélectionnez au moins un élève','err'); return; }
   selected.forEach(eleveId=>{
-    data.sessions.push({
-      id:genId('SES'), tpId, eleveId, classe:cl, date,
-      seances, seancesDone:0, statut:'assigne',
-      teacherId: state.enseignant?.id||'',
-    });
+    // Vérifier qu'il n'y a pas déjà une session active pour cet élève+TP
+    const existing = data.sessions.find(s=>s.tpId===tpId&&s.eleveId===eleveId&&s.statut!=='termine');
+    if (!existing) {
+      data.sessions.push({
+        id:genId('SES'), tpId, eleveId, classe:cl, date,
+        seances, seancesDone:0, statut:'assigne',
+        teacherId: state.enseignant?.id||'',
+        evaluations: {} // {compId: {niveauGlobal:'', criteres:{critId:{eleve:'',enseignant:''}}}}
+      });
+    }
   });
   saveLocal(); closeModal('modal-assign-tp'); render();
-  toast(`TP assigné à ${selected.length} élève(s)','ok`);
+  toast('TP assigné à '+selected.length+' élève(s)','ok');
 }
 
 function addSeance(sessionId) {
@@ -1313,24 +1388,157 @@ function deleteSession(id) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ÉVALUATION PAR COMPÉTENCES
+// ════════════════════════════════════════════════════════════
+const EVAL_COULEURS = ['bleu','rouge','orange','vclair','vfonce'];
+let evalSessionId = null;
+
+function openEvalModal(sessionId) {
+  evalSessionId = sessionId;
+  const s  = data.sessions.find(x=>x.id===sessionId);
+  const tp = data.tps.find(t=>t.id===s?.tpId);
+  const e  = data.eleves.find(x=>x.id===s?.eleveId);
+  if (!s||!tp) { toast('Session introuvable','err'); return; }
+
+  document.getElementById('eval-title').textContent =
+    '📋 Évaluation — '+esc(tp.titre)+' · '+(e?e.nom+' '+e.prenom:s.eleveId);
+
+  const comps = tp.competences||[];
+  if (!comps.length) {
+    document.getElementById('eval-body').innerHTML =
+      '<div class="muted">Aucune compétence définie sur ce TP (à créer dans melec-tp-admin).</div>';
+    openModal('modal-eval'); return;
+  }
+
+  const evals = s.evaluations||{};
+
+  document.getElementById('eval-body').innerHTML = comps.map(comp=>{
+    const compEval = evals[comp.id]||{};
+    const nglobal  = compEval.niveauGlobal||'';
+    const criteres = comp.criteres||[];
+
+    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+      <div style="padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);background:#111f3a;padding:2px 7px;border-radius:4px;">${esc(comp.code)}</span>
+        <span style="font-size:12px;font-weight:600;flex:1;">${esc(comp.libelle||'—')}</span>
+        <span style="font-size:11px;color:var(--text3);margin-right:6px;">Niveau global :</span>
+        <div style="display:flex;gap:5px;" id="ng-${comp.id}">
+          ${EVAL_COULEURS.map(c=>`
+            <div class="eval-dot ${c}${nglobal===c?' sel':''}"
+              onclick="setNiveauGlobal('${comp.id}','${c}',this)"
+              title="${c}"></div>`).join('')}
+        </div>
+      </div>
+      ${criteres.length ? `
+      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:0 0 4px;border-bottom:1px solid var(--border);">
+          <span>Critère</span><span style="text-align:center;">Auto-éval élève</span><span style="text-align:center;">Validation enseignant</span>
+        </div>
+        ${criteres.map(cr=>{
+          const crEval = (compEval.criteres||{})[cr.id]||{};
+          return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+            <span style="font-size:12px;">${esc(cr.libelle)}</span>
+            <div style="display:flex;justify-content:center;gap:4px;" id="ce-${comp.id}-${cr.id}">
+              ${EVAL_COULEURS.map(c=>`
+                <div class="eval-dot ${c}${crEval.eleve===c?' sel':''}"
+                  onclick="setCritEleve('${comp.id}','${cr.id}','${c}',this)"
+                  title="${c}" style="width:18px;height:18px;"></div>`).join('')}
+            </div>
+            <div style="display:flex;justify-content:center;gap:4px;" id="ce-ens-${comp.id}-${cr.id}">
+              ${EVAL_COULEURS.map(c=>`
+                <div class="eval-dot ${c}${crEval.enseignant===c?' sel':''}"
+                  onclick="setCritEns('${comp.id}','${cr.id}','${c}',this)"
+                  title="${c}" style="width:18px;height:18px;"></div>`).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>` : '<div style="padding:10px 14px;font-size:11px;color:var(--text3);">Aucun critère défini</div>'}
+    </div>`;
+  }).join('');
+
+  openModal('modal-eval');
+}
+
+// State temporaire d'évaluation (modifié par les clics, sauvé à la fermeture)
+let evalTemp = {};
+
+function setNiveauGlobal(compId, couleur, el) {
+  if (!evalTemp[compId]) evalTemp[compId]={};
+  evalTemp[compId].niveauGlobal = couleur;
+  el.closest('#ng-'+compId)?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function setCritEleve(compId, critId, couleur, el) {
+  if (!evalTemp[compId]) evalTemp[compId]={};
+  if (!evalTemp[compId].criteres) evalTemp[compId].criteres={};
+  if (!evalTemp[compId].criteres[critId]) evalTemp[compId].criteres[critId]={};
+  evalTemp[compId].criteres[critId].eleve = couleur;
+  el.closest('#ce-'+compId+'-'+critId)?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function setCritEns(compId, critId, couleur, el) {
+  if (!evalTemp[compId]) evalTemp[compId]={};
+  if (!evalTemp[compId].criteres) evalTemp[compId].criteres={};
+  if (!evalTemp[compId].criteres[critId]) evalTemp[compId].criteres[critId]={};
+  evalTemp[compId].criteres[critId].enseignant = couleur;
+  el.closest('#ce-ens-'+compId+'-'+critId)?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function saveEval() {
+  const s = data.sessions.find(x=>x.id===evalSessionId);
+  if (!s) return;
+  if (!s.evaluations) s.evaluations={};
+  // Fusionner evalTemp dans la session
+  Object.entries(evalTemp).forEach(([compId,val])=>{
+    if (!s.evaluations[compId]) s.evaluations[compId]={};
+    if (val.niveauGlobal) s.evaluations[compId].niveauGlobal=val.niveauGlobal;
+    if (val.criteres) {
+      if (!s.evaluations[compId].criteres) s.evaluations[compId].criteres={};
+      Object.entries(val.criteres).forEach(([critId,cv])=>{
+        if (!s.evaluations[compId].criteres[critId]) s.evaluations[compId].criteres[critId]={};
+        if (cv.eleve)       s.evaluations[compId].criteres[critId].eleve=cv.eleve;
+        if (cv.enseignant)  s.evaluations[compId].criteres[critId].enseignant=cv.enseignant;
+      });
+    }
+  });
+  evalTemp={};
+  saveLocal(); closeModal('modal-eval'); render();
+  toast('Évaluation enregistrée ✓','ok');
+}
+
+// ════════════════════════════════════════════════════════════
 // COURS
 // ════════════════════════════════════════════════════════════
 function renderCours() {
   const cl = state.classe;
-  const cours = data.cours.filter(c=>c.level===cl).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const cours = data.cours.filter(c=>(c.level||c.classe)===cl).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const statut_lbl = {done:'Terminé',todo:'À faire',doing:'En cours'};
   const statut_cls = {done:'b-green',todo:'b-gray',doing:'b-blue'};
 
   const rows = cours.map(c=>`<tr>
-    <td>${esc(c.title||c.titre||'—')}</td>
+    <td>
+      ${c.url?`<a href="${esc(c.url)}" target="_blank" style="color:var(--accent2);">${esc(c.titre||c.title||'—')}</a>`
+             :esc(c.titre||c.title||'—')}
+    </td>
     <td>${esc(enseignantNom(c.teacher||c.teacherId))}</td>
     <td class="td-mono">${c.date||'—'}</td>
     <td><span class="badge ${statut_cls[c.status]||'b-gray'}">${statut_lbl[c.status]||c.status||'—'}</span></td>
-    <td><button class="btn btn-d btn-sm" onclick="deleteCours('${c.id}')">✕</button></td>
+    <td>
+      <select class="btn btn-g btn-sm" style="padding:2px 6px;" onchange="setCoursStatut('${c.id}',this.value)">
+        <option value="todo" ${c.status==='todo'?'selected':''}>À faire</option>
+        <option value="doing" ${c.status==='doing'?'selected':''}>En cours</option>
+        <option value="done" ${c.status==='done'?'selected':''}>Terminé</option>
+      </select>
+      <button class="btn btn-d btn-sm" onclick="deleteCours('${c.id}')">✕</button>
+    </td>
   </tr>`).join('');
 
   setContent(`
-    ${pageHeader('Cours dispensés',classeLabel(cl))}
+    ${pageHeader('Cours dispensés',classeLabel(cl)+' — '+cours.length+' cours',
+      `<button class="btn btn-p" onclick="openCoursModal()">+ Ajouter un cours</button>`)}
     <div class="card">
       <div class="card-body" style="padding:0;">
         ${cours.length ? `<table>
@@ -1342,8 +1550,45 @@ function renderCours() {
   `);
 }
 
+function openCoursModal() {
+  // Construire le select depuis ressources.json (rubrique=Cours)
+  const coursDispo = (data.ressources||[]).filter(r=>r.rubrique==='Cours');
+  const sel = document.getElementById('cours-ressource-sel');
+  if (sel) {
+    sel.innerHTML = '<option value="">-- Cours existant dans la bibliothèque --</option>'
+      + coursDispo.map(r=>`<option value="${r.id}" data-url="${esc(r.url)}" data-titre="${esc(r.titre)}">${esc(r.niveau)} — ${esc(r.titre)}</option>`).join('');
+  }
+  document.getElementById('cours-date').value = today();
+  document.getElementById('cours-classe-sel').value = state.classe;
+  document.getElementById('cours-titre-input').value = '';
+  openModal('modal-cours');
+}
+
+function saveCours() {
+  const sel    = document.getElementById('cours-ressource-sel');
+  const titre  = document.getElementById('cours-titre-input').value.trim();
+  const date   = document.getElementById('cours-date').value;
+  const cl     = document.getElementById('cours-classe-sel').value;
+  const opt    = sel?.options[sel.selectedIndex];
+  const url    = opt?.dataset.url||'';
+  const titreFinal = titre||(opt?.dataset.titre)||'';
+  if (!titreFinal) { toast('Intitulé requis','err'); return; }
+  data.cours.push({
+    id: genId('CRS'), titre:titreFinal, url, date, level:cl, classe:cl,
+    teacherId: state.enseignant?.id||'', status:'todo'
+  });
+  saveLocal(); closeModal('modal-cours'); render(); toast('Cours ajouté','ok');
+}
+
+function setCoursStatut(id, val) {
+  const c = data.cours.find(x=>x.id===id);
+  if (c) { c.status=val; saveLocal(); }
+}
+
 function deleteCours(id){
-  askConfirm('Supprimer ce cours ?','',()=>{data.cours=data.cours.filter(c=>c.id!==id);saveLocal();render();toast('Supprimé','ok');});
+  askConfirm('Supprimer ce cours ?','',()=>{
+    data.cours=data.cours.filter(c=>c.id!==id);saveLocal();render();toast('Supprimé','ok');
+  });
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1351,10 +1596,13 @@ function deleteCours(id){
 // ════════════════════════════════════════════════════════════
 function renderBons() {
   const cl = state.classe;
-  const bons = data.bons.filter(b=>b.eleveLevel===cl).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  const bons = data.bons.filter(b=>b.eleveLevel===cl||b.eleveClasse===cl)
+    .sort((a,b)=>(b.createdAt||b.bonLe||'').localeCompare(a.createdAt||a.bonLe||''));
+
   const rows = bons.map(b=>{
     const e=data.eleves.find(x=>x.id===b.eleveId);
-    const termine = b.termine==='oui';
+    const termine = b.termine==='oui'||b.termine===true;
+    const signe   = !!b.sigEnseignant;
     return `<tr>
       <td>${esc(b.numero||'—')}</td>
       <td>${esc(e?e.nom+' '+e.prenom:b.intervenant||'?')}</td>
@@ -1363,13 +1611,15 @@ function renderBons() {
       <td class="td-mono">${(b.bonLe||b.createdAt||'—').slice(0,10)}</td>
       <td><span class="badge ${termine?'b-green':'b-orange'}">${termine?'Terminé':'En cours'}</span></td>
       <td>
-        ${b.sigEnseignant?`<span class="badge b-blue" title="${b.sigEnseignant}">✓ Signé</span>`:'<span class="badge b-gray">Non signé</span>'}
+        ${signe
+          ? `<span class="badge b-blue" title="Signé le ${b.sigDate||'—'} par ${b.sigEnseignant}">✓ ${esc(b.sigEnseignant.split(' ')[0])}</span>`
+          : `<button class="btn btn-g btn-sm" onclick="signerBon('${b.id}')">✍️ Signer</button>`}
       </td>
     </tr>`;
   }).join('');
 
   setContent(`
-    ${pageHeader('Bons d\'intervention','Travaux réalisés par les élèves — '+classeLabel(cl))}
+    ${pageHeader('Bons d\'intervention','Travaux réalisés — '+classeLabel(cl))}
     <div class="card">
       <div class="card-body" style="padding:0;">
         ${bons.length ? `<table>
@@ -1379,6 +1629,20 @@ function renderBons() {
       </div>
     </div>
   `);
+}
+
+function signerBon(id) {
+  const ens = state.enseignant;
+  if (!ens) { toast('Connectez-vous d\'abord (badge en haut à droite)','err'); return; }
+  askConfirm('Signer ce bon d\'intervention ?',`Signature : ${ens.nom}`,()=>{
+    const b = data.bons.find(x=>x.id===id);
+    if (b) {
+      b.sigEnseignant = ens.nom;
+      b.sigDate       = today();
+      b.sigTeacherId  = ens.id;
+    }
+    saveLocal(); render(); toast('Bon signé ✓','ok');
+  });
 }
 
 // ════════════════════════════════════════════════════════════
