@@ -677,7 +677,7 @@ async function loadEleves() {
     const r=await fetch(`https://api.github.com/gists/${cfg.suiviGistId}`,{headers:{Authorization:`token ${cfg.token}`}});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    // Le fichier s'appelle melec-data.json, les élèves sont dans data.eleves[]
+    // Le fichier s'appelle eleves.json, les élèves sont dans data.eleves[]
     const fileName=Object.keys(d.files).find(f=>f.includes('melec-data')||f.includes('eleves'));
     if(!fileName) throw new Error('Fichier élèves introuvable dans le Gist');
     const raw=JSON.parse(d.files[fileName].content);
@@ -1638,7 +1638,7 @@ function showCfg(){
         </div>
         <div class="fg"><label>Gist ID — App melec-suivi (élèves)</label>
           <input type="text" id="c-suivi" value="${esc(cfg.suiviGistId||'')}" placeholder="ID du Gist melec-suivi">
-          <div class="muted mt8">Gist contenant <code>melec-data.json</code> — ID : <code>a953954f369f7fad1597e2a6da38578c</code></div>
+          <div class="muted mt8">Gist contenant <code>eleves.json</code> — ID : <code>a953954f369f7fad1597e2a6da38578c</code></div>
         </div>
         <div class="fg"><label>Dépôt de stockage fichiers (owner/repo)</label>
           <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="sebpro56300/ressources">
