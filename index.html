@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0d1117">
-<title>MELEC — Suivi Pédagogique</title>
+<title>MELEC — Suivi Pédagogique v9</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root{
@@ -321,7 +321,7 @@ select option{background:var(--bg2);}
 
 <!-- HEADER -->
 <div id="header">
-  <div class="logo">⚡MELEC<small>Suivi</small></div>
+  <div class="logo">⚡MELEC<small>Suivi v9</small></div>
   <div class="classe-pills">
     <button class="cp on" onclick="setClasse('2MELEC',this)">2nde</button>
     <button class="cp" onclick="setClasse('1MELEC',this)">1ère</button>
@@ -1417,6 +1417,21 @@ function toggleHab(eleveId, type, field) {
 // ════════════════════════════════════════════════════════════
 function renderTPs() {
   const cl = state.classe;
+  // ── Nettoyage préventif : s'assurer que chaque session a un id unique
+  let dirty = false;
+  const seenIds = new Set();
+  data.sessions.forEach(s => {
+    if (!s.id || seenIds.has(s.id)) {
+      s.id = genId('SES');
+      dirty = true;
+    }
+    seenIds.add(s.id);
+    // Normaliser classe
+    if (!s.classe && s.level) { s.classe = s.level; dirty = true; }
+    if (!s.evaluations) { s.evaluations = {}; dirty = true; }
+  });
+  if (dirty) saveLocal();
+
   const sessions = sessionsByClasse();
   const EVAL_COLS=['bleu','rouge','orange','vclair','vfonce'];
 
@@ -1958,6 +1973,7 @@ function renderConfig() {
           <div class="stat"><div class="stat-v">${data.appel.length}</div><div class="stat-l">Appels</div></div>
         </div>
         <button class="btn btn-g btn-sm" onclick="loadRemote()">↻ Recharger depuis GitHub</button>
+        <button class="btn btn-o btn-sm" style="margin-top:8px;" onclick="diagSessions()">🔍 Diagnostic sessions TP</button>
       </div>
     </div>
   `);
@@ -2251,6 +2267,56 @@ function confirmAction() {
   }
   closeModal('modal-confirm');
   if (confirmCb) confirmCb();
+}
+
+// ════════════════════════════════════════════════════════════
+// DIAGNOSTIC & CORRECTION SESSIONS
+// ════════════════════════════════════════════════════════════
+function diagSessions() {
+  const ids = data.sessions.map(s=>s.id);
+  const dupes = ids.filter((id,i)=>ids.indexOf(id)!==i);
+  const noId  = data.sessions.filter(s=>!s.id);
+  const noCl  = data.sessions.filter(s=>!s.classe&&!s.level);
+
+  let msg = `Sessions totales : ${data.sessions.length}\n`;
+  msg += `IDs dupliqués : ${dupes.length} (${dupes.slice(0,5).join(', ')||'aucun'})\n`;
+  msg += `Sans ID : ${noId.length}\n`;
+  msg += `Sans classe : ${noCl.length}\n\n`;
+  msg += `Détail :\n`;
+  data.sessions.forEach((s,i)=>{
+    const e = data.eleves.find(x=>x.id===s.eleveId);
+    const t = data.tps.find(x=>x.id===s.tpId);
+    msg += `[${i}] id=${s.id||'⚠️VIDE'} | ${e?e.nom+' '+e.prenom:'élève?'} | ${t?t.titre.substring(0,25)+'…':'tp?'} | classe=${s.classe||s.level||'⚠️?'} | ${s.statut}\n`;
+  });
+
+  document.getElementById('content').insertAdjacentHTML('afterbegin',`
+    <div class="card" style="border-color:var(--orange);margin-bottom:14px;">
+      <div class="card-head" style="background:#251a0a;border-color:var(--orange);">
+        <span>🔍</span><span class="card-title" style="color:var(--orange);">Diagnostic sessions TP</span>
+        <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="this.closest('.card').remove()">✕</button>
+      </div>
+      <div class="card-body">
+        <pre style="font-size:11px;font-family:var(--mono);color:var(--text2);white-space:pre-wrap;max-height:300px;overflow-y:auto;background:var(--bg);padding:10px;border-radius:6px;">${msg}</pre>
+        ${(dupes.length||noId.length||noCl.length)
+          ? `<button class="btn btn-o" style="margin-top:8px;width:100%;" onclick="fixSessions()">🔧 Corriger automatiquement les IDs/classes manquants</button>`
+          : `<div style="color:var(--green);font-size:12px;margin-top:8px;">✓ Aucun problème détecté dans les IDs — le bug vient peut-être du cache. Essayez de vider les sessions et réassigner.</div>`}
+        <button class="btn btn-d" style="margin-top:8px;width:100%;" onclick="askConfirm('Supprimer TOUTES les sessions TP ?','Cette action est irréversible.',()=>{data.sessions=[];saveLocal();render();toast(\'Sessions effacées\',\'ok\');})">🗑️ Vider toutes les sessions</button>
+      </div>
+    </div>`);
+}
+
+function fixSessions() {
+  const seenIds = new Set();
+  data.sessions.forEach(s=>{
+    if (!s.id || seenIds.has(s.id)) s.id = genId('SES');
+    seenIds.add(s.id);
+    if (!s.classe && s.level) s.classe = s.level;
+    if (!s.evaluations) s.evaluations = {};
+    if (s.seancesDone===undefined) s.seancesDone = 0;
+  });
+  saveLocal();
+  toast('Sessions corrigées ✓','ok');
+  render();
 }
 
 // ════════════════════════════════════════════════════════════
