@@ -677,7 +677,7 @@ async function loadEleves() {
     const r=await fetch(`https://api.github.com/gists/${cfg.suiviGistId}`,{headers:{Authorization:`token ${cfg.token}`}});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
-    // Le fichier s'appelle eleves.json, les élèves sont dans data.eleves[]
+    // Le fichier s'appelle melec-data.json, les élèves sont dans data.eleves[]
     const fileName=Object.keys(d.files).find(f=>f.includes('melec-data')||f.includes('eleves'));
     if(!fileName) throw new Error('Fichier élèves introuvable dans le Gist');
     const raw=JSON.parse(d.files[fileName].content);
@@ -1220,16 +1220,28 @@ function moveBibCard(id){showBibCardDetail(id);}
 
 function deleteBib(id){
   const used=tps.filter(t=>(t.ressources||[]).includes(id));
+  const r=ressources.find(x=>x.id===id);
   const msg=used.length?`Utilisée dans ${used.length} TP(s). Détacher et supprimer ?`:'Supprimer cette ressource ?';
   if(!confirm(msg))return;
-  if(used.length) tps.forEach(tp=>{tp.ressources=(tp.ressources||[]).filter(r=>r!==id);});
-  const r=ressources.find(x=>x.id===id);
+  if(used.length) tps.forEach(tp=>{tp.ressources=(tp.ressources||[]).filter(x=>x!==id);});
   const niv=r?.niveau, rub=r?.rubrique;
   ressources=ressources.filter(x=>x.id!==id);
   dirty(); renderBibTree(); renderTPs();
   if(niv&&rub) showBibSection(niv,rub);
   else showEmpty();
-  toast('Supprimée','s');
+  toast('Supprimée du Gist','s');
+  // Tentative de suppression physique sur le repo GitHub si path+sha connus
+  if(r?.repoPath&&r?.repoSha&&cfg.token&&cfg.uploadRepo){
+    const[owner,repo]=cfg.uploadRepo.split('/');
+    fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${r.repoPath}`,{
+      method:'DELETE',
+      headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'},
+      body:JSON.stringify({message:'MELEC delete — '+r.titre, sha:r.repoSha})
+    }).then(res=>{
+      if(res.ok) toast('Fichier supprimé du repo GitHub ✓','s');
+      else toast('Suppression Gist OK — fichier repo à supprimer manuellement (sha inconnu)','s');
+    }).catch(()=>toast('Suppression Gist OK — vérifiez le repo manuellement','s'));
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1357,7 +1369,9 @@ async function runUploads(){
         id:genRID(),titre:it.file.name.replace(/\.[^.]+$/,''),
         type:tmap[ext]||'lien',url:it.url,
         niveau:niv,rubrique:rub,description:'',
-        uploadedAt:new Date().toISOString().slice(0,10)
+        uploadedAt:new Date().toISOString().slice(0,10),
+        repoPath:it.repoPath||'',  // ← stocké pour suppression future
+        repoSha:it.repoSha||''     // ← sha pour l'API delete
       };
       ressources.push(newRes);dirty();
       if(uploadTargetTP){const tp=tps.find(x=>x.id===uploadTargetTP);if(tp){tp.ressources=tp.ressources||[];tp.ressources.push(newRes.id);dirty();}}
@@ -1392,7 +1406,13 @@ async function uploadToContents(file,qi){
   if(res.status===403)throw new Error('Accès refusé (403) — scope "repo" requis');
   if(res.status===404)throw new Error('Dépôt introuvable : '+cfg.uploadRepo);
   if(!res.ok){let d='HTTP '+res.status;try{const e=await res.json();d=e.message||d;}catch(e){}throw new Error(d);}
-  return (await res.json()).content.download_url;
+  const data=await res.json();
+  // Stocker path et sha dans la queue pour la ressource
+  if(uploadQueue[qi]){
+    uploadQueue[qi].repoPath=data.content.path;
+    uploadQueue[qi].repoSha=data.content.sha;
+  }
+  return data.content.download_url;
 }
 
 function toB64(file,qi){
@@ -1638,7 +1658,7 @@ function showCfg(){
         </div>
         <div class="fg"><label>Gist ID — App melec-suivi (élèves)</label>
           <input type="text" id="c-suivi" value="${esc(cfg.suiviGistId||'')}" placeholder="ID du Gist melec-suivi">
-          <div class="muted mt8">Gist contenant <code>eleves.json</code> — ID : <code>a953954f369f7fad1597e2a6da38578c</code></div>
+          <div class="muted mt8">Gist contenant <code>melec-data.json</code> — ID : <code>a953954f369f7fad1597e2a6da38578c</code></div>
         </div>
         <div class="fg"><label>Dépôt de stockage fichiers (owner/repo)</label>
           <input type="text" id="c-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="sebpro56300/ressources">
