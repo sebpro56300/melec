@@ -234,15 +234,36 @@ select option{background:var(--bg2);}
 /* MOBILE */
 @media(max-width:700px){
   #sidebar{display:none;}
-  #content{padding:12px;}
+  #content{padding:10px;}
   .dash-grid{grid-template-columns:1fr;}
   .frow,.frow3{grid-template-columns:1fr;}
-  .modal{border-radius:12px 12px 0 0;position:fixed;bottom:0;left:0;right:0;width:100%;max-height:85vh;}
+  .modal{border-radius:12px 12px 0 0;position:fixed;bottom:0;left:0;right:0;width:100%;max-height:88vh;}
   .modal-ov{align-items:flex-end;}
   .tab .tlabel{display:none;}
-  .tab{padding:0 10px;}
+  .tab{padding:0 8px;}
   .cp{padding:3px 8px;font-size:11px;}
+  .logo small{display:none;}
+  /* tableaux : scroll horizontal plutôt que zoom */
+  .card{overflow-x:auto;}
+  table{min-width:500px;}
 }
+
+/* TOUS ÉCRANS : éviter que le contenu soit masqué */
+#content{
+  /* override inline pour s'assurer du scroll */
+  overflow-y:auto !important;
+  overflow-x:hidden;
+}
+/* Tableaux responsives : scroll horizontal dans la card */
+.card{overflow-x:auto;}
+/* Config form : pas de grille sur petit écran */
+@media(max-width:900px){
+  .frow{grid-template-columns:1fr;}
+  .frow3{grid-template-columns:1fr 1fr;}
+}
+/* Corriger la hauteur totale sur tous écrans */
+html,body{height:100%;max-height:100%;overflow:hidden;}
+#body{height:0;flex:1;}  /* force flex enfant à occuper l'espace restant */
 
 ::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 </style>
@@ -458,16 +479,24 @@ select option{background:var(--bg2);}
 <div class="modal-ov" id="modal-cours">
   <div class="modal">
     <div class="modal-title">📖 Ajouter un cours</div>
+    <!-- Option 1 : depuis bibliothèque -->
     <div class="fg">
-      <label>Depuis la bibliothèque (Cours)</label>
-      <select id="cours-ressource-sel">
-        <option value="">-- Choisir un cours existant --</option>
+      <label>Depuis la bibliothèque (Cours existants)</label>
+      <select id="cours-ressource-sel" onchange="onCoursSelChange()">
+        <option value="">-- Choisir dans la bibliothèque --</option>
       </select>
-      <div class="hint">Ou saisissez un intitulé libre ci-dessous</div>
+    </div>
+    <div style="text-align:center;color:var(--text3);font-size:12px;margin:4px 0;">— ou —</div>
+    <!-- Option 2 : saisie libre + upload -->
+    <div class="fg">
+      <label>Intitulé libre</label>
+      <input type="text" id="cours-titre-input" placeholder="Ex: Habilitations électriques B1V">
     </div>
     <div class="fg">
-      <label>Intitulé libre (si pas dans la bibliothèque)</label>
-      <input type="text" id="cours-titre-input" placeholder="Ex: Cours sur les habilitations électriques">
+      <label>Fichier à uploader (optionnel — dépôt GitHub configuré requis)</label>
+      <input type="file" id="cours-file-input" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt"
+        onchange="onCoursFileChange()" style="color:var(--text2);font-size:12px;">
+      <div id="cours-upload-status" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
     </div>
     <div class="frow">
       <div class="fg">
@@ -485,7 +514,7 @@ select option{background:var(--bg2);}
     </div>
     <div class="modal-foot">
       <button class="btn btn-g" onclick="closeModal('modal-cours')">Annuler</button>
-      <button class="btn btn-p" onclick="saveCours()">Ajouter</button>
+      <button class="btn btn-p" id="btn-save-cours" onclick="saveCours()">Ajouter</button>
     </div>
   </div>
 </div>
@@ -1391,9 +1420,12 @@ function deleteSession(id) {
 // ÉVALUATION PAR COMPÉTENCES
 // ════════════════════════════════════════════════════════════
 const EVAL_COULEURS = ['bleu','rouge','orange','vclair','vfonce'];
+const EVAL_LABELS   = {bleu:'Non évalué',rouge:'Absent/Non fait',orange:'En cours',vclair:'Acquis',vfonce:'Maîtrisé'};
 let evalSessionId = null;
+let evalTemp = {}; // réinitialisé à chaque ouverture de modale
 
 function openEvalModal(sessionId) {
+  evalTemp = {}; // ← reset systématique à chaque ouverture
   evalSessionId = sessionId;
   const s  = data.sessions.find(x=>x.id===sessionId);
   const tp = data.tps.find(t=>t.id===s?.tpId);
@@ -1401,12 +1433,12 @@ function openEvalModal(sessionId) {
   if (!s||!tp) { toast('Session introuvable','err'); return; }
 
   document.getElementById('eval-title').textContent =
-    '📋 Évaluation — '+esc(tp.titre)+' · '+(e?e.nom+' '+e.prenom:s.eleveId);
+    '📋 Éval. enseignant — '+esc(tp.titre)+' · '+(e?e.nom+' '+e.prenom:s.eleveId);
 
   const comps = tp.competences||[];
   if (!comps.length) {
     document.getElementById('eval-body').innerHTML =
-      '<div class="muted">Aucune compétence définie sur ce TP (à créer dans melec-tp-admin).</div>';
+      '<div style="color:var(--text3);font-size:13px;padding:8px;">Aucune compétence définie sur ce TP (à créer dans melec-tp-admin).</div>';
     openModal('modal-eval'); return;
   }
 
@@ -1414,68 +1446,46 @@ function openEvalModal(sessionId) {
 
   document.getElementById('eval-body').innerHTML = comps.map(comp=>{
     const compEval = evals[comp.id]||{};
-    const nglobal  = compEval.niveauGlobal||'';
     const criteres = comp.criteres||[];
 
-    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-      <div style="padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
-        <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);background:#111f3a;padding:2px 7px;border-radius:4px;">${esc(comp.code)}</span>
+    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2px;">
+      <div style="padding:9px 14px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+        <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);background:#111f3a;padding:2px 7px;border-radius:4px;flex-shrink:0;">${esc(comp.code)}</span>
         <span style="font-size:12px;font-weight:600;flex:1;">${esc(comp.libelle||'—')}</span>
-        <span style="font-size:11px;color:var(--text3);margin-right:6px;">Niveau global :</span>
-        <div style="display:flex;gap:5px;" id="ng-${comp.id}">
-          ${EVAL_COULEURS.map(c=>`
-            <div class="eval-dot ${c}${nglobal===c?' sel':''}"
-              onclick="setNiveauGlobal('${comp.id}','${c}',this)"
-              title="${c}"></div>`).join('')}
-        </div>
       </div>
       ${criteres.length ? `
-      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:6px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding:0 0 4px;border-bottom:1px solid var(--border);">
-          <span>Critère</span><span style="text-align:center;">Auto-éval élève</span><span style="text-align:center;">Validation enseignant</span>
+      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:7px;">
+        <div style="display:grid;grid-template-columns:1fr 100px 100px;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding-bottom:5px;border-bottom:1px solid var(--border);">
+          <span>Critère</span>
+          <span style="text-align:center;">Élève 👁</span>
+          <span style="text-align:center;">Enseignant ✏️</span>
         </div>
         ${criteres.map(cr=>{
           const crEval = (compEval.criteres||{})[cr.id]||{};
-          return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);">
+          const eleveVal = crEval.eleve||'';
+          const ensVal   = crEval.enseignant||'';
+          return `<div style="display:grid;grid-template-columns:1fr 100px 100px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">
             <span style="font-size:12px;">${esc(cr.libelle)}</span>
-            <div style="display:flex;justify-content:center;gap:4px;" id="ce-${comp.id}-${cr.id}">
-              ${EVAL_COULEURS.map(c=>`
-                <div class="eval-dot ${c}${crEval.eleve===c?' sel':''}"
-                  onclick="setCritEleve('${comp.id}','${cr.id}','${c}',this)"
-                  title="${c}" style="width:18px;height:18px;"></div>`).join('')}
+            <!-- Auto-éval élève : lecture seule, pastille affichée -->
+            <div style="display:flex;justify-content:center;">
+              ${eleveVal
+                ? `<div class="eval-dot ${eleveVal} sel" style="cursor:default;" title="Auto-éval élève : ${EVAL_LABELS[eleveVal]||eleveVal}"></div>`
+                : `<div style="width:20px;height:20px;border-radius:50%;border:2px dashed var(--border2);" title="Pas encore auto-évalué"></div>`}
             </div>
-            <div style="display:flex;justify-content:center;gap:4px;" id="ce-ens-${comp.id}-${cr.id}">
+            <!-- Évaluation enseignant : interactive -->
+            <div style="display:flex;justify-content:center;gap:3px;" id="ce-ens-${comp.id}-${cr.id}">
               ${EVAL_COULEURS.map(c=>`
-                <div class="eval-dot ${c}${crEval.enseignant===c?' sel':''}"
+                <div class="eval-dot ${c}${ensVal===c?' sel':''}"
                   onclick="setCritEns('${comp.id}','${cr.id}','${c}',this)"
-                  title="${c}" style="width:18px;height:18px;"></div>`).join('')}
+                  title="${EVAL_LABELS[c]||c}" style="width:18px;height:18px;"></div>`).join('')}
             </div>
           </div>`;
         }).join('')}
-      </div>` : '<div style="padding:10px 14px;font-size:11px;color:var(--text3);">Aucun critère défini</div>'}
+      </div>` : '<div style="padding:10px 14px;font-size:11px;color:var(--text3);">Aucun critère défini sur cette compétence</div>'}
     </div>`;
   }).join('');
 
   openModal('modal-eval');
-}
-
-// State temporaire d'évaluation (modifié par les clics, sauvé à la fermeture)
-let evalTemp = {};
-
-function setNiveauGlobal(compId, couleur, el) {
-  if (!evalTemp[compId]) evalTemp[compId]={};
-  evalTemp[compId].niveauGlobal = couleur;
-  el.closest('#ng-'+compId)?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
-  el.classList.add('sel');
-}
-
-function setCritEleve(compId, critId, couleur, el) {
-  if (!evalTemp[compId]) evalTemp[compId]={};
-  if (!evalTemp[compId].criteres) evalTemp[compId].criteres={};
-  if (!evalTemp[compId].criteres[critId]) evalTemp[compId].criteres[critId]={};
-  evalTemp[compId].criteres[critId].eleve = couleur;
-  el.closest('#ce-'+compId+'-'+critId)?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
-  el.classList.add('sel');
 }
 
 function setCritEns(compId, critId, couleur, el) {
@@ -1483,30 +1493,31 @@ function setCritEns(compId, critId, couleur, el) {
   if (!evalTemp[compId].criteres) evalTemp[compId].criteres={};
   if (!evalTemp[compId].criteres[critId]) evalTemp[compId].criteres[critId]={};
   evalTemp[compId].criteres[critId].enseignant = couleur;
-  el.closest('#ce-ens-'+compId+'-'+critId)?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
+  // Toggle : recliquer la même couleur la désélectionne
+  const container = document.getElementById('ce-ens-'+compId+'-'+critId);
+  if (container) container.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
   el.classList.add('sel');
 }
+
+// setCritEleve et setNiveauGlobal ne sont plus utilisés par l'enseignant — supprimés
 
 function saveEval() {
   const s = data.sessions.find(x=>x.id===evalSessionId);
   if (!s) return;
   if (!s.evaluations) s.evaluations={};
-  // Fusionner evalTemp dans la session
   Object.entries(evalTemp).forEach(([compId,val])=>{
     if (!s.evaluations[compId]) s.evaluations[compId]={};
-    if (val.niveauGlobal) s.evaluations[compId].niveauGlobal=val.niveauGlobal;
     if (val.criteres) {
       if (!s.evaluations[compId].criteres) s.evaluations[compId].criteres={};
       Object.entries(val.criteres).forEach(([critId,cv])=>{
         if (!s.evaluations[compId].criteres[critId]) s.evaluations[compId].criteres[critId]={};
-        if (cv.eleve)       s.evaluations[compId].criteres[critId].eleve=cv.eleve;
-        if (cv.enseignant)  s.evaluations[compId].criteres[critId].enseignant=cv.enseignant;
+        if (cv.enseignant!==undefined) s.evaluations[compId].criteres[critId].enseignant=cv.enseignant;
       });
     }
   });
   evalTemp={};
   saveLocal(); closeModal('modal-eval'); render();
-  toast('Évaluation enregistrée ✓','ok');
+  toast('Évaluation enseignant enregistrée ✓','ok');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1550,39 +1561,125 @@ function renderCours() {
   `);
 }
 
+function onCoursSelChange() {
+  const sel = document.getElementById('cours-ressource-sel');
+  const opt = sel?.options[sel.selectedIndex];
+  if (opt?.value && opt.dataset.titre) {
+    document.getElementById('cours-titre-input').value = opt.dataset.titre;
+  }
+}
+
+function onCoursFileChange() {
+  const f = document.getElementById('cours-file-input').files[0];
+  const st = document.getElementById('cours-upload-status');
+  if (f) {
+    st.textContent = '📁 '+f.name+' ('+fmtSz(f.size)+') — sera uploadé lors de la validation';
+    st.style.color = 'var(--orange)';
+    if (!document.getElementById('cours-titre-input').value) {
+      document.getElementById('cours-titre-input').value = f.name.replace(/\.[^.]+$/,'');
+    }
+  } else {
+    st.textContent = '';
+  }
+}
+
+function fmtSz(b){if(b<1024)return b+' o';if(b<1048576)return(b/1024).toFixed(1)+' Ko';return(b/1048576).toFixed(1)+' Mo';}
+
 function openCoursModal() {
-  // Construire le select depuis ressources.json (rubrique=Cours)
   const coursDispo = (data.ressources||[]).filter(r=>r.rubrique==='Cours');
   const sel = document.getElementById('cours-ressource-sel');
   if (sel) {
-    sel.innerHTML = '<option value="">-- Cours existant dans la bibliothèque --</option>'
+    sel.innerHTML = '<option value="">-- Choisir dans la bibliothèque --</option>'
       + coursDispo.map(r=>`<option value="${r.id}" data-url="${esc(r.url)}" data-titre="${esc(r.titre)}">${esc(r.niveau)} — ${esc(r.titre)}</option>`).join('');
   }
   document.getElementById('cours-date').value = today();
   document.getElementById('cours-classe-sel').value = state.classe;
   document.getElementById('cours-titre-input').value = '';
+  document.getElementById('cours-file-input').value = '';
+  document.getElementById('cours-upload-status').textContent = '';
   openModal('modal-cours');
 }
 
-function saveCours() {
+async function saveCours() {
   const sel    = document.getElementById('cours-ressource-sel');
   const titre  = document.getElementById('cours-titre-input').value.trim();
   const date   = document.getElementById('cours-date').value;
   const cl     = document.getElementById('cours-classe-sel').value;
   const opt    = sel?.options[sel.selectedIndex];
-  const url    = opt?.dataset.url||'';
-  const titreFinal = titre||(opt?.dataset.titre)||'';
+  const titreFinal = titre || (opt?.dataset.titre) || '';
   if (!titreFinal) { toast('Intitulé requis','err'); return; }
+
+  let url = opt?.dataset.url || '';
+  const file = document.getElementById('cours-file-input').files[0];
+
+  // Upload fichier si présent
+  if (file && cfg.token && cfg.uploadRepo) {
+    const btn = document.getElementById('btn-save-cours');
+    btn.disabled = true; btn.textContent = '⏳ Upload...';
+    const st = document.getElementById('cours-upload-status');
+    try {
+      url = await uploadToRepo(file);
+      st.textContent = '✓ Uploadé : '+url;
+      st.style.color = 'var(--green)';
+      // Ajouter à ressources.json si token+tpGistId configurés
+      if (cfg.tpGistId) {
+        const newRes = {
+          id: 'RES'+Date.now().toString(36).toUpperCase(),
+          titre: titreFinal, type: extToType(file.name),
+          url, niveau: classeNiveau(cl), rubrique: 'Cours',
+          description: '', uploadedAt: today()
+        };
+        data.ressources = data.ressources||[];
+        data.ressources.push(newRes);
+        // Pousser dans le gist tp-admin
+        await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, {
+          method:'PATCH',
+          headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'},
+          body:JSON.stringify({files:{'ressources.json':{content:JSON.stringify(data.ressources,null,2)}}})
+        });
+      }
+    } catch(e) {
+      toast('Upload échoué : '+e.message,'err');
+      btn.disabled=false; btn.textContent='Ajouter';
+      return;
+    }
+    btn.disabled=false; btn.textContent='Ajouter';
+  } else if (file && (!cfg.token || !cfg.uploadRepo)) {
+    toast('Configurez le token GitHub et le dépôt (Config) pour uploader','err');
+    return;
+  }
+
   data.cours.push({
-    id: genId('CRS'), titre:titreFinal, url, date, level:cl, classe:cl,
-    teacherId: state.enseignant?.id||'', status:'todo'
+    id:genId('CRS'), titre:titreFinal, url, date, level:cl, classe:cl,
+    teacherId:state.enseignant?.id||'', status:'todo'
   });
   saveLocal(); closeModal('modal-cours'); render(); toast('Cours ajouté','ok');
 }
 
-function setCoursStatut(id, val) {
-  const c = data.cours.find(x=>x.id===id);
-  if (c) { c.status=val; saveLocal(); }
+async function uploadToRepo(file) {
+  const [owner,repo] = (cfg.uploadRepo||'').split('/');
+  if (!owner||!repo) throw new Error('Dépôt non configuré (owner/repo)');
+  const safe = file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path = 'ressources/'+Date.now()+'_'+safe;
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const b64 = await new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('Lecture impossible'));
+    r.readAsDataURL(file);
+  });
+  const resp = await fetch(apiUrl,{
+    method:'PUT',
+    headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'},
+    body:JSON.stringify({message:'MELEC cours — '+file.name, content:b64})
+  });
+  if (!resp.ok) { const e=await resp.json(); throw new Error(e.message||'HTTP '+resp.status); }
+  return (await resp.json()).content.download_url;
+}
+
+function extToType(name){
+  const ext=name.split('.').pop().toLowerCase();
+  return {pdf:'pdf',doc:'word',docx:'word',xls:'excel',xlsx:'excel',jpg:'image',jpeg:'image',png:'image',txt:'txt'}[ext]||'lien';
 }
 
 function deleteCours(id){
@@ -1615,6 +1712,7 @@ function renderBons() {
           ? `<span class="badge b-blue" title="Signé le ${b.sigDate||'—'} par ${b.sigEnseignant}">✓ ${esc(b.sigEnseignant.split(' ')[0])}</span>`
           : `<button class="btn btn-g btn-sm" onclick="signerBon('${b.id}')">✍️ Signer</button>`}
       </td>
+      <td><button class="btn btn-g btn-sm" onclick="showBonDetail('${b.id}')">👁 Voir</button></td>
     </tr>`;
   }).join('');
 
@@ -1623,7 +1721,7 @@ function renderBons() {
     <div class="card">
       <div class="card-body" style="padding:0;">
         ${bons.length ? `<table>
-          <thead><tr><th>N°</th><th>Élève</th><th>Projet</th><th>Client</th><th>Date</th><th>Statut</th><th>Signature</th></tr></thead>
+          <thead><tr><th>N°</th><th>Élève</th><th>Projet</th><th>Client</th><th>Date</th><th>Statut</th><th>Signature</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>` : '<div class="empty"><div class="ei">📋</div><div class="et">Aucun bon d\'intervention</div></div>'}
       </div>
@@ -1636,13 +1734,51 @@ function signerBon(id) {
   if (!ens) { toast('Connectez-vous d\'abord (badge en haut à droite)','err'); return; }
   askConfirm('Signer ce bon d\'intervention ?',`Signature : ${ens.nom}`,()=>{
     const b = data.bons.find(x=>x.id===id);
-    if (b) {
-      b.sigEnseignant = ens.nom;
-      b.sigDate       = today();
-      b.sigTeacherId  = ens.id;
-    }
+    if (b) { b.sigEnseignant=ens.nom; b.sigDate=today(); b.sigTeacherId=ens.id; }
     saveLocal(); render(); toast('Bon signé ✓','ok');
   });
+}
+
+function showBonDetail(id) {
+  const b = data.bons.find(x=>x.id===id); if(!b) return;
+  const e = data.eleves.find(x=>x.id===b.eleveId);
+  const elNom = e ? e.nom+' '+e.prenom : (b.intervenant||'?');
+
+  // Champs du bon d'intervention (adapté à la structure existante)
+  const champs = [
+    ['N° bon',        b.numero||'—'],
+    ['Intervenant',   elNom],
+    ['Date',          (b.bonLe||b.createdAt||'—').slice(0,10)],
+    ['Projet',        b.projet||'—'],
+    ['Client',        b.client||'—'],
+    ['Lieu',          b.lieu||'—'],
+    ['Nature travaux',b.natureTravaux||b.description||'—'],
+    ['Matériel utilisé', b.materiel||'—'],
+    ['Durée',         b.duree||'—'],
+    ['Statut',        b.termine==='oui'?'Terminé':'En cours'],
+    ['Signature enseignant', b.sigEnseignant ? `${b.sigEnseignant} (${b.sigDate||'—'})` : 'Non signé'],
+    ['Remarques',     b.remarques||b.notes||'—'],
+  ];
+
+  const html = `<div style="display:grid;grid-template-columns:140px 1fr;gap:1px;background:var(--border);">
+    ${champs.map(([k,v])=>`
+      <div style="background:var(--bg3);padding:7px 12px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">${k}</div>
+      <div style="background:var(--bg);padding:7px 12px;font-size:13px;">${esc(v)}</div>
+    `).join('')}
+  </div>`;
+
+  document.getElementById('content').insertAdjacentHTML('afterbegin',`
+    <div class="card" style="border-color:var(--accent2);margin-bottom:14px;">
+      <div class="card-head">
+        <span>📋</span>
+        <span class="card-title">Bon d'intervention n° ${esc(b.numero||'—')} — ${esc(elNom)}</span>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          ${!b.sigEnseignant?`<button class="btn btn-p btn-sm" onclick="signerBon('${b.id}')">✍️ Signer</button>`:''}
+          <button class="btn btn-g btn-sm" onclick="this.closest('.card').remove()">✕ Fermer</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0;">${html}</div>
+    </div>`);
 }
 
 // ════════════════════════════════════════════════════════════
