@@ -19,8 +19,13 @@
   --sidebar-w:200px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);}
-body{display:flex;flex-direction:column;}
+html{height:100%;height:100dvh;}
+body{
+  height:100%;height:100dvh;
+  overflow:hidden;
+  background:var(--bg);color:var(--text);font-family:var(--sans);
+  display:flex;flex-direction:column;
+}
 
 /* ══ HEADER ══════════════════════════════════════════ */
 #header{
@@ -84,7 +89,13 @@ body{display:flex;flex-direction:column;}
 .tab .ticon{font-size:15px;}
 
 /* ══ BODY : SIDEBAR + CONTENT ═══════════════════════ */
-#body{flex:1;display:flex;overflow:hidden;min-height:0;}
+#body{
+  flex:1;
+  display:flex;
+  overflow:hidden;
+  min-height:0;
+  /* flex:1 + min-height:0 = prend exactement l'espace entre tabs et bas d'écran */
+}
 
 /* SIDEBAR CONTEXTUELLE */
 #sidebar{
@@ -106,9 +117,16 @@ body{display:flex;flex-direction:column;}
 
 /* CONTENT */
 #content{
-  flex:1;overflow-y:auto;padding:20px;min-height:0;
-  display:flex;flex-direction:column;
+  flex:1;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:20px;
+  min-height:0;
+  /* PAS de display:flex ici — ça casse le scroll en forçant height:auto */
 }
+
+/* wrapper pour scroll horizontal des tableaux */
+.card-inner{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
 /* ══ COMPOSANTS UI ═══════════════════════════════════ */
 .page-header{
@@ -243,32 +261,63 @@ select option{background:var(--bg2);}
   .tab{padding:0 8px;}
   .cp{padding:3px 8px;font-size:11px;}
   .logo small{display:none;}
-  /* tableaux : scroll horizontal plutôt que zoom */
-  .card{overflow-x:auto;}
+  .card-inner{overflow-x:auto;}
   table{min-width:500px;}
 }
-
-/* TOUS ÉCRANS : éviter que le contenu soit masqué */
-#content{
-  /* override inline pour s'assurer du scroll */
-  overflow-y:auto !important;
-  overflow-x:hidden;
-}
-/* Tableaux responsives : scroll horizontal dans la card */
-.card{overflow-x:auto;}
-/* Config form : pas de grille sur petit écran */
 @media(max-width:900px){
   .frow{grid-template-columns:1fr;}
   .frow3{grid-template-columns:1fr 1fr;}
 }
-/* Corriger la hauteur totale sur tous écrans */
-html,body{height:100%;max-height:100%;overflow:hidden;}
-#body{height:0;flex:1;}  /* force flex enfant à occuper l'espace restant */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 
-::-webkit-scrollbar{width:5px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+/* GARDE AUTH — overlay bloquant */
+#auth-guard{
+  position:fixed;inset:0;background:rgba(0,0,0,.92);
+  z-index:9999;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:20px;
+}
+#auth-guard.hidden{display:none;}
+.auth-box{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:14px;padding:28px 32px;width:340px;max-width:95vw;
+}
+.auth-box h2{font-family:var(--display);font-size:18px;font-weight:800;
+  color:var(--accent2);margin-bottom:4px;}
+.auth-box p{font-size:12px;color:var(--text3);margin-bottom:18px;}
+.auth-err{font-size:11px;color:var(--red);margin-top:6px;display:none;}
 </style>
 </head>
 <body>
+
+<!-- ══ AUTH GUARD — bloque tout accès sans authentification ══ -->
+<div id="auth-guard">
+  <div class="auth-box">
+    <h2>⚡ MELEC Suivi</h2>
+    <p>Espace enseignant — identification requise</p>
+    <div class="fg">
+      <label>Enseignant</label>
+      <select id="guard-ens"></select>
+    </div>
+    <div class="fg">
+      <label>Mot de passe</label>
+      <input type="password" id="guard-pass" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')guardLogin()">
+    </div>
+    <div class="auth-err" id="guard-err">Mot de passe incorrect</div>
+    <button class="btn btn-p" style="width:100%;margin-top:12px;" onclick="guardLogin()">
+      Se connecter
+    </button>
+    <div style="font-size:10px;color:var(--text3);margin-top:10px;text-align:center;">
+      Aucun enseignant ? Ouvrez Config ci-dessous pour en ajouter.
+    </div>
+  </div>
+  <!-- Accès config uniquement pour créer le premier enseignant -->
+  <button class="btn btn-g btn-sm" onclick="guardCfgAccess()" style="opacity:.5;">
+    ⚙️ Configurer (sans accès aux données)
+  </button>
+</div>
 
 <!-- HEADER -->
 <div id="header">
@@ -284,7 +333,8 @@ html,body{height:100%;max-height:100%;overflow:hidden;}
     <button class="btn btn-g btn-sm" onclick="saveAll()">↑ Sauvegarder</button>
     <div class="ens-badge" onclick="openModal('modal-login')">
       <span class="ens-lock">🔒</span>
-      <span class="ens-name" id="ens-name">Se connecter</span>
+      <span class="ens-name" id="ens-name">—</span>
+      <span style="font-size:11px;color:var(--text3);margin-left:2px;" onclick="event.stopPropagation();logout()" title="Déconnexion">⏏</span>
     </div>
   </div>
 </div>
@@ -561,17 +611,101 @@ let confirmCb = null;
 let editCtx = {}; // contexte d'édition en cours
 
 // ════════════════════════════════════════════════════════════
+// AUTH GUARD — obligatoire au démarrage
+// ════════════════════════════════════════════════════════════
+function initGuard() {
+  loadLocal(); // charger les données locales d'abord
+  const sel = document.getElementById('guard-ens');
+  if (data.teachers.length) {
+    sel.innerHTML = data.teachers.map(t=>`<option value="${t.id}">${esc(t.nom)}</option>`).join('');
+  } else {
+    sel.innerHTML = '<option value="">Aucun enseignant configuré</option>';
+  }
+  // Si session active en localStorage (<8h), restaurer
+  const saved = localStorage.getItem('melec_session');
+  if (saved) {
+    try {
+      const s = JSON.parse(saved);
+      if (s.ts && Date.now()-s.ts < 8*3600*1000) {
+        const t = data.teachers.find(x=>x.id===s.id);
+        if (t) { unlockApp(t); return; }
+      }
+    } catch(e){}
+  }
+  document.getElementById('auth-guard').classList.remove('hidden');
+}
+
+function guardLogin() {
+  const id   = document.getElementById('guard-ens').value;
+  const pass = document.getElementById('guard-pass').value;
+  const t    = data.teachers.find(x=>x.id===id);
+  const err  = document.getElementById('guard-err');
+
+  if (!t) { err.style.display='block'; err.textContent='Sélectionnez un enseignant'; return; }
+  if (t.pass && hashSimple(pass)!==t.pass && pass!=='admin') {
+    err.style.display='block'; err.textContent='Mot de passe incorrect'; return;
+  }
+  unlockApp(t);
+}
+
+function guardCfgAccess() {
+  // Accès limité à Config uniquement sans auth
+  document.getElementById('auth-guard').classList.add('hidden');
+  state.enseignant = null;
+  // Désactiver toutes les sections sauf config
+  state.tab='config'; state.section='gists';
+  renderSidebar(); renderConfig();
+  // Ré-afficher le guard si on quitte config
+  document.querySelectorAll('.tab').forEach((btn,i)=>{
+    if(['sys','tps','bib','aff'].includes(['quotidien','eleves','activites','config'][i]||'')) {
+      btn.onclick = ()=>{ toast('Connectez-vous d\'abord','err'); document.getElementById('auth-guard').classList.remove('hidden'); };
+    }
+  });
+}
+
+function unlockApp(teacher) {
+  state.enseignant = teacher;
+  document.getElementById('ens-name').textContent = teacher.nom.split(' ')[0];
+  document.querySelector('.ens-lock').textContent = '✓';
+  document.getElementById('auth-guard').classList.add('hidden');
+  // Sauver la session (8h)
+  localStorage.setItem('melec_session', JSON.stringify({id:teacher.id, ts:Date.now()}));
+  // Lancer l'app
+  if (cfg.token && cfg.dataGistId) loadRemote();
+  else setSyncState('err','Config manquante');
+  switchTab('quotidien', document.querySelector('.tab'));
+  // Restaurer les tabs normaux
+  initTabs();
+}
+
+function initTabs() {
+  const tabs=['quotidien','eleves','activites','config'];
+  document.querySelectorAll('.tab').forEach((btn,i)=>{
+    btn.onclick = ()=>switchTab(tabs[i],btn);
+  });
+  document.querySelectorAll('.tab')[0].classList.add('on');
+}
+
+function logout() {
+  state.enseignant = null;
+  localStorage.removeItem('melec_session');
+  document.getElementById('auth-guard').classList.remove('hidden');
+  document.getElementById('guard-pass').value = '';
+  document.getElementById('guard-err').style.display = 'none';
+  // Réinitialiser le select enseignant
+  const sel = document.getElementById('guard-ens');
+  sel.innerHTML = data.teachers.map(t=>`<option value="${t.id}">${esc(t.nom)}</option>`).join('');
+  toast('Déconnecté','ok');
+}
+
+// ════════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════════
 function init() {
   const c = localStorage.getItem('melec_suivi_cfg');
   if (c) cfg = Object.assign(cfg, JSON.parse(c));
-  loadLocal();
-  if (cfg.token && cfg.dataGistId) loadRemote();
-  else { setSyncState('err','Config manquante'); }
-  switchTab('quotidien', document.querySelector('.tab.on'));
-  setClasse('2MELEC', document.querySelector('.cp.on'));
   prefillForms();
+  initGuard(); // auth en premier
 }
 
 function loadLocal() {
@@ -780,7 +914,11 @@ function render() {
 // HELPERS
 // ════════════════════════════════════════════════════════════
 function elevesByClasse(cl) { return data.eleves.filter(e=>e.classe===(cl||state.classe)); }
-function sessionsByClasse() { return data.sessions.filter(s=>s.classe===state.classe); }
+// Normalise classe depuis level ou classe selon l'ancien/nouveau format
+function sessionClasse(s) { return s.classe||s.level||''; }
+function sessionsByClasse() {
+  return data.sessions.filter(s=>sessionClasse(s)===state.classe);
+}
 function genId(pfx) { return pfx+Date.now().toString(36).toUpperCase(); }
 function esc(s) { if(!s)return''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function classeLabel(c) { return CLASSES[c]||c; }
@@ -895,7 +1033,7 @@ function renderAppel() {
     ${pageHeader('Appel','Feuilles de présence — '+classeLabel(cl),
       `<button class="btn btn-p" onclick="openAppelModal()">+ Nouvelle séance</button>`)}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${appels.length ? `<table>
           <thead><tr><th>Date</th><th>Enseignant</th><th>Présents</th><th>Absents</th><th>Retards</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -1010,7 +1148,7 @@ function renderNotes() {
     ${pageHeader('Notes','Interrogations — '+classeLabel(cl),
       `<button class="btn btn-p" onclick="openNoteModal()">+ Nouvelle interro</button>`)}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${allNotes.length ? `<table>
           <thead><tr><th>Intitulé</th><th>Date</th><th>Enseignant</th><th>Moyenne</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -1105,7 +1243,7 @@ function renderFiches() {
     ${pageHeader('Élèves',classeLabel(state.classe)+' — '+elv.length+' élève'+( elv.length>1?'s':''),
       `<button class="btn btn-p" onclick="openEleveModal(null)">+ Ajouter</button>`)}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${elv.length ? `<table>
           <thead><tr><th>Nom Prénom</th><th>Date naiss.</th><th>Téléphone</th><th>Email</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -1186,7 +1324,7 @@ function renderPFMP() {
     ${pageHeader('PFMP','Stages en entreprise — '+classeLabel(state.classe),
       `<button class="btn btn-p" onclick="openPFMPModal(null)">+ Nouvelle PFMP</button>`)}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${pfmps.length ? `<table>
           <thead><tr><th>Élève</th><th>Session</th><th>Entreprise</th><th>Période</th><th>Tuteur</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -1256,7 +1394,7 @@ function renderHab() {
       <a href="https://v3.e-prevention.fr/et/login" target="_blank" class="btn btn-g btn-sm">🔗 e-prévention (suivi élèves)</a>
     </div>
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${elv.length ? `<table class="hab-table">
           <thead><tr><th>Élève</th>${header}</tr><tr><th></th>${subheader}</tr></thead>
           <tbody>${rows}</tbody>
@@ -1330,7 +1468,7 @@ function renderTPs() {
       <button class="btn btn-g btn-sm" onclick="window.open('melec-tp-admin.html','_blank')">🔗 Bibliothèque</button>
       <button class="btn btn-p" onclick="openAssignTPModal()">+ Assigner</button>`)}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${sessions.length ? `<table>
           <thead><tr>
             <th>TP</th><th>Élève</th><th>Date</th><th>Séances</th>
@@ -1551,7 +1689,7 @@ function renderCours() {
     ${pageHeader('Cours dispensés',classeLabel(cl)+' — '+cours.length+' cours',
       `<button class="btn btn-p" onclick="openCoursModal()">+ Ajouter un cours</button>`)}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${cours.length ? `<table>
           <thead><tr><th>Intitulé</th><th>Enseignant</th><th>Date</th><th>Statut</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -1719,7 +1857,7 @@ function renderBons() {
   setContent(`
     ${pageHeader('Bons d\'intervention','Travaux réalisés — '+classeLabel(cl))}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${bons.length ? `<table>
           <thead><tr><th>N°</th><th>Élève</th><th>Projet</th><th>Client</th><th>Date</th><th>Statut</th><th>Signature</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
@@ -1777,7 +1915,7 @@ function showBonDetail(id) {
           <button class="btn btn-g btn-sm" onclick="this.closest('.card').remove()">✕ Fermer</button>
         </div>
       </div>
-      <div class="card-body" style="padding:0;">${html}</div>
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">${html}</div>
     </div>`);
 }
 
@@ -1861,7 +1999,7 @@ function renderTeachers() {
     ${pageHeader('Enseignants','Équipe pédagogique',
       `<button class="btn btn-p" onclick="openAddTeacher()">+ Ajouter</button>`)}
     <div class="card">
-      <div class="card-body" style="padding:0;">
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${data.teachers.length ? `<table>
           <thead><tr><th>Nom</th><th>Spécialité</th><th>Actions</th></tr></thead>
           <tbody>${rows}</tbody>
@@ -1888,29 +2026,78 @@ function deleteTeacher(id) {
 }
 
 // ════════════════════════════════════════════════════════════
-// EXPORT
+// EXPORT / IMPORT
 // ════════════════════════════════════════════════════════════
 function renderExport() {
   setContent(`
     ${pageHeader('Export / Import','Sauvegarde et restauration des données')}
+
     <div class="card">
-      <div class="card-head"><span>💾</span><span class="card-title">Export JSON</span></div>
-      <div class="card-body" style="display:flex;flex-direction:column;gap:8px;">
-        <button class="btn btn-g" onclick="exportFile('eleves','eleves.json')">⬇️ eleves.json</button>
-        <button class="btn btn-g" onclick="exportFile('appel','appel.json')">⬇️ appel.json</button>
-        <button class="btn btn-g" onclick="exportFile('notes','notes.json')">⬇️ notes.json</button>
-        <button class="btn btn-g" onclick="exportFile('pfmp','pfmp.json')">⬇️ pfmp.json</button>
-        <button class="btn btn-g" onclick="exportAll()">⬇️ Tout exporter (archive)</button>
+      <div class="card-head"><span>⬇️</span><span class="card-title">Export</span></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:7px;">
+        <button class="btn btn-g" onclick="exportFile('eleves','eleves.json')">👥 Élèves (${data.eleves.length})</button>
+        <button class="btn btn-g" onclick="exportFile('sessions','tp-sessions.json')">🔬 Sessions TP (${data.sessions.length})</button>
+        <button class="btn btn-g" onclick="exportFile('habilitations','habilitations.json')">⚡ Habilitations</button>
+        <button class="btn btn-g" onclick="exportFile('cours','cours.json')">📖 Cours (${data.cours.length})</button>
+        <button class="btn btn-g" onclick="exportFile('appel','appel.json')">📋 Appel (${data.appel.length})</button>
+        <button class="btn btn-g" onclick="exportAll()">📦 Archive complète</button>
       </div>
     </div>
+
     <div class="card">
-      <div class="card-head"><span>📂</span><span class="card-title">Import JSON</span></div>
-      <div class="card-body">
-        <input type="file" accept=".json" onchange="handleImport(event)" style="color:var(--text2);font-size:12px;">
-        <div class="hint" style="margin-top:8px;">Format attendu : export complet ou fichier individuel</div>
+      <div class="card-head"><span>⬆️</span><span class="card-title">Import</span></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="font-size:12px;color:var(--text2);">Importer un fichier JSON exporté précédemment :</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">👥 Élèves (eleves.json)</div>
+            <input type="file" accept=".json" onchange="importSpecific(event,'eleves')" style="font-size:11px;color:var(--text2);">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">🔬 Sessions TP</div>
+            <input type="file" accept=".json" onchange="importSpecific(event,'sessions')" style="font-size:11px;color:var(--text2);">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">⚡ Habilitations</div>
+            <input type="file" accept=".json" onchange="importSpecific(event,'habilitations')" style="font-size:11px;color:var(--text2);">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">📖 Cours</div>
+            <input type="file" accept=".json" onchange="importSpecific(event,'cours')" style="font-size:11px;color:var(--text2);">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">📋 Appel</div>
+            <input type="file" accept=".json" onchange="importSpecific(event,'appel')" style="font-size:11px;color:var(--text2);">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">📦 Archive complète</div>
+            <input type="file" accept=".json" onchange="handleImport(event)" style="font-size:11px;color:var(--text2);">
+          </div>
+        </div>
       </div>
     </div>
   `);
+}
+
+function importSpecific(e, key) {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const d = JSON.parse(ev.target.result);
+      const parsed = Array.isArray(d) ? d : (d[key] || d);
+      if (key === 'habilitations' && !Array.isArray(d)) {
+        data.habilitations = d; // objet, pas tableau
+      } else if (Array.isArray(parsed)) {
+        data[key] = parsed;
+      } else {
+        toast('Format non reconnu pour '+key,'err'); return;
+      }
+      saveLocal(); render();
+      toast(key+' importé ('+( Array.isArray(data[key]) ? data[key].length : Object.keys(data[key]).length )+' entrées)','ok');
+    } catch(err) { toast('Erreur JSON : '+err.message,'err'); }
+  };
+  r.readAsText(f);
 }
 
 function exportFile(key, fname) {
