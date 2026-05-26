@@ -266,6 +266,7 @@ body{display:flex;flex-direction:column;}
     </div>
     <div class="login-err" id="l-err">Identifiants incorrects.</div>
     <button class="btn-login" onclick="doLogin()">Se connecter</button>
+    <div id="l-status" style="margin-top:10px;font-size:11px;text-align:center;color:var(--text3);min-height:16px;"></div>
   </div>
 </div>
 
@@ -343,11 +344,16 @@ const EVAL_LABELS   = {bleu:'Non évalué',rouge:'Absent/Non fait',orange:'En co
 const TYPE_ICON     = {pdf:'📄',word:'📝',excel:'📊',image:'🖼️',video:'🎬',txt:'📃',lien:'🔗'};
 const HAB_TYPES     = ['B0','B1V','BR'];
 
+// IDs des Gists publics — intégrés en dur, aucune config requise côté élève
+const GIST_DATA = 'a953954f369f7fad1597e2a6da38578c'; // eleves, cours, habilitations
+const GIST_TP   = '5cbd51c7c62493addf84845feddd19d7'; // tps, sessions, ressources
+
 // ════════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════════
-let cfg = { dataGistId:'', tpGistId:'' };
-let eleve = null;       // objet élève connecté
+// token : optionnel, uniquement pour l'enseignant qui veut sauver les sessions
+let cfg = { token: '' };
+let eleve = null;
 let data = {
   eleves:[], tps:[], sessions:[], ressources:[],
   cours:[], habilitations:{}, inventory:[]
@@ -359,11 +365,8 @@ let qrScanner = null;
 // INIT
 // ════════════════════════════════════════════════════════
 function init() {
-  const c = localStorage.getItem('melec_eleve_cfg');
-  if (c) cfg = Object.assign(cfg, JSON.parse(c));
-
-  // Charger données locales
-  ['eleves','tps','sessions','ressources','cours','habilitations','inventory'].forEach(k=>{
+  // Charger données locales en cache
+  ['eleves','tps','sessions','ressources','cours','inventory'].forEach(k=>{
     try { data[k] = JSON.parse(localStorage.getItem('mel_'+k)||'[]'); } catch(e){}
   });
   try { data.habilitations = JSON.parse(localStorage.getItem('mel_habilitations')||'{}'); } catch(e){}
@@ -380,8 +383,8 @@ function init() {
     } catch(e){}
   }
 
-  // Charger les données même sans être connecté (pour la liste élèves)
-  if (cfg.dataGistId) loadRemote(false);
+  // Charger les données sans être connecté (pour la liste élèves au login)
+  loadRemote(false);
 }
 
 // ════════════════════════════════════════════════════════
@@ -389,44 +392,66 @@ function init() {
 // ════════════════════════════════════════════════════════
 async function loadRemote(showToast=true) {
   try {
-    const headers = {};
-    // Données eleves/cours/habilitations
-    if (cfg.dataGistId) {
-      const r = await fetch(`https://api.github.com/gists/${cfg.dataGistId}`, {headers});
-      if (r.ok) {
-        const g = await r.json();
-        const load = (f,fb) => { try{return JSON.parse(g.files[f]?.content||'null')||fb;}catch(e){return fb;} };
-        data.eleves        = load('eleves.json',[]);
-        data.cours         = load('cours.json',[]);
-        data.habilitations = load('habilitations.json',{});
-        // Inventaire depuis le gist inventaire public
-        saveLocal();
-      }
+    // Gists publics — aucun token requis
+    const headers = {'X-GitHub-Api-Version':'2022-11-28'};
+
+    // Gist données : eleves, cours, habilitations
+    setLoginStatus('⏳ Chargement...','var(--orange)');
+    const r = await fetch(`https://api.github.com/gists/${GIST_DATA}`, {headers});
+    if (!r.ok) throw new Error('Données inaccessibles (HTTP '+r.status+') — vérifiez que le Gist est public');
+    const g = await r.json();
+    const load = (f,fb) => { try{return JSON.parse(g.files[f]?.content||'null')||fb;}catch(e){return fb;} };
+
+    data.eleves        = load('eleves.json',[]);
+    data.cours         = load('cours.json',[]);
+    data.habilitations = load('habilitations.json',{});
+
+    // Fallback melec-data.json si eleves.json vide
+    if (!data.eleves.length && g.files['melec-data.json']) {
+      try {
+        const raw = JSON.parse(g.files['melec-data.json'].content);
+        const arr = Array.isArray(raw) ? raw : (raw.eleves||[]);
+        data.eleves = arr.map(e=>({
+          id:e.id, nom:e.name||e.nom||'', prenom:e.prenom||'',
+          classe:e.level||e.classe||'', elevePass:e.elevePass||'',
+          tel:e.tel||'', mail:e.mail||'', ddn:e.ddn||''
+        }));
+        if (!Object.keys(data.habilitations).length) data.habilitations = raw.habilitations||{};
+        if (!data.cours.length) data.cours = (raw.cours||[]).map(c=>({...c,level:c.level||c.classe}));
+      } catch(e){}
     }
-    // TPs / sessions / ressources depuis gist tp-admin
-    if (cfg.tpGistId) {
-      const r2 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, {headers});
-      if (r2.ok) {
-        const g2 = await r2.json();
-        const load2 = (f,fb) => { try{return JSON.parse(g2.files[f]?.content||'null')||fb;}catch(e){return fb;} };
-        data.tps        = load2('tps.json',[]);
-        data.sessions   = load2('tp-sessions.json',[]);
-        data.ressources = load2('ressources.json',[]);
-        data.inventory  = load2('melec-inventaire.json',[]);
-        if (data.inventory && data.inventory.items) data.inventory = data.inventory.items;
-        saveLocal();
-      }
+
+    // Gist TP admin : tps, sessions, ressources
+    const r2 = await fetch(`https://api.github.com/gists/${GIST_TP}`, {headers});
+    if (r2.ok) {
+      const g2 = await r2.json();
+      const load2 = (f,fb) => { try{return JSON.parse(g2.files[f]?.content||'null')||fb;}catch(e){return fb;} };
+      data.tps        = load2('tps.json',[]);
+      data.sessions   = load2('tp-sessions.json',[]);
+      data.ressources = load2('ressources.json',[]);
+      const inv       = load2('melec-inventaire.json',null);
+      if (inv?.items) data.inventory = inv.items;
+      else if (Array.isArray(inv)) data.inventory = inv;
     }
+
+    saveLocal();
+    setLoginStatus('✓ '+data.eleves.length+' élèves chargés','var(--green)');
     if (eleve) {
-      // Mettre à jour l'objet élève depuis les données fraîches
       const fresh = data.eleves.find(x=>x.id===eleve.id);
       if (fresh) eleve = fresh;
       render();
     }
-    if (showToast) toast('Données actualisées','ok');
+    if (showToast && eleve) toast('Données actualisées','ok');
   } catch(e) {
-    if (showToast) toast('Erreur réseau — données locales utilisées','err');
+    setLoginStatus('✕ '+e.message,'var(--red)');
+    if (showToast && eleve) toast('Données locales utilisées','err');
+    if (eleve) render();
   }
+}
+
+function setLoginStatus(msg, color='var(--text3)') {
+  const el = document.getElementById('l-status');
+  if (el) { el.textContent = msg; el.style.color = color; }
 }
 
 function saveLocal() {
@@ -437,11 +462,11 @@ function saveLocal() {
 }
 
 async function saveSession(sessionId) {
-  // Sauvegarde locale immédiate + push vers gist tp-admin si configuré
   saveLocal();
-  if (!cfg.tpGistId || !cfg.token) return;
+  // Push sessions vers gist TP si token disponible (enseignant connecté)
+  if (!cfg.token) return;
   try {
-    await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, {
+    await fetch(`https://api.github.com/gists/${GIST_TP}`, {
       method:'PATCH',
       headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json'},
       body:JSON.stringify({files:{'tp-sessions.json':{content:JSON.stringify(data.sessions,null,2)}}})
@@ -459,19 +484,43 @@ function doLogin() {
   const prenom = document.getElementById('l-prenom').value.trim();
   const pass   = document.getElementById('l-pass').value;
   const err    = document.getElementById('l-err');
+  err.style.display='none';
 
-  const found = data.eleves.find(e=>
-    (e.nom||e.name||'').toUpperCase()===nom &&
-    (e.prenom||'').toLowerCase()===prenom.toLowerCase()
-  );
-  if (!found) { err.style.display='block'; err.textContent='Identifiants incorrects.'; return; }
+  if (!data.eleves.length) {
+    err.style.display='block';
+    err.textContent='Données non chargées — configurez les Gist IDs ci-dessous.';
+    document.getElementById('l-cfg-panel').style.display='block';
+    return;
+  }
+
+  // Chercher par nom (champ nom ou name, en majuscules) + prénom (insensible casse)
+  const found = data.eleves.find(e=>{
+    const enom = (e.nom||e.name||'').toUpperCase();
+    const eprenom = (e.prenom||'').toLowerCase();
+    return enom===nom && eprenom===prenom.toLowerCase();
+  });
+
+  if (!found) {
+    err.style.display='block';
+    err.textContent='Identifiants incorrects. ('+data.eleves.length+' élèves chargés)';
+    return;
+  }
   if (found.elevePass && hashSimple(pass)!==String(found.elevePass) && pass!=='admin') {
-    err.style.display='block'; err.textContent='Mot de passe incorrect.'; return;
+    err.style.display='block';
+    err.textContent='Mot de passe incorrect.';
+    return;
   }
   eleve = found;
   localStorage.setItem('melec_eleve_session', JSON.stringify({id:found.id, ts:Date.now()}));
   unlockApp();
-  loadRemote();
+  loadRemote(false).then(()=>{
+    const pending = localStorage.getItem('melec_eleve_pending_sys');
+    if (pending) {
+      localStorage.removeItem('melec_eleve_pending_sys');
+      showPage('tp');
+      setTimeout(()=>showTPChoiceForSystem(pending),300);
+    }
+  });
 }
 
 function unlockApp() {
@@ -742,9 +791,9 @@ function chooseTp(tpId, sysId, classe) {
   saveLocal();
   closeModal('modal-tp-choice');
   closeScan();
-  // Push vers gist
-  if (cfg.tpGistId && cfg.token) {
-    fetch(`https://api.github.com/gists/${cfg.tpGistId}`,{
+  // Push vers gist si token disponible
+  if (cfg.token) {
+    fetch(`https://api.github.com/gists/${GIST_TP}`,{
       method:'PATCH',
       headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json'},
       body:JSON.stringify({files:{'tp-sessions.json':{content:JSON.stringify(data.sessions,null,2)}}})
@@ -1061,34 +1110,6 @@ const _origUnlock = unlockApp;
 // START
 // ════════════════════════════════════════════════════════
 readURLParams();
-
-// Vérifier pending system après connexion
-const __origDoLogin = doLogin;
-window.doLogin = function() {
-  const nom    = document.getElementById('l-nom').value.trim().toUpperCase();
-  const prenom = document.getElementById('l-prenom').value.trim();
-  const pass   = document.getElementById('l-pass').value;
-  const found = data.eleves.find(e=>
-    (e.nom||e.name||'').toUpperCase()===nom &&
-    (e.prenom||'').toLowerCase()===prenom.toLowerCase()
-  );
-  if (!found) { document.getElementById('l-err').style.display='block'; return; }
-  if (found.elevePass && hashSimple(pass)!==String(found.elevePass) && pass!=='admin') {
-    document.getElementById('l-err').style.display='block'; return;
-  }
-  eleve = found;
-  localStorage.setItem('melec_eleve_session',JSON.stringify({id:found.id,ts:Date.now()}));
-  unlockApp();
-  loadRemote().then(()=>{
-    const pending = localStorage.getItem('melec_eleve_pending_sys');
-    if (pending) {
-      localStorage.removeItem('melec_eleve_pending_sys');
-      showPage('tp');
-      setTimeout(()=>showTPChoiceForSystem(pending),300);
-    }
-  });
-};
-
 init();
 </script>
 </body>
