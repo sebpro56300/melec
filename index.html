@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0d1117">
-<title>MELEC — Suivi Pédagogique</title>
+<title>MELEC — Suivi Pédagogique v9</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root{
@@ -321,7 +321,7 @@ select option{background:var(--bg2);}
 
 <!-- HEADER -->
 <div id="header">
-  <div class="logo">⚡MELEC<small>Suivi</small></div>
+  <div class="logo">⚡MELEC<small>Suivi v9</small></div>
   <div class="classe-pills">
     <button class="cp on" onclick="setClasse('2MELEC',this)">2nde</button>
     <button class="cp" onclick="setClasse('1MELEC',this)">1ère</button>
@@ -1896,42 +1896,124 @@ function showBonDetail(id) {
   const b = data.bons.find(x=>x.id===id); if(!b) return;
   const e = data.eleves.find(x=>x.id===b.eleveId);
   const elNom = e ? e.nom+' '+e.prenom : (b.intervenant||'?');
+  const termine = b.termine==='oui'||b.termine===true;
+  const signe   = !!b.sigEnseignant;
 
-  // Champs du bon d'intervention (adapté à la structure existante)
-  const champs = [
-    ['N° bon',        b.numero||'—'],
-    ['Intervenant',   elNom],
-    ['Date',          (b.bonLe||b.createdAt||'—').slice(0,10)],
-    ['Projet',        b.projet||'—'],
-    ['Client',        b.client||'—'],
-    ['Lieu',          b.lieu||'—'],
-    ['Nature travaux',b.natureTravaux||b.description||'—'],
-    ['Matériel utilisé', b.materiel||'—'],
-    ['Durée',         b.duree||'—'],
-    ['Statut',        b.termine==='oui'?'Terminé':'En cours'],
-    ['Signature enseignant', b.sigEnseignant ? `${b.sigEnseignant} (${b.sigDate||'—'})` : 'Non signé'],
-    ['Remarques',     b.remarques||b.notes||'—'],
-  ];
+  const typesCoches = Object.entries(b.types||{}).map(([k,v])=>`
+    <div style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;">
+      <div style="width:14px;height:14px;border:1.5px solid #333;display:inline-flex;align-items:center;justify-content:center;font-size:10px;${v?'background:#333;color:#fff':''};">${v?'✓':''}</div>
+      ${esc(k)}
+    </div>`).join('');
 
-  const html = `<div style="display:grid;grid-template-columns:140px 1fr;gap:1px;background:var(--border);">
-    ${champs.map(([k,v])=>`
-      <div style="background:var(--bg3);padding:7px 12px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;">${k}</div>
-      <div style="background:var(--bg);padding:7px 12px;font-size:13px;">${esc(v)}</div>
-    `).join('')}
-  </div>`;
+  const heuresRows = (b.heures||[]).filter(h=>h.date||h.matin||h.apm||h.tps).map(h=>`
+    <tr>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.date||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.matin||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.apm||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.tps||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.nar||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.prep||'')}</td>
+    </tr>`).join('') || `<tr><td colspan="6" style="border:1px solid #ccc;padding:4px 7px;color:#888;text-align:center;">—</td></tr>`;
 
-  document.getElementById('content').insertAdjacentHTML('afterbegin',`
-    <div class="card" style="border-color:var(--accent2);margin-bottom:14px;">
-      <div class="card-head">
-        <span>📋</span>
-        <span class="card-title">Bon d'intervention n° ${esc(b.numero||'—')} — ${esc(elNom)}</span>
-        <div style="margin-left:auto;display:flex;gap:6px;">
-          ${!b.sigEnseignant?`<button class="btn btn-p btn-sm" onclick="signerBon('${b.id}')">✍️ Signer</button>`:''}
-          <button class="btn btn-g btn-sm" onclick="this.closest('.card').remove()">✕ Fermer</button>
+  const matRows = (b.materiels||[]).filter(m=>m.des||m.ref).map(m=>`
+    <tr>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.const||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.ref||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.des||'')}</td>
+      <td style="border:1px solid #ccc;padding:4px 7px;text-align:center;">${esc(m.qty||'')}</td>
+    </tr>`).join('') || `<tr><td colspan="4" style="border:1px solid #ccc;padding:4px 7px;color:#888;text-align:center;">Aucun matériel renseigné</td></tr>`;
+
+  function cell(label,val){return `<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:2px;">${label}</div><div style="border:1px solid #ccc;border-radius:3px;padding:5px 8px;min-height:26px;background:#fafafa;font-size:12px;">${esc(val||'—')}</div></div>`;}
+
+  const win = window.open('','_blank','width=860,height=950,scrollbars=yes');
+  win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+  <title>Bon n°${b.numero||'?'} — ${elNom}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;background:#fff;color:#111;padding:24px;}
+    h1{font-size:17px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+    .sub{text-align:center;font-size:10px;color:#666;margin-bottom:16px;}
+    .sec{margin-bottom:14px;}
+    .sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:#e5e5e5;padding:3px 8px;border-left:3px solid #333;margin-bottom:7px;}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#e5e5e5;font-weight:700;padding:5px 7px;border:1px solid #ccc;font-size:11px;text-align:left;}
+    .status{display:flex;gap:14px;align-items:center;padding:6px 12px;background:#f5f5f5;border-radius:5px;margin-bottom:14px;flex-wrap:wrap;}
+    .badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+    .btn{padding:7px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;border:none;margin-left:6px;}
+    .no-print{position:fixed;top:10px;right:10px;}
+    @media print{.no-print{display:none;}}
+  </style>
+  </head><body>
+  <div class="no-print">
+    <button class="btn" style="background:#3b82f6;color:#fff;" onclick="window.print()">🖨️ Imprimer</button>
+    <button class="btn" style="background:#e5e7eb;" onclick="window.close()">✕</button>
+  </div>
+  <h1>Bon d'intervention</h1>
+  <div class="sub">Compétence C11 — Compléter les documents liés aux opérations</div>
+  <div class="status">
+    <span><strong>N°</strong> ${esc(b.numero||'—')}</span>
+    <span><strong>Établi le</strong> ${esc(b.bonLe||'—')}</span>
+    <span><strong>Intervenant :</strong> ${esc(elNom)}</span>
+    <span class="badge" style="${termine?'background:#dcfce7;color:#166534':'background:#fef9c3;color:#854d0e'}">${termine?'✓ Terminé':'En cours'}</span>
+    <span class="badge" style="${signe?'background:#dbeafe;color:#1d4ed8':'background:#fee2e2;color:#991b1b'}">${signe?'✓ Signé — '+esc(b.sigEnseignant):'⚠ Non signé enseignant'}</span>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Identification</div>
+    <div class="g3" style="gap:8px;">
+      ${cell('Client',b.client)} ${cell('Ville',b.ville)} ${cell('Projet',b.projet)}
+      ${cell("Maître d'œuvre",b.moe)} ${cell('Interlocuteur',b.interlo)} ${cell('Bon établi à',b.bonA)}
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Nature des travaux</div>
+    <div style="padding:6px 0;">${typesCoches}</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Détail des heures</div>
+    <table><thead><tr>
+      <th>Date</th><th>Matin</th><th>Après-midi</th><th>Tps trajet</th><th>Nuit/arrêt</th><th>Préparation</th>
+    </tr></thead><tbody>${heuresRows}</tbody></table>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Description des travaux réalisés</div>
+    <div style="border:1px solid #ccc;border-radius:3px;padding:8px;min-height:70px;white-space:pre-wrap;background:#fafafa;">${esc(b.desc||'—')}</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Travaux restants / Observations</div>
+    <div style="border:1px solid #ccc;border-radius:3px;padding:8px;min-height:50px;white-space:pre-wrap;background:#fafafa;">${esc(b.restes||'—')}</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Matériels utilisés</div>
+    <table><thead><tr>
+      <th>Constructeur</th><th>Référence</th><th>Désignation</th><th style="width:60px;text-align:center;">Qté</th>
+    </tr></thead><tbody>${matRows}</tbody></table>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Signatures</div>
+    <div class="g2">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:4px;">Signature client</div>
+        <div style="border:1.5px solid #333;min-height:70px;padding:8px;border-radius:3px;font-size:12px;color:#555;">${esc(b.sig||b.cAapNom||'')}</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:4px;">Visa enseignant</div>
+        <div style="border:1.5px solid #333;min-height:70px;padding:8px;border-radius:3px;">
+          ${signe?`<strong>${esc(b.sigEnseignant)}</strong><br><span style="font-size:11px;color:#555;">Le ${esc(b.sigDate||'—')}</span>`:'<span style="color:#999;font-style:italic;">Non signé</span>'}
         </div>
       </div>
-      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">${html}</div>
-    </div>`);
+    </div>
+  </div>
+  </body></html>`);
+  win.document.close();
 }
 
 // ════════════════════════════════════════════════════════════
