@@ -300,6 +300,9 @@ body{display:flex;flex-direction:column;}
   <button class="nav-btn" id="nb-hab" onclick="showPage('hab')">
     <span class="ni">⚡</span>Habilit.
   </button>
+  <button class="nav-btn" id="nb-notes" onclick="showPage('notes')">
+    <span class="ni">📊</span>Notes
+  </button>
 </div>
 
 <!-- ── MODAL SCANNER ─────────────────────────────────── -->
@@ -370,7 +373,8 @@ function init() {
     try { data[k] = JSON.parse(localStorage.getItem('mel_'+k)||'[]'); } catch(e){}
   });
   try { data.habilitations = JSON.parse(localStorage.getItem('mel_habilitations')||'{}'); } catch(e){}
-
+  // Restaurer les auto-évals même depuis le cache local
+  mergeAutoEvals();
   // Session élève active ?
   const saved = localStorage.getItem('melec_eleve_session');
   if (saved) {
@@ -418,6 +422,7 @@ async function loadRemote(showToast=true) {
         }));
         if (!Object.keys(data.habilitations).length) data.habilitations = raw.habilitations||{};
         if (!data.cours.length) data.cours = (raw.cours||[]).map(c=>({...c,level:c.level||c.classe}));
+        if (raw.notesEns) data.notesEns = raw.notesEns;
       } catch(e){}
     }
 
@@ -435,6 +440,8 @@ async function loadRemote(showToast=true) {
     }
 
     saveLocal();
+    // Fusionner les auto-évals sauvegardées localement (jamais écrasées par le Gist)
+    mergeAutoEvals();
     setLoginStatus('✓ '+data.eleves.length+' élèves chargés','var(--green)');
     if (eleve) {
       const fresh = data.eleves.find(x=>x.id===eleve.id);
@@ -558,6 +565,7 @@ function showPage(page) {
     'tp-done': renderTPDone,
     cours:     renderCours,
     hab:       renderHab,
+    notes:     renderNotes,
   };
   if (renders[page]) renders[page]();
 }
@@ -818,88 +826,137 @@ function toggleComp(compId) {
 
 function setAutoEval(sessionId, compId, critId, couleur, el) {
   const session = data.sessions.find(s=>s.id===sessionId);
-  if (!session) return;
+  if (!session) { toast('Session introuvable','err'); return; }
   if (!session.evaluations) session.evaluations={};
   if (!session.evaluations[compId]) session.evaluations[compId]={};
   if (!session.evaluations[compId].criteres) session.evaluations[compId].criteres={};
   if (!session.evaluations[compId].criteres[critId]) session.evaluations[compId].criteres[critId]={};
   session.evaluations[compId].criteres[critId].eleve = couleur;
+
   // Toggle visuel
   el.closest('.eval-dots-row')?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
   el.classList.add('sel');
-  // Sauvegarder
+
+  // Sauvegarder localement ET dans un store dédié auto-évals
+  saveAutoEvals();
   saveLocal();
-  saveSession(sessionId);
-  toast('Auto-évaluation enregistrée','ok');
+  toast('Auto-évaluation enregistrée ✓','ok');
+}
+
+// Store dédié aux auto-évals élève — jamais écrasé par loadRemote
+function saveAutoEvals() {
+  // Structure : { sessionId: { compId: { critId: 'couleur' } } }
+  const store = {};
+  data.sessions.forEach(s=>{
+    if (s.eleveId !== eleve?.id) return;
+    const evals = s.evaluations||{};
+    Object.entries(evals).forEach(([compId,comp])=>{
+      Object.entries(comp.criteres||{}).forEach(([critId,crit])=>{
+        if (crit.eleve) {
+          if (!store[s.id]) store[s.id]={};
+          if (!store[s.id][compId]) store[s.id][compId]={};
+          store[s.id][compId][critId] = crit.eleve;
+        }
+      });
+    });
+  });
+  localStorage.setItem('mel_autoevals', JSON.stringify(store));
+}
+
+// Fusionner les auto-évals sauvegardées localement dans les sessions chargées depuis le Gist
+function mergeAutoEvals() {
+  try {
+    const store = JSON.parse(localStorage.getItem('mel_autoevals')||'{}');
+    Object.entries(store).forEach(([sessionId, comps])=>{
+      const session = data.sessions.find(s=>s.id===sessionId);
+      if (!session) return;
+      if (!session.evaluations) session.evaluations={};
+      Object.entries(comps).forEach(([compId, crits])=>{
+        if (!session.evaluations[compId]) session.evaluations[compId]={};
+        if (!session.evaluations[compId].criteres) session.evaluations[compId].criteres={};
+        Object.entries(crits).forEach(([critId, couleur])=>{
+          if (!session.evaluations[compId].criteres[critId]) session.evaluations[compId].criteres[critId]={};
+          // Ne pas écraser une évaluation enseignant existante, juste remettre l'auto-éval élève
+          session.evaluations[compId].criteres[critId].eleve = couleur;
+        });
+      });
+    });
+  } catch(e){}
 }
 
 // ════════════════════════════════════════════════════════
-// OUVRIR UN DOCUMENT
+// OUVRIR UN DOCUMENT (affichage sans téléchargement)
 // ════════════════════════════════════════════════════════
 function openDoc(resId) {
   const r = data.ressources.find(x=>x.id===resId);
   if (!r||!r.url) { toast('Document indisponible','err'); return; }
 
-  // Pour PDF et images : afficher dans une nouvelle fenêtre (pas de téléchargement)
   const ext = (r.url.split('.').pop()||'').toLowerCase().split('?')[0];
-  const isViewable = ['pdf','jpg','jpeg','png','gif','webp','txt'].includes(ext);
+  const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
 
-  if (isViewable) {
-    // Ouvrir dans une fenêtre avec viewer intégré
-    const win = window.open('','_blank','width=900,height=700,scrollbars=yes');
-    if (ext==='pdf') {
-      win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-        <title>${esc(r.titre)}</title>
-        <style>*{margin:0;padding:0;}body{background:#222;}
-        .bar{background:#333;padding:8px 14px;display:flex;align-items:center;gap:10px;color:#fff;font-family:sans-serif;font-size:13px;}
-        .bar button{padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:12px;}
-        iframe{width:100%;height:calc(100vh - 42px);border:none;}</style></head>
-        <body>
-        <div class="bar">
-          <span>📄 ${esc(r.titre)}</span>
-          <button style="background:#3b82f6;color:#fff;" onclick="document.querySelector('iframe').contentWindow.print()">🖨️ Imprimer</button>
-          <button style="background:#555;color:#fff;margin-left:auto;" onclick="window.close()">✕</button>
-        </div>
-        <iframe src="${esc(r.url)}"></iframe>
-        </body></html>`);
-    } else if (['jpg','jpeg','png','gif','webp'].includes(ext)) {
-      win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-        <title>${esc(r.titre)}</title>
-        <style>*{margin:0;padding:0;}body{background:#111;display:flex;flex-direction:column;}
-        .bar{background:#333;padding:8px 14px;display:flex;align-items:center;gap:10px;color:#fff;font-family:sans-serif;font-size:13px;}
-        .bar button{padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:12px;}
-        img{max-width:100%;max-height:calc(100vh - 42px);object-fit:contain;margin:auto;display:block;}</style></head>
-        <body>
-        <div class="bar">
-          <span>🖼️ ${esc(r.titre)}</span>
-          <button style="background:#3b82f6;color:#fff;" onclick="window.print()">🖨️ Imprimer</button>
-          <button style="background:#555;color:#fff;margin-left:auto;" onclick="window.close()">✕</button>
-        </div>
-        <img src="${esc(r.url)}" alt="${esc(r.titre)}">
-        </body></html>`);
-    } else {
-      win.location.href = r.url;
-    }
-    win.document.close();
-  } else {
-    // Pour Word/Excel : ouvrir via Google Docs viewer (pas de téléchargement)
-    const viewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(r.url)}&embedded=true`;
+  // Pour les images : affichage direct dans une fenêtre
+  if (isImage) {
     const win = window.open('','_blank','width=900,height=700,scrollbars=yes');
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>${esc(r.titre)}</title>
-      <style>*{margin:0;padding:0;}body{background:#222;display:flex;flex-direction:column;}
-      .bar{background:#333;padding:8px 14px;display:flex;align-items:center;gap:10px;color:#fff;font-family:sans-serif;font-size:13px;}
+      <style>*{margin:0;padding:0;}body{background:#111;display:flex;flex-direction:column;height:100vh;}
+      .bar{background:#333;padding:8px 14px;display:flex;align-items:center;gap:10px;color:#fff;font-family:sans-serif;font-size:13px;flex-shrink:0;}
       .bar button{padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:12px;}
-      iframe{flex:1;width:100%;height:calc(100vh - 42px);border:none;}</style></head>
+      img{flex:1;max-width:100%;max-height:calc(100vh - 42px);object-fit:contain;margin:auto;display:block;}</style></head>
       <body>
       <div class="bar">
-        <span>${TYPE_ICON[r.type]||'📄'} ${esc(r.titre)}</span>
-        <button style="background:#555;color:#fff;margin-left:auto;" onclick="window.close()">✕</button>
+        <span>🖼️ ${esc(r.titre)}</span>
+        <button style="background:#3b82f6;color:#fff;" onclick="window.print()">🖨️ Imprimer</button>
+        <button style="background:#555;color:#fff;margin-left:auto;" onclick="window.close()">✕ Fermer</button>
       </div>
-      <iframe src="${viewerUrl}"></iframe>
+      <img src="${esc(r.url)}" alt="${esc(r.titre)}">
       </body></html>`);
     win.document.close();
+    return;
   }
+
+  // Pour PDF, Word, Excel, TXT : Google Docs Viewer (affiche sans télécharger, impression possible)
+  const viewerUrl = 'https://docs.google.com/viewer?url=' + encodeURIComponent(r.url) + '&embedded=true';
+  const win = window.open('','_blank','width=920,height=750,scrollbars=yes');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${esc(r.titre)}</title>
+    <style>
+      *{margin:0;padding:0;}
+      body{background:#222;display:flex;flex-direction:column;height:100vh;font-family:sans-serif;}
+      .bar{background:#1e293b;padding:9px 14px;display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;flex-shrink:0;border-bottom:1px solid #334;}
+      .bar .title{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+      .bar button{padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;}
+      iframe{flex:1;width:100%;border:none;background:#fff;}
+      .loading{position:absolute;inset:0;top:42px;display:flex;align-items:center;justify-content:center;background:#222;color:#94a3b8;font-size:14px;flex-direction:column;gap:10px;}
+      .spinner{width:32px;height:32px;border:3px solid #334;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;}
+      @keyframes spin{to{transform:rotate(360deg);}}
+    </style></head>
+    <body>
+    <div class="bar">
+      <span>${TYPE_ICON[r.type]||'📄'}</span>
+      <span class="title">${esc(r.titre)}</span>
+      <button style="background:#3b82f6;color:#fff;" onclick="printFrame()">🖨️ Imprimer</button>
+      <button style="background:#475569;color:#fff;" onclick="window.close()">✕ Fermer</button>
+    </div>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span>Chargement du document...</span>
+    </div>
+    <iframe id="frame" src="${viewerUrl}"
+      onload="document.getElementById('loading').style.display='none'"></iframe>
+    <script>
+      // TYPE_ICON passé en dur pour la fenêtre enfant
+      const TYPE_ICON = ${JSON.stringify(TYPE_ICON)};
+      function printFrame() {
+        // Google Docs Viewer : ouvrir l'URL originale dans un onglet pour imprimer
+        const printWin = window.open('${esc(r.url)}', '_blank');
+        if (printWin) {
+          printWin.onload = () => { try{ printWin.print(); } catch(e){} };
+        }
+      }
+    <\/script>
+    </body></html>`);
+  win.document.close();
 }
 
 // ════════════════════════════════════════════════════════
@@ -987,6 +1044,77 @@ function openCoursDoc(coursId) {
     data.ressources.push({...fakeRes,id:tmpId});
   }
   openDoc(tmpId);
+}
+
+// ════════════════════════════════════════════════════════
+// NOTES
+// ════════════════════════════════════════════════════════
+function renderNotes() {
+  const cl = eleve.classe||eleve.level;
+
+  // Les notes sont stockées dans notesEns (format {teacherId:[{id,title,date,level,notes:{eleveId:val}}]})
+  // On cherche dans toutes les sources disponibles
+  let allNotes = [];
+
+  // Format nouveau (notes.json) : objet {teacherId: [{...}]}
+  if (data.notes && typeof data.notes === 'object' && !Array.isArray(data.notes)) {
+    Object.values(data.notes).forEach(arr=>{
+      (arr||[]).filter(n=>(n.level||n.classe)===cl).forEach(n=>{
+        const myVal = n.notes?.[eleve.id];
+        if (myVal!==undefined) allNotes.push({titre:n.title||n.titre,date:n.date,note:myVal});
+      });
+    });
+  }
+
+  // Fallback : notesEns depuis melec-data.json (chargé dans data.notesEns)
+  if (!allNotes.length && data.notesEns) {
+    Object.values(data.notesEns).forEach(arr=>{
+      (arr||[]).filter(n=>n.level===cl).forEach(n=>{
+        const myVal = n.notes?.[eleve.id];
+        if (myVal!==undefined) allNotes.push({titre:n.title,date:n.date,note:myVal});
+      });
+    });
+  }
+
+  allNotes.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+
+  // Calcul moyenne (valeurs numériques uniquement)
+  const nums = allNotes.map(n=>parseFloat(n.note)).filter(v=>!isNaN(v));
+  const moy  = nums.length ? (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(1) : null;
+
+  setContent(`
+    <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px;">
+      Mes notes — ${CLASSES[cl]||cl}
+    </div>
+
+    ${moy!==null?`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;">
+      <div style="text-align:center;">
+        <div style="font-family:var(--display);font-size:32px;font-weight:800;color:${parseFloat(moy)>=10?'var(--green)':'var(--red)'};">${moy}</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Moyenne</div>
+      </div>
+      <div style="flex:1;font-size:12px;color:var(--text2);">${nums.length} note${nums.length>1?'s':''} sur ${allNotes.length} évaluation${allNotes.length>1?'s':''}</div>
+    </div>`:
+    '<div class="warn-box" style="margin-bottom:14px;">Aucune note enregistrée pour le moment.</div>'}
+
+    <div style="display:flex;flex-direction:column;gap:7px;">
+      ${allNotes.length ? allNotes.map(n=>{
+        const num = parseFloat(n.note);
+        const isNum = !isNaN(num);
+        const color = !isNum ? 'var(--text3)' : num>=10 ? 'var(--green)' : 'var(--red)';
+        const bg    = !isNum ? 'var(--bg3)' : num>=10 ? '#14231a' : '#1f0a0a';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:500;">${esc(n.titre||'—')}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono);">${n.date||'—'}</div>
+          </div>
+          <div style="background:${bg};color:${color};padding:4px 12px;border-radius:8px;font-family:var(--display);font-size:16px;font-weight:800;flex-shrink:0;">
+            ${esc(String(n.note))}
+          </div>
+        </div>`;
+      }).join('') : ''}
+    </div>
+  `);
 }
 
 // ════════════════════════════════════════════════════════
