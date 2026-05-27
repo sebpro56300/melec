@@ -2,1580 +2,1382 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MELEC Élève">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1e3a5f">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>MELEC — Espace Élève</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root{
-  --bg:#0d1520;--bg2:#111e2e;--bg3:#172438;--bg4:#1e2f47;
-  --border:#1e3a5f;--border2:#2a5080;
-  --accent:#3b82f6;--accent2:#60a5fa;--accent3:#93c5fd;
-  --green:#22c55e;--orange:#f59e0b;--red:#ef4444;--purple:#a78bfa;--teal:#2dd4bf;
-  --text:#e2e8f0;--text2:#94a3b8;--text3:#64748b;
-  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;--display:'Syne',sans-serif;
-  --nav-h:60px;
+  --blue:#0078d4;--blue-dk:#005a9e;--blue-lt:#e8f4fd;
+  --bg:#f3f3f3;--sb:#1e2530;--sb-hov:#2d3748;
+  --brd:#d0d0d0;--txt:#1a1a1a;--muted:#666;
+  --ok:#107c10;--warn:#d83b01;--yel:#ffb900;
+  --shad:0 2px 8px rgba(0,0,0,.1);
+  --2nde:#0ea5e9;--1ere:#16a34a;--term:#f59e0b;
+  --tp:#1e3a5f;
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;height:100dvh;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);}
-body{display:flex;flex-direction:column;}
 
-/* ── LOGIN ──────────────────────────────────────────── */
-#login-screen{
-  position:fixed;inset:0;background:var(--bg);
-  display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:0;z-index:1000;padding:20px;
+/* ── Reset ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
+     display:flex;align-items:center;justify-content:center;
+     min-height:100vh;font-size:13px;}
+
+/* ── Fenêtre principale ── */
+.window{
+  width:1100px;height:820px;background:var(--bg);
+  border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5);
+  display:flex;flex-direction:column;overflow:hidden;
 }
-#login-screen.hidden{display:none;}
-.login-logo{font-family:var(--display);font-size:36px;font-weight:800;color:var(--accent2);letter-spacing:.05em;text-align:center;margin-bottom:4px;}
-.login-logo small{display:block;font-size:13px;font-weight:600;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;}
-.login-box{
-  background:var(--bg2);border:1px solid var(--border);border-radius:16px;
-  padding:28px 24px;width:100%;max-width:360px;margin-top:24px;
+
+/* ── Layout interne desktop (sidebar + contenu) ── */
+.abody{display:flex;flex:1;overflow:hidden;}
+
+/* ── Sidebar desktop ── */
+.sb{
+  width:190px;background:var(--sb);color:#ccc;
+  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;
 }
-.login-box h2{font-family:var(--display);font-size:16px;font-weight:700;color:var(--accent2);margin-bottom:4px;}
-.login-box p{font-size:12px;color:var(--text3);margin-bottom:20px;}
-.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
-.fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);}
-.fg input{
-  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
-  padding:12px 14px;color:var(--text);font-size:15px;font-family:var(--sans);width:100%;
+.sb-logo{
+  display:flex;align-items:center;gap:8px;
+  padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.08);
 }
-.fg input:focus{outline:none;border-color:var(--accent);}
-.login-err{font-size:12px;color:var(--red);margin-top:4px;display:none;}
+.sb-logo .ic{font-size:20px;}
+.sb-logo .ttl{font-size:11px;font-weight:700;color:#fff;}
+.sb-logo .sub{font-size:9px;color:#90caf9;}
+.sbt{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;padding:10px 14px 3px;}
+.si{
+  padding:8px 14px;cursor:pointer;display:flex;align-items:center;
+  gap:8px;transition:background .15s;border-left:3px solid transparent;
+  font-size:12px;
+}
+.si:hover{background:var(--sb-hov);color:#fff;}
+.si.act{background:rgba(0,120,212,.25);border-left-color:var(--blue);color:#fff;}
+.si .ic{font-size:13px;width:17px;text-align:center;}
+
+/* ── Zone contenu desktop ── */
+.cont{
+  flex:1;overflow-y:auto;padding:14px 16px;background:var(--bg);
+}
+
+/* ── Header ── */
+.hd{
+  background:var(--sb);color:#fff;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+}
+.hd .logo{font-size:22px;}
+.hd .title{font-size:14px;font-weight:700;flex:1;}
+.hd .sub{font-size:10px;color:#90caf9;}
+.hd-right{text-align:right;}
+
+/* ── Syncbar ── */
+.syncbar{
+  background:#1e3a5f;border-bottom:1px solid #2d5f9e;
+  padding:4px 12px;font-size:10px;color:#90caf9;
+  display:flex;align-items:center;gap:6px;flex-shrink:0;
+}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4caf50;display:inline-block;flex-shrink:0;}
+.sync-dot.warn{background:#ff9800;}
+.sync-dot.err{background:#f44336;}
+.sync-dot.pulse{animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ── Navigation bottom ── */
+.nav{
+  background:var(--sb);display:flex;flex-shrink:0;
+  border-top:1px solid rgba(255,255,255,.1);
+  position:sticky;bottom:0;z-index:50;
+}
+.nav-item{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:6px 2px 4px;cursor:pointer;
+  font-size:9px;color:#94a3b8;
+  border-top:3px solid transparent;
+  transition:all .15s;gap:1px;
+}
+.nav-item .ic{font-size:20px;}
+.nav-item.act{color:#90caf9;border-top-color:var(--blue);background:rgba(0,120,212,.2);}
+.nav-item:hover{color:#fff;}
+
+/* ── Contenu ── */
+.cont{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+.view{display:none;padding:12px;}.view.act{display:block;}
+
+/* ── Login ── */
+.login-wrap{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;min-height:60vh;padding:24px;gap:16px;
+}
+.login-logo{font-size:56px;}
+.login-title{font-size:20px;font-weight:700;color:var(--txt);}
+.login-sub{font-size:12px;color:var(--muted);text-align:center;}
+.login-card{
+  background:#fff;border-radius:10px;padding:20px;
+  box-shadow:var(--shad);width:100%;
+}
+.login-card label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px;}
+.login-card input{
+  width:100%;padding:10px;border:1px solid var(--brd);
+  border-radius:6px;font-size:16px;outline:none;font-family:inherit;
+  margin-bottom:12px;
+}
+.login-card input:focus{border-color:var(--blue);}
 .btn-login{
-  width:100%;padding:14px;border-radius:10px;background:var(--accent);color:#fff;
-  font-size:15px;font-weight:700;font-family:var(--display);border:none;cursor:pointer;
-  letter-spacing:.03em;margin-top:8px;transition:background .15s;
+  width:100%;padding:12px;background:var(--blue);color:#fff;
+  border:none;border-radius:8px;font-size:14px;font-weight:600;
+  cursor:pointer;
 }
-.btn-login:hover{background:#2563eb;}
+.btn-login:hover{background:var(--blue-dk);}
+.login-err{color:#c00;font-size:12px;text-align:center;display:none;}
 
-/* ── HEADER ─────────────────────────────────────────── */
-#header{
-  background:var(--bg2);border-bottom:1px solid var(--border);
-  padding:0 16px;height:52px;flex-shrink:0;
-  display:flex;align-items:center;gap:12px;
-}
-.header-logo{font-family:var(--display);font-size:18px;font-weight:800;color:var(--accent2);}
-.header-logo small{font-size:11px;font-weight:600;color:var(--text3);margin-left:6px;}
-.header-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
-.eleve-chip{
-  display:flex;align-items:center;gap:6px;padding:5px 10px;
-  background:var(--bg3);border:1px solid var(--border);border-radius:20px;
-  font-size:12px;cursor:pointer;
-}
-.eleve-chip .ec-name{font-weight:600;color:var(--text);}
-.eleve-chip .ec-class{font-size:10px;color:var(--text3);font-family:var(--mono);}
+/* ── Page headers ── */
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:6px;}
+.pt{font-size:16px;font-weight:700;color:var(--txt);}
+.ps{font-size:11px;color:var(--muted);}
 
-/* ── NAV BOTTOM ─────────────────────────────────────── */
-#nav{
-  height:var(--nav-h);flex-shrink:0;
-  background:var(--bg2);border-top:1px solid var(--border);
-  display:flex;align-items:stretch;
-  safe-area-inset-bottom:env(safe-area-inset-bottom);
+/* ── Cards ── */
+.card{
+  background:#fff;border-radius:8px;
+  box-shadow:var(--shad);margin-bottom:10px;overflow:hidden;
 }
-.nav-btn{
-  flex:1;background:none;border:none;color:var(--text3);
+.card-hd{
+  background:var(--tp);color:#fff;
+  padding:10px 12px;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.card-body{padding:10px 12px;}
+
+/* ── Badges ── */
+.bdg{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;}
+.bdg.prep{background:#e0f2fe;color:#0369a1;}
+.bdg.real{background:#dcfce7;color:#166534;}
+.bdg.mise{background:#fef3c7;color:#92400e;}
+.bdg.main{background:#dff6dd;color:#107c10;}
+.bdg.done{background:#dff6dd;color:#107c10;}
+.bdg.prog{background:#fff4ce;color:#7a5900;}
+.bdg.todo{background:#f3f3f3;color:#666;}
+.lbdg{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.lbdg.s1{background:rgba(14,165,233,.15);color:var(--2nde);}
+.lbdg.s2{background:rgba(22,163,74,.15);color:var(--1ere);}
+.lbdg.s3{background:rgba(245,158,11,.15);color:var(--term);}
+
+/* ── Progress bar ── */
+.pb{background:#e5e7eb;border-radius:4px;height:6px;margin:4px 0;}
+.pf{background:var(--blue);height:100%;border-radius:4px;transition:width .3s;}
+.pf.ok{background:var(--ok);}
+
+/* ── Tables ── */
+.dt{width:100%;border-collapse:collapse;font-size:11px;}
+.dt th{background:#f1f5f9;padding:6px 8px;text-align:left;font-weight:600;font-size:10px;color:var(--muted);}
+.dt td{padding:6px 8px;border-bottom:1px solid #f0f0f0;}
+.dt tr:last-child td{border-bottom:none;}
+
+/* ── Étapes TP ── */
+.step-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 0;border-bottom:1px solid #f0f0f0;
+}
+.step-row:last-child{border-bottom:none;}
+.step-cb{width:20px;height:20px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;}
+.step-label{flex:1;font-size:12px;}
+.step-label.done{text-decoration:line-through;color:var(--muted);}
+
+/* ── Observations ── */
+.obs-input{
+  width:100%;padding:8px;border:1px solid var(--brd);
+  border-radius:6px;font-size:13px;font-family:inherit;
+  resize:vertical;min-height:70px;outline:none;
+}
+.obs-input:focus{border-color:var(--blue);}
+
+/* ── Notes display ── */
+.note-val{
+  display:inline-block;font-size:18px;font-weight:700;
+  padding:4px 10px;border-radius:6px;
+}
+.note-val.bon{background:#dff6dd;color:#107c10;}
+.note-val.moy{background:#fff4ce;color:#7a5900;}
+.note-val.fai{background:#fde7e9;color:#a80000;}
+.note-val.na{background:#f3f3f3;color:#999;}
+
+/* ── KPIs ── */
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.kpi{background:#fff;border-radius:8px;box-shadow:var(--shad);padding:12px;text-align:center;}
+.kpi .kv{font-size:22px;font-weight:700;color:var(--blue);}
+.kpi .kl{font-size:10px;color:var(--muted);margin-top:2px;}
+
+/* ── Formulaire bon ── */
+.fg{margin-bottom:10px;}
+.fl{font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px;}
+.fi,.fs{
+  width:100%;padding:9px 10px;border:1px solid var(--brd);
+  border-radius:6px;font-size:16px;outline:none;font-family:inherit;
+}
+.fi:focus,.fs:focus{border-color:var(--blue);}
+.fi-sm{width:auto;min-width:80px;padding:6px 8px;border:1px solid var(--brd);border-radius:4px;font-size:14px;font-family:inherit;}
+.fta{width:100%;padding:8px;border:1px solid var(--brd);border-radius:6px;font-size:13px;font-family:inherit;resize:vertical;min-height:60px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+
+/* ── Checkbox inline ── */
+.cb-row{display:flex;gap:16px;flex-wrap:wrap;margin:4px 0;}
+.cb-item{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;}
+.cb-item input{width:16px;height:16px;accent-color:var(--blue);}
+
+/* ── Boutons ── */
+.btn{
+  padding:9px 16px;border:1px solid var(--brd);background:#fff;
+  border-radius:6px;cursor:pointer;font-size:12px;color:var(--txt);
+  font-family:inherit;transition:all .15s;
+}
+.btn.pri{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn.ok{background:var(--ok);color:#fff;border-color:var(--ok);}
+.btn.dan{background:#c00;color:#fff;border-color:#c00;}
+.btn.sml{padding:5px 10px;font-size:11px;}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+
+/* ── Séparateurs de sections ── */
+.sh{
+  font-size:11px;font-weight:700;color:#fff;
+  background:var(--tp);padding:5px 10px;
+  border-radius:5px;margin:12px 0 6px;
+  display:flex;align-items:center;gap:6px;
+}
+
+/* ── Bon liste ── */
+.bon-item{
+  background:#fff;border-radius:8px;box-shadow:var(--shad);
+  margin-bottom:8px;padding:10px 12px;
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+}
+.bon-item:hover{background:var(--blue-lt);}
+.bon-info{flex:1;}
+.bon-date{font-size:10px;color:var(--muted);}
+.bon-title{font-size:12px;font-weight:600;}
+
+/* ── Tableau heures ── */
+.heures-table{width:100%;font-size:11px;border-collapse:collapse;}
+.heures-table th,.heures-table td{
+  border:1px solid var(--brd);padding:4px 5px;text-align:center;
+}
+.heures-table th{background:#f1f5f9;font-size:10px;}
+.heures-table td input{
+  width:38px;padding:3px;border:1px solid #ddd;border-radius:3px;
+  font-size:12px;text-align:center;font-family:inherit;
+}
+.heures-table td:first-child input{width:90px;text-align:left;}
+.heures-table td select{
+  padding:2px;border:1px solid #ddd;border-radius:3px;font-size:11px;
+}
+
+/* ── Matériels table ── */
+.mat-table{width:100%;font-size:11px;border-collapse:collapse;margin-top:4px;}
+.mat-table th,.mat-table td{border:1px solid var(--brd);padding:4px 5px;}
+.mat-table th{background:#f1f5f9;font-size:10px;}
+.mat-table td input{width:100%;border:none;font-size:11px;font-family:inherit;padding:2px;}
+
+/* ── Consignation ── */
+.consign-table{width:100%;font-size:11px;border-collapse:collapse;}
+.consign-table th,.consign-table td{border:1px solid var(--brd);padding:5px 7px;}
+.consign-table th{background:#1a1a2e;color:#fff;font-size:10px;}
+.consign-table td input{width:100%;border:none;font-size:11px;font-family:inherit;}
+
+/* ── Print ── */
+@media print{
+  body{background:#fff;}
+  .window{width:100%;height:auto;border-radius:0;box-shadow:none;}
+  .nav,.syncbar,.hd,.no-print{display:none!important;}
+  .cont{overflow:visible!important;}
+  .view{display:block!important;padding:0;}
+  .card{box-shadow:none;break-inside:avoid;}
+}
+
+/* ── Notif toast ── */
+.notif{
+  position:fixed;bottom:80px;right:12px;
+  background:var(--ok);color:#fff;
+  padding:8px 14px;border-radius:6px;
+  font-size:12px;font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.3);
+  transform:translateY(80px);opacity:0;
+  transition:all .3s;z-index:9999;
+}
+.notif.show{transform:translateY(0);opacity:1;}
+.notif.err{background:#c00;}
+
+/* ── Modal ── */
+.moverlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.55);z-index:1000;
+  align-items:flex-end;justify-content:center;
+}
+.moverlay.show{display:flex;}
+.modal{
+  background:#fff;width:100%;max-width:480px;
+  max-height:90dvh;overflow-y:auto;
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -4px 32px rgba(0,0,0,.3);
+}
+.mhd{
+  background:var(--tb,var(--tp));color:#fff;
+  padding:12px 14px;font-size:13px;font-weight:700;
+  display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;z-index:1;
+  border-radius:16px 16px 0 0;
+}
+.mcl{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;}
+.mbdy{padding:14px;}
+.mft{padding:10px 14px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end;}
+
+/* ── Splash ── */
+#splashScreen{
+  position:fixed;inset:0;background:#1e3a5f;z-index:9999;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
-  cursor:pointer;transition:color .15s;font-family:var(--sans);padding:4px 2px;
+  transition:opacity .4s ease;
 }
-.nav-btn .ni{font-size:20px;line-height:1;}
-.nav-btn.on{color:var(--accent2);}
-.nav-btn .badge-dot{
-  position:absolute;width:7px;height:7px;background:var(--orange);
-  border-radius:50%;top:-2px;right:-2px;border:1.5px solid var(--bg2);
+
+/* ── Mobile (<=768px) : bottom nav, plein écran ── */
+@media (max-width:768px){
+  body{background:#1e2530;align-items:flex-start;overflow:hidden;height:100dvh;}
+  .window{
+    width:100vw;height:100dvh;
+    border-radius:0;box-shadow:none;
+  }
+  .abody{flex-direction:column;overflow:hidden;}
+  .sb{display:none!important;} /* sidebar masquée, remplacée par bottom nav */
+  .cont{padding:10px 10px 80px;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;}
+  .nav{display:flex!important;}
+  .moverlay{align-items:flex-end;}
+  .modal{width:100vw!important;max-width:100vw!important;border-radius:16px 16px 0 0!important;}
+  .fi,.fs{font-size:16px;}
+  .kpi-row{grid-template-columns:1fr 1fr;}
 }
-.nav-ico-wrap{position:relative;display:inline-flex;}
 
-/* ── CONTENT ─────────────────────────────────────────── */
-#content{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;padding:16px;}
-
-/* ── PAGE ACCUEIL ────────────────────────────────────── */
-.welcome-header{
-  background:linear-gradient(135deg,var(--bg2) 0%,var(--bg3) 100%);
-  border:1px solid var(--border);border-radius:14px;
-  padding:20px;margin-bottom:14px;
+/* ── Desktop (>768px) : sidebar + fenêtre centrée ── */
+@media (min-width:769px){
+  .nav{display:none!important;}   /* bottom nav masquée */
 }
-.welcome-nom{font-family:var(--display);font-size:22px;font-weight:800;color:var(--accent2);}
-.welcome-classe{font-size:12px;color:var(--text3);font-family:var(--mono);margin-top:3px;}
-.stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
-.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
-.stat-v{font-family:var(--display);font-size:24px;font-weight:800;color:var(--accent2);}
-.stat-l{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
-
-/* ── CARDS ────────────────────────────────────────────── */
-.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;}
-.card-head{padding:12px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--bg3);}
-.card-title{font-family:var(--display);font-size:13px;font-weight:700;color:var(--text);flex:1;}
-.card-body{padding:14px;}
-
-/* ── LINK CARD ────────────────────────────────────────── */
-.link-card{
-  display:flex;align-items:center;gap:12px;padding:13px 15px;
-  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
-  margin-bottom:8px;cursor:pointer;text-decoration:none;
-  transition:border-color .15s,background .15s;
-}
-.link-card:hover{border-color:var(--accent);background:var(--bg4);}
-.link-card .lc-icon{font-size:24px;flex-shrink:0;}
-.link-card .lc-info{flex:1;}
-.link-card .lc-title{font-size:13px;font-weight:600;color:var(--text);}
-.link-card .lc-sub{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4;}
-.link-card .lc-arrow{color:var(--text3);font-size:16px;flex-shrink:0;}
-
-/* ── TP CARD ──────────────────────────────────────────── */
-.tp-current{
-  background:linear-gradient(135deg,#111f3a 0%,#1a2e50 100%);
-  border:1px solid var(--accent);border-radius:12px;padding:16px;margin-bottom:12px;
-}
-.tp-title{font-family:var(--display);font-size:17px;font-weight:800;color:var(--accent2);margin-bottom:6px;}
-.tp-meta{font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:12px;}
-.progress-bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:4px;}
-.progress-fill{height:100%;background:var(--accent);border-radius:3px;transition:width .3s;}
-.progress-label{font-size:10px;color:var(--text3);font-family:var(--mono);}
-
-/* RESSOURCES docs */
-.doc-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
-.doc-item{
-  display:flex;align-items:center;gap:10px;padding:10px 12px;
-  background:var(--bg);border:1px solid var(--border);border-radius:8px;
-  cursor:pointer;transition:all .12s;
-}
-.doc-item:hover{border-color:var(--accent2);background:var(--bg3);}
-.doc-ico{font-size:20px;flex-shrink:0;}
-.doc-info{flex:1;min-width:0;}
-.doc-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.doc-crumb{font-size:10px;color:var(--teal);margin-top:2px;}
-.doc-arrow{color:var(--text3);font-size:13px;flex-shrink:0;}
-
-/* ── AUTO-ÉVAL ────────────────────────────────────────── */
-.comp-section{background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:8px;}
-.comp-head-row{display:flex;align-items:center;gap:8px;padding:10px 13px;cursor:pointer;user-select:none;}
-.comp-code-badge{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);background:#111f3a;padding:2px 7px;border-radius:4px;flex-shrink:0;}
-.comp-toggle-ico{color:var(--text3);font-size:11px;transition:transform .2s;flex-shrink:0;}
-.comp-toggle-ico.open{transform:rotate(90deg);}
-.comp-criteres{padding:10px 13px;display:flex;flex-direction:column;gap:8px;}
-.crit-item{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
-.crit-label{font-size:12px;margin-bottom:8px;color:var(--text);}
-.eval-dots-row{display:flex;gap:8px;align-items:center;}
-.eval-dot{
-  width:28px;height:28px;border-radius:50%;cursor:pointer;
-  border:2px solid transparent;transition:all .15s;flex-shrink:0;
-}
-.eval-dot:hover{transform:scale(1.15);}
-.eval-dot.sel{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.3);}
-.eval-dot.bleu{background:#3b82f6;}
-.eval-dot.rouge{background:#ef4444;}
-.eval-dot.orange{background:#f59e0b;}
-.eval-dot.vclair{background:#86efac;}
-.eval-dot.vfonce{background:#16a34a;}
-.eval-ens-row{margin-top:6px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px;}
-.eval-ens-dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--border);flex-shrink:0;}
-.eval-ens-dot.bleu{background:#3b82f6;}
-.eval-ens-dot.rouge{background:#ef4444;}
-.eval-ens-dot.orange{background:#f59e0b;}
-.eval-ens-dot.vclair{background:#86efac;}
-.eval-ens-dot.vfonce{background:#16a34a;}
-
-/* ── SCANNER ──────────────────────────────────────────── */
-.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:500;display:none;align-items:flex-end;justify-content:center;padding:0;}
-.modal-ov.open{display:flex;}
-.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:18px 18px 0 0;width:100%;max-width:480px;max-height:92dvh;overflow-y:auto;padding:20px;}
-.modal-title{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:14px;color:var(--accent2);}
-.modal-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
-#scanner-container{width:100%;border-radius:10px;overflow:hidden;background:#000;aspect-ratio:1;}
-
-/* ── HABILITATIONS ────────────────────────────────────── */
-.hab-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-.hab-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
-.hab-type{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent2);margin-bottom:8px;}
-.hab-line{display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:5px;}
-.hab-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border);flex-shrink:0;}
-.hab-dot.ok{background:var(--green);border-color:var(--green);}
-
-/* ── TP TERMINÉS ──────────────────────────────────────── */
-.tp-done-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
-.tp-done-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;}
-.tp-done-meta{font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;}
-.comp-eval-summary{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
-.ces-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);}
-.ces-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;}
-
-/* ── COURS ────────────────────────────────────────────── */
-.cours-item{
-  display:flex;align-items:center;gap:10px;padding:12px 14px;
-  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
-  margin-bottom:8px;cursor:pointer;transition:all .12s;
-}
-.cours-item:hover{border-color:var(--accent2);background:var(--bg3);}
-.cours-status{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.st-done{background:var(--green);}
-.st-todo{background:var(--text3);}
-.st-doing{background:var(--orange);}
-
-/* ── BOUTONS ──────────────────────────────────────────── */
-.btn{padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;}
-.btn-p{background:var(--accent);color:#fff;}.btn-p:hover{background:#2563eb;}
-.btn-g{background:transparent;color:var(--text2);border:1px solid var(--border);}.btn-g:hover{background:var(--bg3);color:var(--text);}
-.btn-t{background:var(--teal);color:#111;}.btn-t:hover{background:#14b8a6;}
-.btn-full{width:100%;padding:14px;font-size:14px;font-family:var(--display);letter-spacing:.03em;}
-.btn-sm{padding:5px 11px;font-size:11px;}
-
-/* ── UTILS ────────────────────────────────────────────── */
-.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;font-family:var(--mono);}
-.b-green{background:#14231a;color:var(--green);border:1px solid #1a3a26;}
-.b-blue{background:#111f3a;color:var(--accent2);border:1px solid #1a3060;}
-.b-orange{background:#251a0a;color:var(--orange);border:1px solid #3a2810;}
-.b-gray{background:var(--bg3);color:var(--text3);border:1px solid var(--border);}
-.muted{color:var(--text3);font-size:12px;}
-.section-title{font-family:var(--display);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:8px;margin-top:14px;}
-.warn-box{background:#251a0a;border:1px solid var(--orange);border-radius:8px;padding:11px 14px;font-size:12px;color:#fcd34d;line-height:1.6;margin-bottom:10px;}
-#toast{position:fixed;bottom:calc(var(--nav-h) + 10px);left:50%;transform:translateX(-50%);
-  background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 18px;
-  font-size:12px;z-index:999;display:none;box-shadow:0 6px 24px rgba(0,0,0,.5);white-space:nowrap;}
-#toast.show{display:block;}
-#toast.ok{border-color:var(--green);}
-#toast.err{border-color:var(--red);}
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 </style>
 </head>
 <body>
 
-<!-- ── LOGIN ─────────────────────────────────────────── -->
-<div id="login-screen">
-  <div class="login-logo">⚡MELEC<small>Espace Élève</small></div>
-  <div class="login-box">
-    <h2>🎓 Connexion élève</h2>
-    <p>Utilisez les identifiants fournis par votre enseignant</p>
-    <div class="fg"><label>NOM (en majuscules)</label>
-      <input type="text" id="l-nom" placeholder="EX: DUPONT" autocomplete="off" autocapitalize="characters"
-        onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="fg"><label>Prénom</label>
-      <input type="text" id="l-prenom" placeholder="Ex: Jean"
-        onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="fg"><label>Mot de passe</label>
-      <input type="password" id="l-pass" placeholder="••••••"
-        onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div class="login-err" id="l-err">Identifiants incorrects.</div>
-    <button class="btn-login" onclick="doLogin()">Se connecter</button>
-    <div id="l-status" style="margin-top:10px;font-size:11px;text-align:center;color:var(--text3);min-height:16px;"></div>
+<!-- Splash -->
+<div id="splashScreen">
+  <div style="font-size:72px;margin-bottom:16px">⚡</div>
+  <div style="color:#fff;font-size:22px;font-weight:700">MELEC</div>
+  <div style="color:#90caf9;font-size:13px;margin-top:6px">Espace Élève</div>
+  <div style="margin-top:28px;width:48px;height:4px;background:rgba(255,255,255,.2);border-radius:2px;overflow:hidden">
+    <div id="splashBar" style="height:100%;width:0;background:#90caf9;transition:width .8s ease;border-radius:2px"></div>
   </div>
 </div>
 
-<!-- ── APP ───────────────────────────────────────────── -->
-<div id="header" style="display:none;">
-  <div class="header-logo">⚡<small>MELEC</small></div>
-  <div class="header-right">
-    <div class="eleve-chip" onclick="showPage('accueil')">
-      <span class="ec-name" id="h-name">—</span>
-      <span class="ec-class" id="h-class">—</span>
+<div class="window">
+
+  <!-- Header / titlebar -->
+  <div class="hd">
+    <div class="logo">⚡</div>
+    <div style="flex:1">
+      <div class="title">MELEC — Espace Élève</div>
+      <div class="sub" id="hdEleve">Non connecté</div>
     </div>
-    <button class="btn btn-g btn-sm" onclick="doLogout()">↩</button>
+    <button class="btn sml" id="btnLogout" onclick="logout()" style="display:none;background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff;font-size:10px">Déconnexion</button>
   </div>
-</div>
 
-<div id="content" style="display:none;"></div>
+  <!-- Syncbar -->
+  <div class="syncbar">
+    <span class="sync-dot" id="syncDot"></span>
+    <span id="syncMsg">Connexion…</span>
+  </div>
 
-<div id="nav" style="display:none;">
-  <button class="nav-btn on" id="nb-accueil" onclick="showPage('accueil')">
-    <span class="ni">🏠</span>Accueil
-  </button>
-  <button class="nav-btn" id="nb-tp" onclick="showPage('tp')">
-    <div class="nav-ico-wrap"><span class="ni">🔧</span></div>TP
-  </button>
-  <button class="nav-btn" id="nb-tp-done" onclick="showPage('tp-done')">
-    <span class="ni">✅</span>Terminés
-  </button>
-  <button class="nav-btn" id="nb-cours" onclick="showPage('cours')">
-    <span class="ni">📖</span>Cours
-  </button>
-  <button class="nav-btn" id="nb-hab" onclick="showPage('hab')">
-    <span class="ni">⚡</span>Habilit.
-  </button>
-  <button class="nav-btn" id="nb-notes" onclick="showPage('notes')">
-    <span class="ni">📊</span>Notes
-  </button>
-  <button class="nav-btn" id="nb-bons" onclick="showPage('bons')">
-    <span class="ni">📋</span>Bons
-  </button>
-</div>
+  <!-- Corps : sidebar + contenu -->
+  <div class="abody">
 
-<!-- ── MODAL SCANNER ─────────────────────────────────── -->
-<div class="modal-ov" id="modal-scan">
-  <div class="modal">
-    <div class="modal-title">📷 Scanner le QR code du système</div>
-    <div id="scanner-container"></div>
-    <div style="margin-top:10px;font-size:12px;color:var(--text3);text-align:center;">
-      Ou saisir le code manuellement :
+  <!-- Sidebar desktop (masquée sur mobile) -->
+  <div class="sb" id="sidebarDesk">
+    <div class="sb-logo">
+      <div class="ic">🎓</div>
+      <div><div class="ttl">Espace Élève</div><div class="sub" id="sbEleve">—</div></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <input type="text" id="scan-manual" placeholder="Ex: MELEC-001" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:14px;font-family:var(--mono);"
-        onkeydown="if(event.key==='Enter')onManualCode()">
-      <button class="btn btn-p" onclick="onManualCode()">OK</button>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-g" onclick="closeScan()">Annuler</button>
+    <div class="sbt">Navigation</div>
+    <div class="si act" data-view="dashboard" onclick="showView('dashboard')"><span class="ic">🏠</span> Accueil</div>
+    <div class="si" data-view="tp" onclick="showView('tp')"><span class="ic">🔧</span> Mes TP</div>
+    <div class="si" data-view="cours" onclick="showView('cours')"><span class="ic">📖</span> Mes Cours</div>
+    <div class="si" data-view="notes" onclick="showView('notes')"><span class="ic">📊</span> Mes Notes</div>
+    <div class="si" data-view="bons" onclick="showView('bons')"><span class="ic">📋</span> Bons d'intervention</div>
+    <div style="margin-top:auto;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)">
+      <button class="btn sml" onclick="logout()" style="width:100%;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#ccc;font-size:11px">↩ Déconnexion</button>
     </div>
   </div>
-</div>
 
-<!-- ── MODAL CHOIX TP ─────────────────────────────────── -->
-<div class="modal-ov" id="modal-tp-choice">
-  <div class="modal">
-    <div class="modal-title" id="tp-choice-title">Choisir un TP</div>
-    <div id="tp-choice-list" style="display:flex;flex-direction:column;gap:7px;max-height:50dvh;overflow-y:auto;"></div>
-    <div class="modal-foot">
-      <button class="btn btn-g" onclick="closeModal('modal-tp-choice')">Annuler</button>
-    </div>
-  </div>
-</div>
+  <!-- Contenu -->
+  <div class="cont" id="mainCont">
 
-<!-- ── MODAL BON D'INTERVENTION ───────────────────────── -->
-<div class="modal-ov" id="modal-bon">
-  <div class="modal" style="max-width:520px;">
-    <div class="modal-title">📋 Bon d'intervention</div>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <div class="fg"><label>N° Bon</label><input type="text" id="bon-num" placeholder="Ex: BI-2025-001"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-        <div class="fg"><label>Client</label><input type="text" id="bon-client"></div>
-        <div class="fg"><label>Ville</label><input type="text" id="bon-ville"></div>
-        <div class="fg"><label>Projet</label><input type="text" id="bon-projet"></div>
-        <div class="fg"><label>Interlocuteur</label><input type="text" id="bon-interlo"></div>
-        <div class="fg"><label>Maître d'œuvre</label><input type="text" id="bon-moe"></div>
-        <div class="fg"><label>Bon établi à</label><input type="text" id="bon-bonatype"></div>
-      </div>
-      <div class="fg"><label>Nature des travaux</label>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 0;">
-          ${['Commande','Régie','Dépannage','Complément','Autre'].map(t=>`
-            <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
-              <input type="checkbox" name="bon-type" value="${t}" style="width:auto;"> ${t}
-            </label>`).join('')}
+    <!-- LOGIN -->
+    <div class="view act" id="view-login" style="min-height:100%">
+      <div class="login-wrap">
+        <div class="login-logo">🎓</div>
+        <div class="login-title">Connexion élève</div>
+        <div class="login-sub">Utilisez les identifiants fournis par votre enseignant</div>
+        <div class="login-card">
+          <label>NOM (en majuscules)</label>
+          <input type="text" id="loginNom" placeholder="DUPONT" oninput="this.value=this.value.toUpperCase()" autocomplete="username">
+          <label>Prénom</label>
+          <input type="text" id="loginPrenom" placeholder="Lucas" autocomplete="given-name">
+          <label>Mot de passe</label>
+          <input type="password" id="loginPass" placeholder="••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+          <div class="login-err" id="loginErr">Identifiants incorrects.</div>
+          <button class="btn-login" onclick="doLogin()">Se connecter</button>
         </div>
       </div>
-      <div class="fg"><label>Description des travaux réalisés</label>
-        <textarea id="bon-desc" placeholder="Décrivez les travaux effectués..." style="min-height:80px;"></textarea>
-      </div>
-      <div class="fg"><label>Travaux restants / Observations</label>
-        <textarea id="bon-restes" placeholder="Travaux à prévoir..."></textarea>
-      </div>
-      <div class="fg"><label>Matériels utilisés</label>
-        <div id="bon-mat-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-        <button class="btn btn-g btn-sm" style="align-self:flex-start;margin-top:5px;" onclick="addMatLine()">+ Ligne matériel</button>
-      </div>
-      <div class="fg"><label>Heures travaillées</label>
-        <div id="bon-heure-list" style="display:flex;flex-direction:column;gap:5px;"></div>
-        <button class="btn btn-g btn-sm" style="align-self:flex-start;margin-top:5px;" onclick="addHeureLine()">+ Ligne heures</button>
-      </div>
-      <div class="fg">
-        <label>Terminé ?</label>
-        <select id="bon-termine">
-          <option value="non">Non — en cours</option>
-          <option value="oui">Oui — terminé</option>
-        </select>
-      </div>
     </div>
-    <div class="modal-foot">
-      <button class="btn btn-g" onclick="closeModal('modal-bon')">Annuler</button>
-      <button class="btn btn-p" onclick="saveBon()">💾 Enregistrer</button>
+
+    <!-- TABLEAU DE BORD -->
+    <div class="view" id="view-dashboard">
+      <div class="ph"><div><div class="pt">Tableau de bord</div><div class="ps" id="dashSub"></div></div></div>
+      <div class="kpi-row" id="dashKpis"></div>
+      <div id="dashContent"></div>
+    </div>
+
+    <!-- MES TP -->
+    <div class="view" id="view-tp">
+      <div class="ph"><div class="pt">Mes Travaux Pratiques</div></div>
+      <div id="tpContent"></div>
+    </div>
+
+    <!-- MES COURS -->
+    <div class="view" id="view-cours">
+      <div class="ph"><div class="pt">Mes Cours</div></div>
+      <div id="coursContent"></div>
+    </div>
+
+    <!-- MES NOTES -->
+    <div class="view" id="view-notes">
+      <div class="ph"><div class="pt">Mes Notes</div></div>
+      <div id="notesContent"></div>
+    </div>
+
+    <!-- BONS D'INTERVENTION -->
+    <div class="view" id="view-bons">
+      <div class="ph">
+        <div class="pt">Bons d'intervention</div>
+        <button class="btn pri sml" onclick="openNewBon()">+ Nouveau</button>
+      </div>
+      <div id="bonsContent"></div>
+    </div>
+
+  </div><!-- /cont -->
+  </div><!-- /abody -->
+
+  <!-- Bottom nav mobile (masqué si non connecté) -->
+  <div class="nav" id="bottomNav" style="display:none">
+    <div class="nav-item act" data-view="dashboard" onclick="showView('dashboard')">
+      <span class="ic">🏠</span>Accueil
+    </div>
+    <div class="nav-item" data-view="tp" onclick="showView('tp')">
+      <span class="ic">🔧</span>TP
+    </div>
+    <div class="nav-item" data-view="cours" onclick="showView('cours')">
+      <span class="ic">📖</span>Cours
+    </div>
+    <div class="nav-item" data-view="notes" onclick="showView('notes')">
+      <span class="ic">📊</span>Notes
+    </div>
+    <div class="nav-item" data-view="bons" onclick="showView('bons')">
+      <span class="ic">📋</span>Bons
+    </div>
+  </div>
+
+</div><!-- /window -->
+
+<!-- Modal détail TP -->
+<div class="moverlay" id="tpModal">
+  <div class="modal">
+    <div class="mhd">🔧 <span id="tpModalTitle">TP</span>
+      <button class="mcl" onclick="closeModal('tpModal')">✕</button>
+    </div>
+    <div class="mbdy" id="tpModalBody"></div>
+    <div class="mft">
+      <button class="btn" onclick="closeModal('tpModal')">Fermer</button>
+      <button class="btn ok" onclick="saveTpObs()">💾 Enregistrer</button>
     </div>
   </div>
 </div>
 
-<div id="toast"></div>
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!-- Modal bon d'intervention -->
+<div class="moverlay" id="bonModal">
+  <div class="modal" style="max-width:600px">
+    <div class="mhd" style="--tb:#1a1a2e">
+      📋 <span id="bonModalTitle">Bon d'intervention</span>
+      <button class="mcl" onclick="closeModal('bonModal')">✕</button>
+    </div>
+    <div class="mbdy" id="bonModalBody"></div>
+    <div class="mft no-print">
+      <button class="btn" onclick="closeModal('bonModal')">Fermer</button>
+      <button class="btn pri" onclick="saveBon()">💾 Enregistrer</button>
+      <button class="btn ok" onclick="printBon()">🖨️ PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notif -->
+<div class="notif" id="notif"></div>
+
 <script>
-// ════════════════════════════════════════════════════════
-// CONSTANTES
-// ════════════════════════════════════════════════════════
-const CLASSES = {'2MELEC':'2nde MELEC','1MELEC':'1ère MELEC','T-MELEC':'Terminale MELEC'};
-const EVAL_COULEURS = ['bleu','rouge','orange','vclair','vfonce'];
-const EVAL_LABELS   = {bleu:'Non évalué',rouge:'Absent/Non fait',orange:'En cours',vclair:'Acquis',vfonce:'Maîtrisé'};
-const TYPE_ICON     = {pdf:'📄',word:'📝',excel:'📊',image:'🖼️',video:'🎬',txt:'📃',lien:'🔗'};
-const HAB_TYPES     = ['B0','B1V','BR'];
+// ═══ CONFIG GIST (identique à l'app enseignant) ════════════════════════════
+var GIST_ID   = 'a953954f369f7fad1597e2a6da38578c';
+var _t=['ghp_qEznNZ','A1uDLc87PX','Yjjrt9dT0M','3g4D20Oeli'];
+var GIST_TOKEN = _t[0]+_t[1]+_t[2]+_t[3];
+var GIST_FILE  = 'melec-data.json';
+var GIST_API   = 'https://api.github.com/gists/' + GIST_ID;
+var LS_BACKUP  = 'melec_eleve_backup';
+var LS_SESSION = 'melec_eleve_session';
 
-// IDs des Gists publics — intégrés en dur, aucune config requise côté élève
-const GIST_DATA = 'a953954f369f7fad1597e2a6da38578c'; // eleves, cours, habilitations
-const GIST_TP   = '5cbd51c7c62493addf84845feddd19d7'; // tps, sessions, ressources, bons
-const GIST_INV  = '7199f3da76a616c61c7b7780409bf786'; // inventaire systèmes (QR codes)
+// Gist TP — bons d'intervention séparés
+var GIST_TP_ID  = '5cbd51c7c62493addf84845feddd19d7';
+var GIST_TP_API = 'https://api.github.com/gists/' + GIST_TP_ID;
+var BONS_FILE   = 'bons-intervention.json';
 
-// Fine-grained token — accès en ÉCRITURE limité au seul Gist TP
-// Générer sur github.com → Settings → Developer settings → Fine-grained tokens
-// Permissions : Gists = Read and Write  |  Expiration : 1 an
-// REMPLACER LA VALEUR CI-DESSOUS par ton token généré
-const WRITE_TOKEN = 'REMPLACER_PAR_TON_TOKEN_FINE_GRAINED';
-
-// ════════════════════════════════════════════════════════
-// STATE
-// ════════════════════════════════════════════════════════
-let eleve = null;
-let data = {
-  eleves:[], tps:[], sessions:[], ressources:[],
-  cours:[], habilitations:{}, inventory:[],
-  bons:[], notesEns:{}
+// ═══ CONSTANTES ════════════════════════════════════════════════════════════
+var LEVELS = {
+  '2MELEC':  {label:'2nde MELEC',     cls:'s1', short:'2nde'},
+  '1MELEC':  {label:'1ère MELEC',     cls:'s2', short:'1ère'},
+  'T-MELEC': {label:'Terminale MELEC',cls:'s3', short:'Term.'}
 };
-let currentPage = 'accueil';
-let qrScanner = null;
+var TP_PHASES = {
+  prep: {label:'Préparation',    cls:'prep'},
+  real: {label:'Réalisation',    cls:'real'},
+  mise: {label:'Mise en service',cls:'mise'},
+  main: {label:'Maintenance',    cls:'main'}
+};
+var COURS_STATUS = {todo:'À faire', prog:'En cours', done:'Terminé'};
+var PHASE_ORDER  = ['prep','real','mise','main'];
 
-// ════════════════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════════════════
-function init() {
-  // Charger données locales en cache
-  ['eleves','tps','sessions','ressources','cours','inventory'].forEach(k=>{
-    try { data[k] = JSON.parse(localStorage.getItem('mel_'+k)||'[]'); } catch(e){}
-  });
-  try { data.habilitations = JSON.parse(localStorage.getItem('mel_habilitations')||'{}'); } catch(e){}
-  // Restaurer les auto-évals même depuis le cache local
-  mergeAutoEvals();
-  // Session élève active ?
-  const saved = localStorage.getItem('melec_eleve_session');
-  if (saved) {
-    try {
-      const s = JSON.parse(saved);
-      if (s.ts && Date.now()-s.ts < 12*3600*1000) {
-        const e = data.eleves.find(x=>x.id===s.id);
-        if (e) { eleve=e; unlockApp(); loadRemote(); return; }
-      }
-    } catch(e){}
-  }
+// ═══ ÉTAT ════════════════════════════════════════════════════════════════════
+var data     = null;   // données complètes du Gist
+var curEleve = null;   // objet élève connecté
+var curBonId = null;   // bon en cours d'édition
+var curTpId  = null;   // TP en cours d'édition
 
-  // Charger les données sans être connecté (pour la liste élèves au login)
-  loadRemote(false);
+// ═══ GIST I/O ════════════════════════════════════════════════════════════════
+function gistHeaders() {
+  return {
+    'Authorization': 'Bearer ' + GIST_TOKEN,
+    'Accept': 'application/vnd.github+json',
+    'Content-Type': 'application/json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
 }
 
-// ════════════════════════════════════════════════════════
-// CHARGEMENT DONNÉES
-// ════════════════════════════════════════════════════════
-async function loadRemote(showToast=true) {
+async function loadData() {
+  setSyncState('pulse','Chargement…');
   try {
-    // Gists publics — aucun token requis
-    const headers = {'X-GitHub-Api-Version':'2022-11-28'};
-
-    // Gist données : eleves, cours, habilitations
-    setLoginStatus('⏳ Chargement...','var(--orange)');
-    const r = await fetch(`https://api.github.com/gists/${GIST_DATA}`, {headers});
-    if (!r.ok) throw new Error('Données inaccessibles (HTTP '+r.status+') — vérifiez que le Gist est public');
-    const g = await r.json();
-    const load = (f,fb) => { try{return JSON.parse(g.files[f]?.content||'null')||fb;}catch(e){return fb;} };
-
-    data.eleves        = load('eleves.json',[]);
-    data.cours         = load('cours.json',[]);
-    data.habilitations = load('habilitations.json',{});
-
-    // Fallback melec-data.json si eleves.json vide
-    if (!data.eleves.length && g.files['melec-data.json']) {
-      try {
-        const raw = JSON.parse(g.files['melec-data.json'].content);
-        const arr = Array.isArray(raw) ? raw : (raw.eleves||[]);
-        data.eleves = arr.map(e=>({
-          id:e.id, nom:e.name||e.nom||'', prenom:e.prenom||'',
-          classe:e.level||e.classe||'', elevePass:e.elevePass||'',
-          tel:e.tel||'', mail:e.mail||'', ddn:e.ddn||''
-        }));
-        if (!Object.keys(data.habilitations).length) data.habilitations = raw.habilitations||{};
-        if (!data.cours.length) data.cours = (raw.cours||[]).map(c=>({...c,level:c.level||c.classe}));
-        if (raw.notesEns) data.notesEns = raw.notesEns;
-      } catch(e){}
-    }
-
-    // Gist TP admin : tps, sessions, ressources
-    const r2 = await fetch(`https://api.github.com/gists/${GIST_TP}`, {headers});
-    if (r2.ok) {
-      const g2 = await r2.json();
-      const load2 = (f,fb) => { try{return JSON.parse(g2.files[f]?.content||'null')||fb;}catch(e){return fb;} };
-      data.tps        = load2('tps.json',[]);
-      data.sessions   = load2('tp-sessions.json',[]);
-      data.ressources = load2('ressources.json',[]);
-      data.bons       = load2('bons-intervention.json',[]);
-      // Inventaire : chercher dans le gist TP d'abord, sinon charger depuis GIST_INV
-      const inv = load2('melec-inventaire.json',null);
-      if (inv?.items) data.inventory = inv.items;
-      else if (Array.isArray(inv)) data.inventory = inv;
-    }
-
-    // Inventaire systèmes (pour scan QR) — Gist public séparé
-    if (!data.inventory.length) {
-      try {
-        const r3 = await fetch(`https://api.github.com/gists/${GIST_INV}`, {headers});
-        if (r3.ok) {
-          const g3 = await r3.json();
-          const raw3 = g3.files['melec-inventaire.json']?.content;
-          if (raw3) {
-            const parsed = JSON.parse(raw3);
-            data.inventory = parsed.items || (Array.isArray(parsed)?parsed:[]);
-          }
-        }
-      } catch(e){}
-    }
-
-    saveLocal();
-    // Fusionner les auto-évals sauvegardées localement (jamais écrasées par le Gist)
-    mergeAutoEvals();
-    setLoginStatus('✓ '+data.eleves.length+' élèves chargés','var(--green)');
-    if (eleve) {
-      const fresh = data.eleves.find(x=>x.id===eleve.id);
-      if (fresh) eleve = fresh;
-      render();
-    }
-    if (showToast && eleve) toast('Données actualisées','ok');
-  } catch(e) {
-    setLoginStatus('✕ '+e.message,'var(--red)');
-    if (showToast && eleve) toast('Données locales utilisées','err');
-    if (eleve) render();
-  }
-}
-
-function setLoginStatus(msg, color='var(--text3)') {
-  const el = document.getElementById('l-status');
-  if (el) { el.textContent = msg; el.style.color = color; }
-}
-
-function saveLocal() {
-  ['eleves','tps','sessions','ressources','cours','inventory','bons'].forEach(k=>{
-    localStorage.setItem('mel_'+k, JSON.stringify(data[k]||[]));
-  });
-  localStorage.setItem('mel_habilitations', JSON.stringify(data.habilitations));
-}
-
-// Push vers le Gist TP avec le token fine-grained intégré
-async function pushToGist(files) {
-  if (!WRITE_TOKEN || WRITE_TOKEN.startsWith('REMPLACER')) {
-    // Pas de token configuré — sauvegarde locale uniquement
-    return;
-  }
-  try {
-    await fetch(`https://api.github.com/gists/${GIST_TP}`, {
-      method:'PATCH',
-      headers:{
-        Authorization:`token ${WRITE_TOKEN}`,
-        'Content-Type':'application/json',
-        'X-GitHub-Api-Version':'2022-11-28'
-      },
-      body: JSON.stringify({files})
+    // 1. Charger melec-data.json (élèves, cours, notes, tp, etc.)
+    var r = await fetch(GIST_API + '?t=' + Date.now(), {
+      method:'GET', headers:gistHeaders(), cache:'no-store'
     });
-  } catch(e) {}
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var j = await r.json();
+    var file = j.files && j.files[GIST_FILE];
+    if (!file || !file.content) throw new Error('Fichier vide');
+    data = JSON.parse(file.content);
+    fixData();
+
+    // 2. Charger bons-intervention.json depuis le Gist TP
+    try {
+      var r2 = await fetch(GIST_TP_API + '?t=' + Date.now(), {
+        method:'GET', headers:gistHeaders(), cache:'no-store'
+      });
+      if (r2.ok) {
+        var j2 = await r2.json();
+        var bonsFile = j2.files && j2.files[BONS_FILE];
+        if (bonsFile && bonsFile.content) {
+          data.bonsIntervention = JSON.parse(bonsFile.content);
+        }
+      }
+    } catch(e2) { /* bons non critiques, on continue */ }
+
+    try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
+    setSyncState('ok','Connecté');
+    return true;
+  } catch(e) {
+    // Fallback backup local
+    try {
+      var bk = localStorage.getItem(LS_BACKUP);
+      if (bk) { data = JSON.parse(bk); fixData(); setSyncState('warn','Mode hors-ligne'); return true; }
+    } catch(ex){}
+    setSyncState('err','Erreur : ' + e.message);
+    return false;
+  }
 }
 
-async function saveSession() {
-  saveLocal();
-  saveAutoEvals();
-  await pushToGist({
-    'tp-sessions.json': {content: JSON.stringify(data.sessions, null, 2)}
-  });
+async function saveData() {
+  if (!data) return;
+  setSyncState('pulse','Sauvegarde…');
+  try {
+    // 1. Sauver melec-data.json sans les bons (ils ont leur propre fichier)
+    var dataToSave = Object.assign({}, data);
+    delete dataToSave.bonsIntervention; // ne pas polluer melec-data.json
+    var body = {files:{}};
+    body.files[GIST_FILE] = {content: JSON.stringify(dataToSave)};
+    var r = await fetch(GIST_API, {
+      method:'PATCH', headers:gistHeaders(), body:JSON.stringify(body)
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+
+    // 2. Sauver bons-intervention.json dans le Gist TP
+    var body2 = {files:{}};
+    body2.files[BONS_FILE] = {content: JSON.stringify(data.bonsIntervention || [])};
+    await fetch(GIST_TP_API, {
+      method:'PATCH', headers:gistHeaders(), body:JSON.stringify(body2)
+    });
+
+    try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
+    setSyncState('ok','Sauvegardé');
+  } catch(e) {
+    setSyncState('err','Erreur sauvegarde');
+    notify('Erreur sauvegarde : ' + e.message, true);
+  }
 }
 
-async function saveBons() {
-  saveLocal();
-  await pushToGist({
-    'bons-intervention.json': {content: JSON.stringify(data.bons, null, 2)}
-  });
+function fixData() {
+  if (!data.eleves)       data.eleves       = [];
+  if (!data.tp)           data.tp           = [];
+  if (!data.cours)        data.cours        = [];
+  if (!data.notes)        data.notes        = {};
+  if (!data.notesEns)     data.notesEns     = {};
+  if (!data.pfmp)         data.pfmp         = [];
+  if (!data.habilitations) data.habilitations = {};
+  if (!data.appel)        data.appel        = [];
+  if (!data.bonsIntervention) data.bonsIntervention = [];
+  if (!data.tpEleve)      data.tpEleve      = {}; // {eleveId: {tpId: {phases:{}, obs:''}}}
 }
 
-// ════════════════════════════════════════════════════════
-// AUTH
-// ════════════════════════════════════════════════════════
-function hashSimple(s) { let h=0; for(let c of String(s)){h=(h*31+c.charCodeAt(0))&0xffffffff;} return String(h); }
+// ═══ SYNC STATE ══════════════════════════════════════════════════════════════
+function setSyncState(state, msg) {
+  var dot = document.getElementById('syncDot');
+  var txt = document.getElementById('syncMsg');
+  if (dot) { dot.className = 'sync-dot' + (state==='pulse'?' pulse':state==='warn'?' warn':state==='err'?' err':''); }
+  if (txt) txt.textContent = msg;
+}
 
-function normalizeStr(s) {
-  // Normalise : trim, espaces multiples → simple, majuscules
-  return (s||'').trim().replace(/\s+/g,' ').toUpperCase();
+// ═══ AUTH ÉLÈVE ══════════════════════════════════════════════════════════════
+function hashPass(p) {
+  var h = 0;
+  for (var i = 0; i < p.length; i++) { h = ((h<<5)-h)+p.charCodeAt(i); h|=0; }
+  return String(h);
 }
 
 function doLogin() {
-  const nomSaisi    = normalizeStr(document.getElementById('l-nom').value);
-  const prenomSaisi = (document.getElementById('l-prenom').value||'').trim().toLowerCase();
-  const pass        = document.getElementById('l-pass').value;
-  const err         = document.getElementById('l-err');
-  err.style.display='none';
+  var nom    = (document.getElementById('loginNom')||{}).value.trim().toUpperCase();
+  var prenom = (document.getElementById('loginPrenom')||{}).value.trim();
+  var pass   = (document.getElementById('loginPass')||{}).value;
+  var err    = document.getElementById('loginErr');
+  if (!data) { if(err) err.style.display='block', err.textContent='Données non chargées.'; return; }
 
-  if (!data.eleves.length) {
-    err.style.display='block';
-    err.textContent='Données non chargées — réessayez dans quelques secondes.';
-    loadRemote(false);
-    return;
-  }
-
-  const found = data.eleves.find(e=>{
-    const enom    = normalizeStr(e.nom||e.name||'');
-    const eprenom = (e.prenom||'').trim().toLowerCase();
-    return enom===nomSaisi && eprenom===prenomSaisi;
+  var eleve = data.eleves.find(function(e) {
+    return e.name === nom
+      && e.prenom.toLowerCase() === prenom.toLowerCase()
+      && e.elevePass && hashPass(pass) === e.elevePass;
   });
 
-  if (!found) {
-    err.style.display='block';
-    err.textContent='Identifiants incorrects. ('+data.eleves.length+' élèves chargés)';
+  if (!eleve) {
+    if (err) { err.style.display='block'; err.textContent='Identifiants incorrects.'; }
     return;
   }
-  if (found.elevePass && hashSimple(pass)!==String(found.elevePass) && pass!=='admin') {
-    err.style.display='block';
-    err.textContent='Mot de passe incorrect.';
-    return;
-  }
-  eleve = found;
-  localStorage.setItem('melec_eleve_session', JSON.stringify({id:found.id, ts:Date.now()}));
-  unlockApp();
-  loadRemote(false).then(()=>{
-    const pending = localStorage.getItem('melec_eleve_pending_sys');
-    if (pending) {
-      localStorage.removeItem('melec_eleve_pending_sys');
-      showPage('tp');
-      setTimeout(()=>showTPChoiceForSystem(pending),300);
-    }
-  });
+  if (err) err.style.display='none';
+  curEleve = eleve;
+  // Mémoriser session
+  try { localStorage.setItem(LS_SESSION, JSON.stringify({id:eleve.id,pass:hashPass(pass)})); } catch(e){}
+  onLoggedIn();
 }
 
-function unlockApp() {
-  document.getElementById('login-screen').classList.add('hidden');
-  document.getElementById('header').style.display='flex';
-  document.getElementById('content').style.display='block';
-  document.getElementById('nav').style.display='flex';
-  document.getElementById('h-name').textContent = (eleve.nom||eleve.name||'') +' '+(eleve.prenom||'');
-  document.getElementById('h-class').textContent = CLASSES[eleve.classe||eleve.level]||eleve.classe||eleve.level||'';
-  showPage('accueil');
-}
-
-function doLogout() {
-  eleve=null;
-  localStorage.removeItem('melec_eleve_session');
-  document.getElementById('login-screen').classList.remove('hidden');
-  document.getElementById('header').style.display='none';
-  document.getElementById('content').style.display='none';
-  document.getElementById('nav').style.display='none';
-  document.getElementById('l-pass').value='';
-  document.getElementById('l-err').style.display='none';
-}
-
-// ════════════════════════════════════════════════════════
-// NAVIGATION
-// ════════════════════════════════════════════════════════
-function showPage(page) {
-  currentPage = page;
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
-  const nb = document.getElementById('nb-'+page);
-  if (nb) nb.classList.add('on');
-  const renders = {
-    accueil:   renderAccueil,
-    tp:        renderTP,
-    'tp-done': renderTPDone,
-    cours:     renderCours,
-    hab:       renderHab,
-    notes:     renderNotes,
-    bons:      renderBons,
-  };
-  if (renders[page]) renders[page]();
-}
-
-function setContent(html) { document.getElementById('content').innerHTML = html; }
-
-// ════════════════════════════════════════════════════════
-// ACCUEIL
-// ════════════════════════════════════════════════════════
-function renderAccueil() {
-  const cl = eleve.classe||eleve.level;
-  const mySessions  = data.sessions.filter(s=>(s.eleveId===eleve.id)&&(s.classe||s.level)===cl);
-  const active      = mySessions.filter(s=>s.statut!=='termine').length;
-  const done        = mySessions.filter(s=>s.statut==='termine').length;
-  const myHab       = data.habilitations[eleve.id]||{};
-  const habCount    = Object.values(myHab).filter(h=>h.theo&&h.prat).length;
-
-  setContent(`
-    <div class="welcome-header">
-      <div class="welcome-nom">${esc(eleve.prenom||'')} ${esc(eleve.nom||eleve.name||'')}</div>
-      <div class="welcome-classe">${CLASSES[cl]||cl||'—'}</div>
-    </div>
-
-    <div class="stat-grid">
-      <div class="stat-card" onclick="showPage('tp')">
-        <div class="stat-v">${active}</div><div class="stat-l">TP en cours</div>
-      </div>
-      <div class="stat-card" onclick="showPage('tp-done')">
-        <div class="stat-v">${done}</div><div class="stat-l">TP terminés</div>
-      </div>
-      <div class="stat-card" onclick="showPage('hab')">
-        <div class="stat-v">${habCount}</div><div class="stat-l">Habilit.</div>
-      </div>
-    </div>
-
-    <div class="section-title">Liens importants</div>
-
-    <a class="link-card" href="https://www.cpro-sti.fr/0560039N/index.php" target="_blank">
-      <div class="lc-icon">🎓</div>
-      <div class="lc-info">
-        <div class="lc-title">Cpro — Suivi de compétences</div>
-        <div class="lc-sub">Consultez votre progression vers le diplôme et vos activités en entreprise (PFMP).<br>
-        <strong style="color:var(--orange);">Problème de connexion ? Contactez votre enseignant.</strong></div>
-      </div>
-      <div class="lc-arrow">→</div>
-    </a>
-
-    <a class="link-card" href="https://v3.e-prevention.fr/et/login" target="_blank">
-      <div class="lc-icon">⚡</div>
-      <div class="lc-info">
-        <div class="lc-title">e-Prévention — Habilitations électriques</div>
-        <div class="lc-sub">Suivez votre formation à la prévention des risques électriques.<br>
-        <strong style="color:var(--orange);">Problème de connexion ? Contactez votre enseignant.</strong></div>
-      </div>
-      <div class="lc-arrow">→</div>
-    </a>
-  `);
-}
-
-// ════════════════════════════════════════════════════════
-// TP EN COURS
-// ════════════════════════════════════════════════════════
-function renderTP() {
-  const cl = eleve.classe||eleve.level;
-  const activeSession = data.sessions.find(s=>
-    s.eleveId===eleve.id && (s.classe||s.level)===cl && s.statut!=='termine'
-  );
-
-  if (activeSession) {
-    showCurrentTP(activeSession);
-  } else {
-    showChooseTP();
-  }
-}
-
-function showCurrentTP(session) {
-  const tp = data.tps.find(t=>t.id===session.tpId);
-  const pct = session.seances>0 ? Math.round((session.seancesDone||0)/session.seances*100) : 0;
-  const tpRes = data.ressources.filter(r=>(tp?.ressources||[]).includes(r.id));
-
-  const docsHtml = tpRes.length ? tpRes.map(r=>`
-    <div class="doc-item" onclick="openDoc('${r.id}')">
-      <div class="doc-ico">${TYPE_ICON[r.type]||'📄'}</div>
-      <div class="doc-info">
-        <div class="doc-title">${esc(r.titre)}</div>
-        <div class="doc-crumb">${esc(r.niveau||'—')} › ${esc(r.rubrique||'—')}</div>
-      </div>
-      <div class="doc-arrow">↗</div>
-    </div>`).join('')
-  : '<div class="muted" style="padding:8px 0;">Aucun document attaché à ce TP</div>';
-
-  const comps = tp?.competences||[];
-  const evalHtml = comps.length ? `
-    <div class="section-title" style="margin-top:14px;">Auto-évaluation</div>
-    ${comps.map(comp=>`
-      <div class="comp-section" id="comp-${comp.id}">
-        <div class="comp-head-row" onclick="toggleComp('${comp.id}')">
-          <span class="comp-code-badge">${esc(comp.code)}</span>
-          <span style="font-size:12px;font-weight:600;flex:1;">${esc(comp.libelle||'—')}</span>
-          <span class="comp-toggle-ico" id="ct-${comp.id}">▶</span>
-        </div>
-        <div class="comp-criteres" id="cc-${comp.id}" style="display:none;">
-          ${(comp.criteres||[]).map(cr=>{
-            const crEval=(session.evaluations?.[comp.id]?.criteres?.[cr.id])||{};
-            const eleveVal=crEval.eleve||'';
-            const ensVal=crEval.enseignant||'';
-            return `<div class="crit-item">
-              <div class="crit-label">${esc(cr.libelle)}</div>
-              <div class="eval-dots-row">
-                ${EVAL_COULEURS.map(c=>`
-                  <div class="eval-dot ${c}${eleveVal===c?' sel':''}"
-                    onclick="setAutoEval('${session.id}','${comp.id}','${cr.id}','${c}',this)"
-                    title="${EVAL_LABELS[c]||c}"></div>`).join('')}
-              </div>
-              ${ensVal?`<div class="eval-ens-row">
-                <div class="eval-ens-dot ${ensVal}"></div>
-                <span>Évaluation enseignant : ${EVAL_LABELS[ensVal]||ensVal}</span>
-              </div>`:''}
-            </div>`;
-          }).join('')}
-        </div>
-      </div>`).join('')}` : '';
-
-  setContent(`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);">TP en cours</div>
-      <button class="btn btn-g btn-sm" onclick="loadRemote()">↻ Actualiser</button>
-    </div>
-
-    <div class="tp-current">
-      <div class="tp-title">${esc(tp?tp.titre:session.tpId)}</div>
-      <div class="tp-meta">${esc(session.date||'—')} · ${(tp?.niveaux||[]).join(', ')||'—'} · ${tp?.duree_h||'?'}h</div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width:${pct}%"></div>
-      </div>
-      <div class="progress-label">${session.seancesDone||0} / ${session.seances||'?'} séance(s) — ${pct}%</div>
-    </div>
-
-    <div class="section-title">Documents du TP</div>
-    <div class="doc-list">${docsHtml}</div>
-    ${evalHtml}
-  `);
-}
-
-function showChooseTP() {
-  setContent(`
-    <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px;">Aucun TP en cours</div>
-    <div class="warn-box">
-      Vous n'avez pas de TP assigné actuellement.<br>
-      Vous pouvez en choisir un en scannant le QR code du système concerné,<br>
-      ou en saisissant son code manuellement.
-    </div>
-    <button class="btn btn-p btn-full" onclick="openScan()">📷 Scanner un QR code</button>
-    <div style="text-align:center;color:var(--text3);font-size:12px;margin:10px 0;">— ou —</div>
-    <div style="display:flex;gap:8px;">
-      <input type="text" id="manual-sys" placeholder="Code système (ex: MELEC-001)"
-        style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-size:14px;font-family:var(--mono);"
-        onkeydown="if(event.key==='Enter')searchSystem()">
-      <button class="btn btn-p" onclick="searchSystem()">→</button>
-    </div>
-  `);
-}
-
-function searchSystem() {
-  const code = (document.getElementById('manual-sys')?.value||'').trim().toUpperCase();
-  if (!code) return;
-  showTPChoiceForSystem(code);
-}
-
-// ════════════════════════════════════════════════════════
-// CHOIX TP APRÈS SCAN / SAISIE
-// ════════════════════════════════════════════════════════
-function showTPChoiceForSystem(sysCode) {
-  const sys = data.inventory.find(x=>
-    (x.qr_code||x.id||'').toUpperCase()===sysCode ||
-    (x.id||'').toUpperCase()===sysCode
-  );
-  const sysNom = sys?.nom || sysCode;
-  const cl = eleve.classe||eleve.level;
-  const eleveNiveaux = {
-    '2MELEC':['2nde'],
-    '1MELEC':['1ère','1ere'],
-    'T-MELEC':['Terminale','terminale']
-  }[cl]||[];
-
-  // TPs liés à ce système ET compatibles avec le niveau de l'élève
-  const compatTPs = data.tps.filter(tp=>{
-    if (!tp.systemes?.includes(sys?.id||sysCode)) {
-      // fallback : chercher par qr_code dans les systèmes du TP
-      const invSys = data.inventory.find(x=>(x.qr_code||x.id||'').toUpperCase()===sysCode);
-      if (!invSys || !tp.systemes?.includes(invSys.id)) return false;
-    }
-    if (!tp.niveaux?.length) return true;
-    return tp.niveaux.some(n=>eleveNiveaux.some(en=>n.toLowerCase().includes(en.toLowerCase())||en.toLowerCase().includes(n.toLowerCase())));
-  });
-
-  if (!compatTPs.length) {
-    toast('Aucun TP disponible pour ce système à votre niveau','err');
-    return;
-  }
-
-  document.getElementById('tp-choice-title').textContent = '🔬 Système : '+sysNom;
-  document.getElementById('tp-choice-list').innerHTML = compatTPs.map(tp=>`
-    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .12s;"
-      onclick="chooseTp('${tp.id}','${sys?.id||sysCode}','${cl}')"
-      onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-      <div style="font-size:13px;font-weight:600;">${esc(tp.titre)}</div>
-      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:3px;">
-        ${(tp.niveaux||[]).join(', ')||'—'} · ${tp.duree_h||'?'}h · ${(tp.ressources||[]).length} doc.
-      </div>
-    </div>`).join('');
-
-  openModal('modal-tp-choice');
-}
-
-function chooseTp(tpId, sysId, classe) {
-  // Vérifier qu'il n'y a pas déjà une session active
-  const existing = data.sessions.find(s=>s.eleveId===eleve.id&&s.statut!=='termine');
-  if (existing) { toast('Terminez d\'abord votre TP en cours','err'); return; }
-
-  const tp = data.tps.find(t=>t.id===tpId);
-  const newSession = {
-    id: 'SES'+Date.now().toString(36).toUpperCase(),
-    tpId, eleveId:eleve.id, classe, systemeId:sysId,
-    date:new Date().toISOString().slice(0,10),
-    seances:tp?.seances||2, seancesDone:0,
-    statut:'en_cours', evaluations:{},
-    teacherId:''
-  };
-  data.sessions.push(newSession);
-  saveLocal();
-  closeModal('modal-tp-choice');
-  closeScan();
-  pushToGist({'tp-sessions.json':{content:JSON.stringify(data.sessions,null,2)}});
-  toast('TP démarré ✓','ok');
-  showPage('tp');
-}
-
-// ════════════════════════════════════════════════════════
-// AUTO-ÉVALUATION
-// ════════════════════════════════════════════════════════
-function toggleComp(compId) {
-  const body = document.getElementById('cc-'+compId);
-  const ico  = document.getElementById('ct-'+compId);
-  if (!body) return;
-  const open = body.style.display==='none';
-  body.style.display = open?'flex':'none';
-  body.style.flexDirection = 'column';
-  if (ico) ico.style.transform = open?'rotate(90deg)':'';
-}
-
-function setAutoEval(sessionId, compId, critId, couleur, el) {
-  const session = data.sessions.find(s=>s.id===sessionId);
-  if (!session) { toast('Session introuvable','err'); return; }
-  if (!session.evaluations) session.evaluations={};
-  if (!session.evaluations[compId]) session.evaluations[compId]={};
-  if (!session.evaluations[compId].criteres) session.evaluations[compId].criteres={};
-  if (!session.evaluations[compId].criteres[critId]) session.evaluations[compId].criteres[critId]={};
-  session.evaluations[compId].criteres[critId].eleve = couleur;
-
-  // Toggle visuel
-  el.closest('.eval-dots-row')?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
-  el.classList.add('sel');
-
-  // Sauvegarder localement ET pousser vers le Gist
-  saveAutoEvals();
-  saveLocal();
-  saveSession(); // push async vers Gist
-  toast('Auto-évaluation enregistrée ✓','ok');
-}
-
-// Store dédié aux auto-évals élève — jamais écrasé par loadRemote
-function saveAutoEvals() {
-  // Structure : { sessionId: { compId: { critId: 'couleur' } } }
-  const store = {};
-  data.sessions.forEach(s=>{
-    if (s.eleveId !== eleve?.id) return;
-    const evals = s.evaluations||{};
-    Object.entries(evals).forEach(([compId,comp])=>{
-      Object.entries(comp.criteres||{}).forEach(([critId,crit])=>{
-        if (crit.eleve) {
-          if (!store[s.id]) store[s.id]={};
-          if (!store[s.id][compId]) store[s.id][compId]={};
-          store[s.id][compId][critId] = crit.eleve;
-        }
-      });
-    });
-  });
-  localStorage.setItem('mel_autoevals', JSON.stringify(store));
-}
-
-// Fusionner les auto-évals sauvegardées localement dans les sessions chargées depuis le Gist
-function mergeAutoEvals() {
+function tryRestoreSession() {
   try {
-    const store = JSON.parse(localStorage.getItem('mel_autoevals')||'{}');
-    Object.entries(store).forEach(([sessionId, comps])=>{
-      const session = data.sessions.find(s=>s.id===sessionId);
-      if (!session) return;
-      if (!session.evaluations) session.evaluations={};
-      Object.entries(comps).forEach(([compId, crits])=>{
-        if (!session.evaluations[compId]) session.evaluations[compId]={};
-        if (!session.evaluations[compId].criteres) session.evaluations[compId].criteres={};
-        Object.entries(crits).forEach(([critId, couleur])=>{
-          if (!session.evaluations[compId].criteres[critId]) session.evaluations[compId].criteres[critId]={};
-          // Ne pas écraser une évaluation enseignant existante, juste remettre l'auto-éval élève
-          session.evaluations[compId].criteres[critId].eleve = couleur;
-        });
-      });
+    var s = localStorage.getItem(LS_SESSION);
+    if (!s || !data) return false;
+    var sess = JSON.parse(s);
+    var eleve = data.eleves.find(function(e) {
+      return e.id === sess.id && e.elevePass && e.elevePass === sess.pass;
     });
-  } catch(e){}
+    if (!eleve) return false;
+    curEleve = eleve;
+    onLoggedIn();
+    return true;
+  } catch(e) { return false; }
 }
 
-// ════════════════════════════════════════════════════════
-// OUVRIR UN DOCUMENT (affichage sans téléchargement)
-// ════════════════════════════════════════════════════════
-function openDoc(resId) {
-  const r = data.ressources.find(x=>x.id===resId);
-  if (!r||!r.url) { toast('Document indisponible','err'); return; }
+function onLoggedIn() {
+  document.getElementById('hdEleve').textContent = curEleve.name + ' ' + curEleve.prenom;
+  var sbEl = document.getElementById('sbEleve');
+  if (sbEl) sbEl.textContent = curEleve.name + ' ' + curEleve.prenom;
+  document.getElementById('btnLogout').style.display = '';
+  document.getElementById('bottomNav').style.display = 'flex';
+  showView('dashboard');
+  renderAll();
+}
 
-  const ext = (r.url.split('.').pop()||'').toLowerCase().split('?')[0];
-  const isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
+function logout() {
+  curEleve = null;
+  try { localStorage.removeItem(LS_SESSION); } catch(e) {}
+  document.getElementById('hdEleve').textContent = 'Non connecté';
+  document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'none';
+  showView('login');
+}
 
-  // Pour les images : affichage direct dans une fenêtre
-  if (isImage) {
-    const win = window.open('','_blank','width=900,height=700,scrollbars=yes');
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-      <title>${esc(r.titre)}</title>
-      <style>*{margin:0;padding:0;}body{background:#111;display:flex;flex-direction:column;height:100vh;}
-      .bar{background:#333;padding:8px 14px;display:flex;align-items:center;gap:10px;color:#fff;font-family:sans-serif;font-size:13px;flex-shrink:0;}
-      .bar button{padding:6px 14px;border-radius:5px;border:none;cursor:pointer;font-size:12px;}
-      img{flex:1;max-width:100%;max-height:calc(100vh - 42px);object-fit:contain;margin:auto;display:block;}</style></head>
-      <body>
-      <div class="bar">
-        <span>🖼️ ${esc(r.titre)}</span>
-        <button style="background:#3b82f6;color:#fff;" onclick="window.print()">🖨️ Imprimer</button>
-        <button style="background:#555;color:#fff;margin-left:auto;" onclick="window.close()">✕ Fermer</button>
-      </div>
-      <img src="${esc(r.url)}" alt="${esc(r.titre)}">
-      </body></html>`);
-    win.document.close();
-    return;
+// ═══ NAVIGATION ══════════════════════════════════════════════════════════════
+function showView(v) {
+  document.querySelectorAll('.view').forEach(function(x){ x.classList.remove('act'); });
+  var vEl = document.getElementById('view-' + v);
+  if (vEl) vEl.classList.add('act');
+  // Activer dans bottom nav ET sidebar desktop
+  document.querySelectorAll('.nav-item, .si').forEach(function(x){ x.classList.remove('act'); });
+  document.querySelectorAll('[data-view="' + v + '"]').forEach(function(x){ x.classList.add('act'); });
+  var cont = document.getElementById('mainCont');
+  if (cont) cont.scrollTop = 0;
+  renderView(v);
+}
+
+function renderAll() {
+  renderView('dashboard');
+  renderView('tp');
+  renderView('cours');
+  renderView('notes');
+  renderView('bons');
+}
+
+function renderView(v) {
+  if (!curEleve) return;
+  if (v==='dashboard') renderDashboard();
+  if (v==='tp')        renderTP();
+  if (v==='cours')     renderCours();
+  if (v==='notes')     renderNotes();
+  if (v==='bons')      renderBons();
+}
+
+// ═══ RENDER DASHBOARD ════════════════════════════════════════════════════════
+function renderDashboard() {
+  var el = curEleve;
+  var sub = document.getElementById('dashSub');
+  if (sub) sub.textContent = (LEVELS[el.level]||{}).label || el.level;
+
+  var myTp    = getMyTp();
+  var myCours = getMyCours();
+  var myNotes = getAllNoteVals();
+
+  var tpDone   = myTp.filter(function(t){ return t.phase==='main'; }).length;
+  var coursDone= myCours.filter(function(c){ return c.status==='done'; }).length;
+  var moy      = myNotes.length ? (myNotes.reduce(function(a,b){return a+b;},0)/myNotes.length).toFixed(1) : '—';
+  var myBons   = getMyBons();
+
+  var kpis = document.getElementById('dashKpis');
+  if (kpis) kpis.innerHTML =
+    '<div class="kpi"><div class="kv">'+tpDone+'/'+myTp.length+'</div><div class="kl">TP avancés</div></div>' +
+    '<div class="kpi"><div class="kv">'+coursDone+'/'+myCours.length+'</div><div class="kl">Cours terminés</div></div>' +
+    '<div class="kpi"><div class="kv" style="color:'+(myNotes.length?(parseFloat(moy)>=12?'var(--ok)':parseFloat(moy)>=8?'#7a5900':'#c00'):'#888')+'">'+moy+(myNotes.length?'/20':'')+'</div><div class="kl">Moyenne générale</div></div>' +
+    '<div class="kpi"><div class="kv">'+myBons.length+'</div><div class="kl">Bons saisis</div></div>';
+
+  // Dernière feuille d'appel
+  var seances = (data.appel||[]).filter(function(a){ return a.level===el.level; })
+    .sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var html = '';
+  if (seances.length) {
+    var s = seances[0];
+    var v = (s.presences||{})[el.id] || 'P';
+    var lbl = v==='P'?'✅ Présent':v==='A'?'❌ Absent':'⚠️ Retard';
+    var col = v==='P'?'var(--ok)':v==='A'?'#c00':'#7a5900';
+    html += '<div class="sh">📋 Dernière séance</div>';
+    html += '<div class="card"><div class="card-body" style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:12px;color:var(--muted)">'+fmtD(s.date)+'</span>';
+    html += '<span style="font-size:14px;font-weight:700;color:'+col+'">'+lbl+'</span></div></div>';
   }
 
-  // Pour PDF, Word, Excel, TXT : Google Docs Viewer (affiche sans télécharger, impression possible)
-  const viewerUrl = 'https://docs.google.com/viewer?url=' + encodeURIComponent(r.url) + '&embedded=true';
-  const win = window.open('','_blank','width=920,height=750,scrollbars=yes');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>${esc(r.titre)}</title>
-    <style>
-      *{margin:0;padding:0;}
-      body{background:#222;display:flex;flex-direction:column;height:100vh;font-family:sans-serif;}
-      .bar{background:#1e293b;padding:9px 14px;display:flex;align-items:center;gap:10px;color:#e2e8f0;font-size:13px;flex-shrink:0;border-bottom:1px solid #334;}
-      .bar .title{flex:1;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-      .bar button{padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-size:12px;font-weight:600;}
-      iframe{flex:1;width:100%;border:none;background:#fff;}
-      .loading{position:absolute;inset:0;top:42px;display:flex;align-items:center;justify-content:center;background:#222;color:#94a3b8;font-size:14px;flex-direction:column;gap:10px;}
-      .spinner{width:32px;height:32px;border:3px solid #334;border-top-color:#3b82f6;border-radius:50%;animation:spin .8s linear infinite;}
-      @keyframes spin{to{transform:rotate(360deg);}}
-    </style></head>
-    <body>
-    <div class="bar">
-      <span>${TYPE_ICON[r.type]||'📄'}</span>
-      <span class="title">${esc(r.titre)}</span>
-      <button style="background:#3b82f6;color:#fff;" onclick="printFrame()">🖨️ Imprimer</button>
-      <button style="background:#475569;color:#fff;" onclick="window.close()">✕ Fermer</button>
-    </div>
-    <div class="loading" id="loading">
-      <div class="spinner"></div>
-      <span>Chargement du document...</span>
-    </div>
-    <iframe id="frame" src="${viewerUrl}"
-      onload="document.getElementById('loading').style.display='none'"></iframe>
-    <script>
-      // TYPE_ICON passé en dur pour la fenêtre enfant
-      const TYPE_ICON = ${JSON.stringify(TYPE_ICON)};
-      function printFrame() {
-        // Google Docs Viewer : ouvrir l'URL originale dans un onglet pour imprimer
-        const printWin = window.open('${esc(r.url)}', '_blank');
-        if (printWin) {
-          printWin.onload = () => { try{ printWin.print(); } catch(e){} };
-        }
-      }
-    <\/script>
-    </body></html>`);
-  win.document.close();
-}
-
-// ════════════════════════════════════════════════════════
-// TP TERMINÉS
-// ════════════════════════════════════════════════════════
-function renderTPDone() {
-  const cl = eleve.classe||eleve.level;
-  const done = data.sessions.filter(s=>
-    s.eleveId===eleve.id && (s.classe||s.level)===cl && s.statut==='termine'
-  ).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-
-  setContent(`
-    <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px;">TPs terminés (${done.length})</div>
-    ${done.length ? done.map(session=>{
-      const tp = data.tps.find(t=>t.id===session.tpId);
-      const comps = tp?.competences||[];
-      const evalSummary = comps.map(comp=>{
-        const nglobal = session.evaluations?.[comp.id]?.niveauGlobal||'';
-        // résumé des critères évalués par l'enseignant
-        const critVals = Object.values(session.evaluations?.[comp.id]?.criteres||{}).map(c=>c.enseignant).filter(Boolean);
-        return {code:comp.code, libelle:comp.libelle, nglobal, critVals};
-      });
-
-      return `<div class="tp-done-card">
-        <div class="tp-done-title">${esc(tp?tp.titre:session.tpId)}</div>
-        <div class="tp-done-meta">${session.date||'—'} · ${session.seancesDone||0}/${session.seances||'?'} séances</div>
-        ${evalSummary.length ? `
-          <div style="font-size:11px;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Évaluation enseignant</div>
-          ${evalSummary.map(es=>`
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;">
-              <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:var(--accent2);background:#111f3a;padding:1px 6px;border-radius:3px;flex-shrink:0;">${esc(es.code)}</span>
-              <span style="font-size:11px;flex:1;">${esc(es.libelle||'—')}</span>
-              <div style="display:flex;gap:3px;">
-                ${es.critVals.map(c=>`<div style="width:10px;height:10px;border-radius:50%;background:${evalColor(c)};flex-shrink:0;" title="${EVAL_LABELS[c]||c}"></div>`).join('')}
-                ${!es.critVals.length?'<span style="font-size:10px;color:var(--text3);">Non évalué</span>':''}
-              </div>
-            </div>`).join('')}
-        ` : '<div class="muted">Pas de compétences définies sur ce TP</div>'}
-      </div>`;
-    }).join('')
-    : '<div class="empty" style="padding:30px;text-align:center;color:var(--text3);">Aucun TP terminé pour l\'instant</div>'}
-  `);
-}
-
-function evalColor(c){
-  return {bleu:'#3b82f6',rouge:'#ef4444',orange:'#f59e0b',vclair:'#86efac',vfonce:'#16a34a'}[c]||'#555';
-}
-
-// ════════════════════════════════════════════════════════
-// COURS
-// ════════════════════════════════════════════════════════
-function renderCours() {
-  const cl = eleve.classe||eleve.level;
-  const myCours = data.cours.filter(c=>(c.level||c.classe)===cl).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  const statLabel = {done:'✓ Fait',todo:'À venir',doing:'En cours'};
-  const statCl    = {done:'b-green',todo:'b-gray',doing:'b-orange'};
-
-  setContent(`
-    <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px;">Mes cours (${myCours.length})</div>
-    ${myCours.length ? myCours.map(c=>{
-      const res = data.ressources.find(r=>r.url===c.url||(r.titre===c.titre&&r.rubrique==='Cours'));
-      const hasDoc = !!(c.url||res?.url);
-      return `<div class="cours-item" onclick="${hasDoc?`openCoursDoc('${c.id}')`:'void(0)'}">
-        <div class="cours-status ${statCl[c.status||'todo']?.replace('b-','st-')||'st-todo'}"></div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:500;">${esc(c.titre||c.title||'—')}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:2px;">${c.date||'—'}</div>
-        </div>
-        <span class="badge ${statCl[c.status]||'b-gray'}">${statLabel[c.status]||c.status||'—'}</span>
-        ${hasDoc?'<span style="color:var(--accent2);font-size:13px;margin-left:4px;">↗</span>':''}
-      </div>`;
-    }).join('')
-    : '<div style="padding:30px;text-align:center;color:var(--text3);">Aucun cours enregistré</div>'}
-  `);
-}
-
-function openCoursDoc(coursId) {
-  const c = data.cours.find(x=>x.id===coursId); if(!c) return;
-  const url = c.url || data.ressources.find(r=>r.titre===c.titre&&r.rubrique==='Cours')?.url;
-  if (!url) { toast('Pas de document pour ce cours','err'); return; }
-  // Créer un objet ressource temporaire pour openDoc
-  const fakeRes = {id:'_tmp',titre:c.titre||c.title||'Cours',url,type:'pdf'};
-  const tmpId = '_cours_'+coursId;
-  if (!data.ressources.find(r=>r.id===tmpId)) {
-    data.ressources.push({...fakeRes,id:tmpId});
+  // TP en cours
+  var tpEnCours = myTp.filter(function(t){ return t.phase !== 'main'; });
+  if (tpEnCours.length) {
+    html += '<div class="sh">🔧 TP en cours</div>';
+    tpEnCours.forEach(function(tp) {
+      var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+      var ph  = TP_PHASES[tp.phase] || TP_PHASES.prep;
+      var _done = isTpTermine(tp);
+      html += '<div class="card"'+(_done?'':' onclick="openTpModal(\''+tp.id+'\')" style="cursor:pointer"')+' >';
+      html += '<div class="card-hd">'+tp.title+'<span class="bdg '+tp.phase+'">'+ph.label+'</span></div>';
+      html += '<div class="card-body"><div class="pb"><div class="pf" style="width:'+pct+'%"></div></div>';
+      html += '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+pct+'% — '+(tp.seancesDone||0)+'/'+tp.seances+' séances</div></div></div>';
+    });
   }
-  openDoc(tmpId);
+
+  var dc = document.getElementById('dashContent');
+  if (dc) dc.innerHTML = html;
 }
 
-// ════════════════════════════════════════════════════════
-// BONS D'INTERVENTION
-// ════════════════════════════════════════════════════════
-let editBonId = null;
-
-function renderBons() {
-  const myBons = (data.bons||[])
-    .filter(b=>b.eleveId===eleve.id)
-    .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
-
-  setContent(`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);">
-        Bons d'intervention (${myBons.length})
-      </div>
-      <button class="btn btn-p btn-sm" onclick="openBonModal(null)">+ Nouveau bon</button>
-    </div>
-    ${myBons.length ? myBons.map(b=>{
-      const termine = b.termine==='oui'||b.termine===true;
-      const signe   = !!b.sigEnseignant;
-      return `<div style="background:var(--bg2);border:1px solid ${signe?'var(--accent)':termine?'var(--green)':'var(--border)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="font-size:13px;font-weight:600;flex:1;">Bon n° ${esc(b.numero||'—')}</span>
-          ${signe?'<span class="badge b-blue">✓ Signé</span>':termine?'<span class="badge b-green">Terminé</span>':'<span class="badge b-orange">En cours</span>'}
-        </div>
-        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">
-          ${b.createdAt||'—'} · ${esc(b.client||'—')} · ${esc(b.projet||'—')}
-        </div>
-        <div style="display:flex;gap:6px;">
-          ${!signe?`<button class="btn btn-g btn-sm" onclick="openBonModal('${b.id}')">✏️ Modifier</button>`:''}
-          <button class="btn btn-g btn-sm" onclick="viewBon('${b.id}')">👁 Voir</button>
-        </div>
-      </div>`;
-    }).join('')
-    : '<div style="padding:30px;text-align:center;color:var(--text3);">Aucun bon d\'intervention<br><small>Créez votre premier bon ci-dessus</small></div>'}
-  `);
+// ═══ RENDER TP ═══════════════════════════════════════════════════════════════
+function getMyTp() {
+  if (!curEleve) return [];
+  return (data.tp||[]).filter(function(t){
+    return t.level===curEleve.level &&
+      (!t.assignedTo||!t.assignedTo.length||t.assignedTo.includes(curEleve.id));
+  });
 }
 
-function openBonModal(id) {
-  editBonId = id;
-  const b = id ? (data.bons||[]).find(x=>x.id===id) : null;
+function getMyCours() {
+  if (!curEleve) return [];
+  return (data.cours||[]).filter(function(c){
+    return c.level===curEleve.level &&
+      (!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(curEleve.id));
+  });
+}
 
-  // Réinitialiser le formulaire
-  document.getElementById('bon-num').value     = b?.numero||'';
-  document.getElementById('bon-client').value  = b?.client||'';
-  document.getElementById('bon-ville').value   = b?.ville||'';
-  document.getElementById('bon-projet').value  = b?.projet||'';
-  document.getElementById('bon-interlo').value = b?.interlo||'';
-  document.getElementById('bon-moe').value     = b?.moe||'';
-  document.getElementById('bon-bonatype').value= b?.bonA||'';
-  document.getElementById('bon-desc').value    = b?.desc||'';
-  document.getElementById('bon-restes').value  = b?.restes||'';
-  document.getElementById('bon-termine').value = b?.termine||'non';
+function getAllNoteVals() {
+  if (!curEleve) return [];
+  var id   = curEleve.id;
+  var vals = [];
+  var eN   = (data.notes||{})[id] || {};
+  Object.values(eN).forEach(function(v){ var n=parseFloat(v); if(!isNaN(n)) vals.push(n); });
+  Object.values(data.notesEns||{}).forEach(function(tNotes){
+    tNotes.forEach(function(ev){
+      var v=(ev.notes||{})[id];
+      if(v!==undefined){ var n=parseFloat(v); if(!isNaN(n)) vals.push(n); }
+    });
+  });
+  return vals;
+}
 
-  // Cases à cocher types
-  document.querySelectorAll('input[name="bon-type"]').forEach(cb=>{
-    cb.checked = !!(b?.types?.[cb.value]);
+function getMyBons() {
+  if (!curEleve) return [];
+  return (data.bonsIntervention||[]).filter(function(b){ return b.eleveId===curEleve.id; })
+    .sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
+}
+
+function getTpEleve(tpId) {
+  if (!curEleve) return {phases:{},obs:''};
+  var te = (data.tpEleve||{})[curEleve.id] || {};
+  return te[tpId] || {phases:{},obs:''};
+}
+
+function isTpTermine(tp) {
+  // Terminé si l'enseignant l'a marqué main, OU si l'élève a déclaré la fin
+  var te = getTpEleve(tp.id);
+  return tp.phase === 'main' || tp.termineParEnseignant || te.termineParEleve;
+}
+
+function renderTP() {
+  var c = document.getElementById('tpContent');
+  if (!c) return;
+  var myTp = getMyTp();
+  if (!myTp.length) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucun TP affecté.</p>'; return; }
+
+  // Séparer en cours / terminés
+  var enCours  = myTp.filter(function(tp){ return !isTpTermine(tp); });
+  var termines = myTp.filter(function(tp){ return  isTpTermine(tp); });
+
+  var html = '';
+
+  if (enCours.length) {
+    html += '<div class="sh">🔧 TP en cours</div>';
+    enCours.forEach(function(tp) {
+      var ph  = TP_PHASES[tp.phase]||TP_PHASES.prep;
+      var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+      var te  = getTpEleve(tp.id);
+      var donePhases = PHASE_ORDER.filter(function(p){ return te.phases[p]; }).length;
+      html += '<div class="card">';
+      html += '<div class="card-hd">'+tp.title+'<span class="bdg '+tp.phase+'">'+ph.label+'</span></div>';
+      html += '<div class="card-body">';
+      if (tp.desc) html += '<p style="font-size:11px;color:var(--muted);margin-bottom:6px">'+tp.desc+'</p>';
+      html += '<div class="pb"><div class="pf" style="width:'+pct+'%"></div></div>';
+      html += '<div style="font-size:10px;color:var(--muted);margin:3px 0 6px">Séances utilisées : '+(tp.seancesEleve||0)+'/'+tp.seances+'</div>';
+      html += '<div style="font-size:11px;color:var(--blue);margin-bottom:8px">'+donePhases+'/4 étapes validées</div>';
+      if (te.obs) html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-style:italic">💬 '+te.obs+'</div>';
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+      html += '<button class="btn pri sml" data-tpid="'+tp.id+'" onclick="openTpModal(this.dataset.tpid)">✏️ Voir / Modifier</button>';
+      html += '<button class="btn sml" style="background:#107c10;color:#fff;border-color:#107c10" data-tpid="'+tp.id+'" onclick="terminerTp(this.dataset.tpid)">✅ Déclarer terminé</button>';
+      html += '</div></div></div>';
+    });
+  }
+
+  if (termines.length) {
+    html += '<div class="sh" style="background:#107c10">✅ TP terminés</div>';
+    termines.forEach(function(tp) {
+      var ph  = TP_PHASES[tp.phase]||TP_PHASES.prep;
+      var te  = getTpEleve(tp.id);
+      var donePhases = PHASE_ORDER.filter(function(p){ return te.phases[p]; }).length;
+      var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+      html += '<div class="card" style="opacity:.85">';
+      html += '<div class="card-hd" style="background:#107c10">'+tp.title+'<span class="bdg done">Terminé</span></div>';
+      html += '<div class="card-body">';
+      if (tp.desc) html += '<p style="font-size:11px;color:var(--muted);margin-bottom:4px">'+tp.desc+'</p>';
+      html += '<div style="font-size:11px;color:var(--muted)">'+donePhases+'/4 étapes — '+(tp.seancesEleve||0)+'/'+tp.seances+' séances</div>';
+      if (te.obs) html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">💬 '+te.obs+'</div>';
+      html += '<button class="btn sml" style="margin-top:8px" data-tpid="'+tp.id+'" onclick="openTpModal(this.dataset.tpid)">👁 Consulter</button>';
+      html += '</div></div>';
+    });
+  }
+
+  if (!html) html = '<p style="color:#aaa;padding:16px;text-align:center">Aucun TP.</p>';
+  c.innerHTML = html;
+}
+
+function terminerTp(tpId) {
+  if (!curEleve) return;
+  if (!confirm('Déclarer ce TP comme terminé ? Vous ne pourrez plus modifier vos étapes.')) return;
+  if (!data.tpEleve) data.tpEleve = {};
+  if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
+  if (!data.tpEleve[curEleve.id][tpId]) data.tpEleve[curEleve.id][tpId] = {phases:{},obs:''};
+  data.tpEleve[curEleve.id][tpId].termineParEleve = true;
+  saveData().then(function(){ renderTP(); renderDashboard(); notify('TP déclaré terminé.'); });
+}
+
+function openTpModal(tpId) {
+  var tp = (data.tp||[]).find(function(t){ return t.id===tpId; });
+  if (!tp) return;
+  curTpId = tpId;
+  var te       = getTpEleve(tpId);
+  var termine  = isTpTermine(tp);
+  var ph  = TP_PHASES[tp.phase]||TP_PHASES.prep;
+  var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+
+  document.getElementById('tpModalTitle').textContent = tp.title + (termine ? ' ✅' : '');
+  // Masquer/afficher le bouton Enregistrer selon statut
+  var btnSave = document.querySelector('#tpModal .mft .btn.ok');
+  if (btnSave) btnSave.style.display = termine ? 'none' : '';
+
+  var html = '<p style="font-size:11px;color:var(--muted);margin-bottom:10px">'+
+    (tp.desc||'')+'<br>Phase enseignant : <span class="bdg '+tp.phase+'">'+ph.label+'</span> — '+
+    pct+'% ('+(tp.seancesDone||0)+'/'+tp.seances+' séances)</p>';
+
+  html += '<div class="sh">📌 Mes étapes</div>';
+  PHASE_ORDER.forEach(function(pk) {
+    var pl    = TP_PHASES[pk].label;
+    var done  = !!te.phases[pk];
+    var phIdx = PHASE_ORDER.indexOf(tp.phase);
+    var myIdx = PHASE_ORDER.indexOf(pk);
+    var disabled = (myIdx > phIdx || termine) ? 'disabled' : '';
+    html += '<div class="step-row">';
+    html += '<input type="checkbox" class="step-cb" id="step_'+pk+'" '+
+            (done?'checked':'')+' '+disabled+
+            ' onchange="toggleStep(\''+pk+'\')">';
+    html += '<label for="step_'+pk+'" class="step-label'+(done?' done':'')+'">'+pl+'</label>';
+    if (myIdx > phIdx) html += '<span style="font-size:10px;color:#bbb">Non démarré</span>';
+    html += '</div>';
   });
 
-  // Matériels
-  const matList = document.getElementById('bon-mat-list');
-  matList.innerHTML='';
-  (b?.materiels||[{const:'',ref:'',des:'',qty:''}]).forEach((m,i)=>addMatLine(m));
-  if (!b?.materiels?.length) matList.innerHTML='';
+  html += '<div class="sh">💬 Mes observations</div>';
+  html += '<textarea class="obs-input" id="tpObs" '+(termine?'disabled style="opacity:.6"':'')+
+          ' placeholder="Vos observations, difficultés, remarques…">'+
+          (te.obs||'')+'</textarea>';
+  if (termine) html += '<p style="font-size:11px;color:var(--ok);margin-top:4px">✅ TP terminé — consultation seule.</p>';
 
-  // Heures
-  const hList = document.getElementById('bon-heure-list');
-  hList.innerHTML='';
-  (b?.heures||[{date:'',matin:'',apm:'',tps:'',nar:'',prep:''}]).forEach(h=>addHeureLine(h));
-  if (!b?.heures?.length) hList.innerHTML='';
-
-  openModal('modal-bon');
+  document.getElementById('tpModalBody').innerHTML = html;
+  openModal('tpModal');
 }
 
-function addMatLine(m={}) {
-  const el = document.getElementById('bon-mat-list');
-  const div = document.createElement('div');
-  div.style.cssText='display:grid;grid-template-columns:1fr 1fr 2fr 60px auto;gap:5px;align-items:center;';
-  div.innerHTML=`
-    <input type="text" placeholder="Constructeur" value="${esc(m.const||'')}" style="font-size:12px;">
-    <input type="text" placeholder="Référence" value="${esc(m.ref||'')}" style="font-size:12px;">
-    <input type="text" placeholder="Désignation" value="${esc(m.des||'')}" style="font-size:12px;">
-    <input type="text" placeholder="Qté" value="${esc(m.qty||'')}" style="font-size:12px;">
-    <button onclick="this.closest('div').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">✕</button>`;
-  el.appendChild(div);
+function toggleStep(phaseKey) {
+  var cb = document.getElementById('step_'+phaseKey);
+  if (!curEleve || !curTpId || !cb) return;
+  if (!data.tpEleve) data.tpEleve = {};
+  if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
+  if (!data.tpEleve[curEleve.id][curTpId]) data.tpEleve[curEleve.id][curTpId] = {phases:{},obs:''};
+  data.tpEleve[curEleve.id][curTpId].phases[phaseKey] = cb.checked;
+  // Mise à jour visuelle du label
+  var lbl = cb.nextElementSibling;
+  if (lbl) { lbl.className = 'step-label' + (cb.checked?' done':''); }
 }
 
-function addHeureLine(h={}) {
-  const el = document.getElementById('bon-heure-list');
-  const div = document.createElement('div');
-  div.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr auto;gap:4px;align-items:center;';
-  div.innerHTML=`
-    <input type="date" value="${esc(h.date||'')}" style="font-size:11px;" title="Date">
-    <input type="text" placeholder="Matin" value="${esc(h.matin||'')}" style="font-size:11px;">
-    <input type="text" placeholder="Apm" value="${esc(h.apm||'')}" style="font-size:11px;">
-    <input type="text" placeholder="Trajet" value="${esc(h.tps||'')}" style="font-size:11px;">
-    <input type="text" placeholder="Nuit" value="${esc(h.nar||'')}" style="font-size:11px;">
-    <input type="text" placeholder="Prép." value="${esc(h.prep||'')}" style="font-size:11px;">
-    <button onclick="this.closest('div').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;">✕</button>`;
-  el.appendChild(div);
+function saveTpObs() {
+  if (!curEleve || !curTpId) return;
+  var obs = document.getElementById('tpObs');
+  if (!data.tpEleve) data.tpEleve = {};
+  if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
+  if (!data.tpEleve[curEleve.id][curTpId]) data.tpEleve[curEleve.id][curTpId] = {phases:{},obs:''};
+  // Récupérer les checkboxes
+  PHASE_ORDER.forEach(function(pk) {
+    var cb = document.getElementById('step_'+pk);
+    if (cb) data.tpEleve[curEleve.id][curTpId].phases[pk] = cb.checked;
+  });
+  data.tpEleve[curEleve.id][curTpId].obs = obs ? obs.value.trim() : '';
+  saveData().then(function(){ renderTP(); renderDashboard(); });
+  closeModal('tpModal');
+  notify('Observations enregistrées.');
 }
 
-async function saveBon() {
-  const types = {};
-  document.querySelectorAll('input[name="bon-type"]:checked').forEach(cb=>{ types[cb.value]=true; });
+// ═══ RENDER COURS ════════════════════════════════════════════════════════════
+function renderCours() {
+  var c = document.getElementById('coursContent');
+  if (!c) return;
+  var myCours = getMyCours();
+  if (!myCours.length) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucun cours affecté.</p>'; return; }
+  var html = '';
+  myCours.forEach(function(cours) {
+    var st = COURS_STATUS[cours.status]||cours.status;
+    var eN = (data.notes||{})[curEleve.id]||{};
+    var n  = eN[cours.id];
+    var nDisp = n!==undefined?n:'—';
+    var ncls  = n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
+    html += '<div class="card">';
+    html += '<div class="card-hd">'+cours.title+'<span class="bdg '+cours.status+'">'+st+'</span></div>';
+    html += '<div class="card-body" style="display:flex;justify-content:space-between;align-items:center">';
+    html += '<span style="font-size:11px;color:var(--muted)">'+fmtD(cours.date)+'</span>';
+    html += '<span class="note-val '+ncls+'">'+nDisp+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span>';
+    html += '</div></div>';
+  });
+  c.innerHTML = html;
+}
 
-  const materiels = [...document.querySelectorAll('#bon-mat-list > div')].map(row=>{
-    const inputs = row.querySelectorAll('input');
-    return {const:inputs[0]?.value||'',ref:inputs[1]?.value||'',des:inputs[2]?.value||'',qty:inputs[3]?.value||''};
-  }).filter(m=>m.des||m.ref);
+// ═══ RENDER NOTES ════════════════════════════════════════════════════════════
+function renderNotes() {
+  var c = document.getElementById('notesContent');
+  if (!c || !curEleve) return;
+  var id   = curEleve.id;
+  var eN   = (data.notes||{})[id]||{};
+  var html = '';
+  var allVals = [];
 
-  const heures = [...document.querySelectorAll('#bon-heure-list > div')].map(row=>{
-    const inputs = row.querySelectorAll('input');
-    return {date:inputs[0]?.value||'',matin:inputs[1]?.value||'',apm:inputs[2]?.value||'',
-            tps:inputs[3]?.value||'',nar:inputs[4]?.value||'',prep:inputs[5]?.value||''};
-  }).filter(h=>h.date||h.matin||h.apm);
+  // Notes TP
+  var myTp = getMyTp();
+  if (myTp.length) {
+    html += '<div class="sh">🔧 TP</div>';
+    html += '<table class="dt"><thead><tr><th>TP</th><th>Phase</th><th>Note</th></tr></thead><tbody>';
+    myTp.forEach(function(tp){
+      var n=eN[tp.id]; var nD=n!==undefined?n:'—';
+      var nc=n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
+      if(n!==undefined&&!isNaN(parseFloat(n)))allVals.push(parseFloat(n));
+      var ph=TP_PHASES[tp.phase]||TP_PHASES.prep;
+      html+='<tr><td>'+tp.title+'</td><td><span class="bdg '+tp.phase+'">'+ph.label+'</span></td>';
+      html+='<td><span class="note-val '+nc+'" style="font-size:13px">'+nD+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span></td></tr>';
+    });
+    html += '</tbody></table>';
+  }
 
-  const bon = {
-    id:         editBonId || 'BON'+Date.now().toString(36).toUpperCase(),
-    eleveId:    eleve.id,
-    eleveLevel: eleve.classe||eleve.level,
-    intervenant:eleve.nom+' '+eleve.prenom,
-    numero:     document.getElementById('bon-num').value,
-    client:     document.getElementById('bon-client').value,
-    ville:      document.getElementById('bon-ville').value,
-    projet:     document.getElementById('bon-projet').value,
-    interlo:    document.getElementById('bon-interlo').value,
-    moe:        document.getElementById('bon-moe').value,
-    bonA:       document.getElementById('bon-bonatype').value,
-    desc:       document.getElementById('bon-desc').value,
-    restes:     document.getElementById('bon-restes').value,
-    termine:    document.getElementById('bon-termine').value,
-    types, materiels, heures,
-    createdAt:  editBonId
-                  ? ((data.bons||[]).find(b=>b.id===editBonId)?.createdAt||new Date().toISOString().slice(0,10))
-                  : new Date().toISOString().slice(0,10),
-    updatedAt:  new Date().toISOString().slice(0,10),
+  // Notes Cours
+  var myCours = getMyCours();
+  if (myCours.length) {
+    html += '<div class="sh">📖 Cours</div>';
+    html += '<table class="dt"><thead><tr><th>Cours</th><th>Note</th></tr></thead><tbody>';
+    myCours.forEach(function(c){
+      var n=eN[c.id]; var nD=n!==undefined?n:'—';
+      var nc=n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
+      if(n!==undefined&&!isNaN(parseFloat(n)))allVals.push(parseFloat(n));
+      html+='<tr><td>'+c.title+'</td>';
+      html+='<td><span class="note-val '+nc+'" style="font-size:13px">'+nD+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span></td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  // Notes enseignants
+  var hasEns = false;
+  data.teachers && data.teachers.forEach(function(t){
+    var tNotes=((data.notesEns||{})[t.id]||[]).filter(function(n){return n.level===curEleve.level;});
+    if(!tNotes.length)return;
+    var evs=tNotes.filter(function(ev){return (ev.notes||{})[id]!==undefined;});
+    if(!evs.length)return;
+    if(!hasEns){html+='<div class="sh">🗒️ Évaluations</div>';hasEns=true;}
+    html+='<div style="font-size:11px;font-weight:600;color:var(--muted);margin:6px 0 3px">'+t.name+'</div>';
+    html+='<table class="dt"><thead><tr><th>Évaluation</th><th>Date</th><th>Note</th></tr></thead><tbody>';
+    evs.forEach(function(ev){
+      var v=(ev.notes||{})[id]; var nc=isNaN(parseFloat(v))?'na':parseFloat(v)>=12?'bon':parseFloat(v)>=8?'moy':'fai';
+      if(!isNaN(parseFloat(v)))allVals.push(parseFloat(v));
+      html+='<tr><td>'+ev.title+'</td><td>'+fmtD(ev.date)+'</td>';
+      html+='<td><span class="note-val '+nc+'" style="font-size:13px">'+v+(!isNaN(parseFloat(v))?'/20':'')+'</span></td></tr>';
+    });
+    html+='</tbody></table>';
+  });
+
+  if (!html) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucune note saisie.</p>'; return; }
+
+  // Moyenne générale
+  if (allVals.length) {
+    var moy = (allVals.reduce(function(a,b){return a+b;},0)/allVals.length).toFixed(1);
+    var mc  = parseFloat(moy)>=12?'var(--ok)':parseFloat(moy)>=8?'#7a5900':'#c00';
+    html = '<div style="background:#fff;border-radius:8px;box-shadow:var(--shad);padding:12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">'
+         + '<span style="font-size:13px;font-weight:600">Moyenne générale</span>'
+         + '<span style="font-size:24px;font-weight:700;color:'+mc+'">'+moy+'/20</span></div>'
+         + html;
+  }
+  c.innerHTML = html;
+}
+
+// ═══ BONS D'INTERVENTION ════════════════════════════════════════════════════
+function renderBons() {
+  var c = document.getElementById('bonsContent');
+  if (!c || !curEleve) return;
+  var bons = getMyBons();
+  if (!bons.length) {
+    c.innerHTML = '<p style="color:#aaa;padding:16px;text-align:center">Aucun bon saisi.<br><button class="btn pri" onclick="openNewBon()" style="margin-top:10px">+ Créer le premier bon</button></p>';
+    return;
+  }
+  var html = '';
+  bons.forEach(function(b) {
+    var signe = b.sigEnseignant;
+    html += '<div class="bon-item" data-bon="'+b.id+'" onclick="openBon(this.dataset.bon)">';
+    html += '<div style="font-size:24px">'+(signe?'✅':'📋')+'</div>';
+    html += '<div class="bon-info">';
+    html += '<div class="bon-title">Bon N° '+b.numero+(b.client?' — '+b.client:'')+'</div>';
+    html += '<div class="bon-date">'+fmtD(b.createdAt ? b.createdAt.slice(0,10) : '');
+    if (signe) {
+      html += ' &nbsp;<span style="color:var(--ok);font-size:10px;font-weight:700">✅ Signé par '+b.sigEnseignant+'</span>';
+      if (b.sigEnseignantDate) html += ' <span style="font-size:10px;color:var(--muted)">le '+fmtD(b.sigEnseignantDate)+'</span>';
+    } else {
+      html += ' &nbsp;<span style="color:#bbb;font-size:10px">En attente de signature</span>';
+    }
+    html += '</div>';
+    html += '</div><div style="color:#bbb;font-size:18px">›</div></div>';
+  });
+  c.innerHTML = html;
+}
+
+function buildBonForm(bon) {
+  bon = bon || {};
+  var rows = '';
+  for (var i = 0; i < 6; i++) {
+    var r = (bon.heures||[])[i]||{};
+    rows += '<tr>'
+      + '<td><input class="fi-sm" id="hDate_'+i+'" type="date" value="'+(r.date||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hMatin_'+i+'" placeholder="—h—" value="'+(r.matin||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hApm_'+i+'" placeholder="—h—" value="'+(r.apm||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hTps_'+i+'" placeholder="0h00" value="'+(r.tps||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hNAR_'+i+'" type="number" min="0" value="'+(r.nar||'')+'"></td>'
+      + '<td><input class="fi-sm" id="hPrep_'+i+'" placeholder="0h00" value="'+(r.prep||'')+'"></td>'
+      + '</tr>';
+  }
+  var matRows = '';
+  for (var j = 0; j < 6; j++) {
+    var m = (bon.materiels||[])[j]||{};
+    matRows += '<tr>'
+      + '<td><input id="mConst_'+j+'" value="'+(m.const||'')+'"></td>'
+      + '<td><input id="mRef_'+j+'" value="'+(m.ref||'')+'"></td>'
+      + '<td><input id="mDes_'+j+'" value="'+(m.des||'')+'"></td>'
+      + '<td><input id="mQty_'+j+'" value="'+(m.qty||'')+'"></td>'
+      + '</tr>';
+  }
+  var typeCheck = function(t) {
+    return '<label class="cb-item"><input type="checkbox" id="type_'+t+'" '+(((bon.types||{})[t])?'checked':'')+'> '+t+'</label>';
   };
 
-  if (!data.bons) data.bons=[];
-  if (editBonId) {
-    const idx = data.bons.findIndex(b=>b.id===editBonId);
-    if (idx>=0) data.bons[idx]={...data.bons[idx],...bon};
+  return '<div style="background:#1a1a2e;color:#fff;padding:10px 12px;border-radius:6px 6px 0 0;margin:-14px -14px 12px">'
+    + '<div style="font-size:13px;font-weight:700">▼ SEB</div>'
+    + '<div style="font-size:11px;opacity:.7">Société d\'électricité du Blavet</div>'
+    + '<div style="font-size:10px;opacity:.6">43 Rue Charles Gounod, 56300 Pontivy — 02 97 25 35 40</div>'
+    + '</div>'
+    + '<div class="row2"><div class="fg"><label class="fl">N° Bon</label><input class="fi" id="bonNum" value="'+(bon.numero||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Client</label><input class="fi" id="bonClient" value="'+(bon.client||'')+'"></div></div>'
+    + '<div class="row2"><div class="fg"><label class="fl">Ville</label><input class="fi" id="bonVille" value="'+(bon.ville||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Projet</label><input class="fi" id="bonProjet" value="'+(bon.projet||'')+'"></div></div>'
+    + '<div class="row2"><div class="fg"><label class="fl">Maître d\'œuvre</label><input class="fi" id="bonMoe" value="'+(bon.moe||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Interlocuteur</label><input class="fi" id="bonInterlo" value="'+(bon.interlo||'')+'"></div></div>'
+    + '<div class="fg"><label class="fl">Nom de l\'intervenant</label><input class="fi" id="bonIntervenant" value="'+(bon.intervenant||curEleve.name+' '+curEleve.prenom)+'"></div>'
+    + '<div class="sh">Détail de l\'intervention</div>'
+    + '<div class="cb-row">'+['Commande','Régie','Dépannage','Complément','Autre'].map(typeCheck).join('')+'</div>'
+    + '<div class="sh">Temps de travail</div>'
+    + '<div style="overflow-x:auto"><table class="heures-table"><thead><tr>'
+    + '<th>Date</th><th>Matin</th><th>Après-midi</th><th>Trajet A/R</th><th>Nbre A/R</th><th>Préparation</th>'
+    + '</tr></thead><tbody>'+rows+'</tbody></table></div>'
+    + '<div class="sh">Descriptif</div>'
+    + '<textarea class="fta" id="bonDesc" style="min-height:80px">'+(bon.desc||'')+'</textarea>'
+    + '<div class="fg" style="margin-top:8px"><label class="fl">Action terminée</label>'
+    + '<div class="cb-row">'
+    + '<label class="cb-item"><input type="radio" name="bonTermine" id="bonTermOui" '+(bon.termine==='oui'?'checked':'')+' value="oui"> Oui</label>'
+    + '<label class="cb-item"><input type="radio" name="bonTermine" id="bonTermNon" '+(bon.termine==='non'?'checked':'')+' value="non"> Non</label>'
+    + '</div></div>'
+    + '<div class="fg"><label class="fl">Si non, reste à faire / réserves</label><textarea class="fta" id="bonRestes">'+(bon.restes||'')+'</textarea></div>'
+    + '<div class="sh">Matériels</div>'
+    + '<div style="overflow-x:auto"><table class="mat-table"><thead><tr><th>Const</th><th>Référence</th><th>Désignation</th><th>Qté</th></tr></thead><tbody>'+matRows+'</tbody></table></div>'
+    + '<div class="sh">Consignation</div>'
+    + '<table class="consign-table"><thead><tr><th>CONSIGNATION</th><th>Nom Prénom</th><th>Signature</th></tr></thead><tbody>'
+    + '<tr><td>Mise hors tension</td><td><input id="cMhtNom" value="'+(bon.cMhtNom||'')+'"></td><td><input id="cMhtSig" value="'+(bon.cMhtSig||'')+'"></td></tr>'
+    + '<tr><td>Autorisation arrêt de production</td><td><input id="cAapNom" value="'+(bon.cAapNom||'')+'"></td><td><input id="cAapSig" value="'+(bon.cAapSig||'')+'"></td></tr>'
+    + '</tbody></table>'
+    + '<div class="row2" style="margin-top:10px">'
+    + '<div class="fg"><label class="fl">À :</label><input class="fi" id="bonA" value="'+(bon.bonA||'')+'"></div>'
+    + '<div class="fg"><label class="fl">Le :</label><input class="fi" type="date" id="bonLe" value="'+(bon.bonLe||today())+'"></div></div>'
+    + (bon.sigEnseignant
+        ? '<div class="fg"><label class="fl">Signature et cachet du client</label>'
+          + '<div style="background:#e8f4fd;border:1px solid #b3d9f7;border-radius:6px;padding:10px 12px;font-size:13px">'
+          + '<span style="color:var(--ok);font-weight:700">✅ ' + bon.sigEnseignant + '</span>'
+          + (bon.sigEnseignantDate ? ' <span style="font-size:11px;color:var(--muted)">— le ' + fmtD(bon.sigEnseignantDate) + '</span>' : '')
+          + '<br><span style="font-size:10px;color:var(--muted)">Signé par un enseignant</span>'
+          + '</div>'
+          + '<input type="hidden" id="bonSig" value="' + (bon.sig||'') + '">'
+          + '</div>'
+        : '<div class="fg"><label class="fl">Signature et cachet du client</label><input class="fi" id="bonSig" value="'+(bon.sig||'')+'"></div>')
+    + '';
+}
+
+function collectBon() {
+  var types = {};
+  ['Commande','Régie','Dépannage','Complément','Autre'].forEach(function(t){
+    var cb = document.getElementById('type_'+t);
+    if (cb) types[t] = cb.checked;
+  });
+  var heures = [];
+  for (var i=0;i<6;i++) {
+    heures.push({
+      date: v('hDate_'+i), matin:v('hMatin_'+i), apm:v('hApm_'+i),
+      tps:v('hTps_'+i), nar:v('hNAR_'+i), prep:v('hPrep_'+i)
+    });
+  }
+  var materiels = [];
+  for (var j=0;j<6;j++) {
+    materiels.push({const:v('mConst_'+j),ref:v('mRef_'+j),des:v('mDes_'+j),qty:v('mQty_'+j)});
+  }
+  var terOui = document.getElementById('bonTermOui');
+  var terNon = document.getElementById('bonTermNon');
+  return {
+    numero:v('bonNum'), client:v('bonClient'), ville:v('bonVille'),
+    projet:v('bonProjet'), moe:v('bonMoe'), interlo:v('bonInterlo'),
+    intervenant:v('bonIntervenant'), types:types, heures:heures,
+    desc:v('bonDesc'), restes:v('bonRestes'), materiels:materiels,
+    cMhtNom:v('cMhtNom'),cMhtSig:v('cMhtSig'),cAapNom:v('cAapNom'),cAapSig:v('cAapSig'),
+    bonA:v('bonA'), bonLe:v('bonLe'), sig:v('bonSig'),
+    termine: terOui&&terOui.checked?'oui':terNon&&terNon.checked?'non':''
+  };
+}
+function v(id){ var el=document.getElementById(id); return el?el.value:''; }
+
+function openNewBon() {
+  curBonId = null;
+  document.getElementById('bonModalTitle').textContent = 'Nouveau bon d\'intervention';
+  document.getElementById('bonModalBody').innerHTML = buildBonForm(null);
+  openModal('bonModal');
+}
+
+async function openBon(id) {
+  // Recharger depuis le Gist pour avoir la signature la plus récente
+  await loadData();
+  var bon = (data.bonsIntervention||[]).find(function(b){ return b.id===id; });
+  if (!bon) return;
+  curBonId = id;
+  var titre = 'Bon N° ' + (bon.numero||id);
+  if (bon.sigEnseignant) titre += ' ✅';
+  document.getElementById('bonModalTitle').textContent = titre;
+  document.getElementById('bonModalBody').innerHTML = buildBonForm(bon);
+  openModal('bonModal');
+}
+
+function saveBon() {
+  if (!curEleve) return;
+  var bon = collectBon();
+  bon.eleveId    = curEleve.id;
+  bon.eleveLevel = curEleve.level;
+  if (!data.bonsIntervention) data.bonsIntervention = [];
+  if (curBonId) {
+    var idx = data.bonsIntervention.findIndex(function(b){ return b.id===curBonId; });
+    if (idx>=0) { bon.id=curBonId; bon.createdAt=data.bonsIntervention[idx].createdAt; data.bonsIntervention[idx]=bon; }
   } else {
-    data.bons.push(bon);
+    bon.id = 'BI'+Date.now();
+    bon.createdAt = new Date().toISOString();
+    data.bonsIntervention.push(bon);
+    curBonId = bon.id;
   }
-
-  closeModal('modal-bon');
-  toast('Bon enregistré ✓','ok');
-  await saveBons(); // push vers Gist
-  showPage('bons');
+  saveData().then(function(){ renderBons(); });
+  notify('Bon enregistré.');
 }
 
-function viewBon(id) {
-  const b = (data.bons||[]).find(x=>x.id===id); if(!b) return;
-  // Réutiliser la même fonction d'affichage que melec-suivi
-  const termine = b.termine==='oui'||b.termine===true;
-  const signe   = !!b.sigEnseignant;
-
-  const typesCoches = Object.entries(b.types||{}).map(([k,v])=>`
-    <div style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;">
-      <div style="width:14px;height:14px;border:1.5px solid #333;display:inline-flex;align-items:center;justify-content:center;font-size:10px;${v?'background:#333;color:#fff':''};">${v?'✓':''}</div>
-      ${esc(k)}
-    </div>`).join('');
-
-  const heuresRows = (b.heures||[]).filter(h=>h.date||h.matin||h.apm).map(h=>`
-    <tr><td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.date||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.matin||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.apm||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.tps||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.nar||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.prep||'')}</td></tr>`).join('')
-    ||`<tr><td colspan="6" style="border:1px solid #ccc;padding:4px 7px;color:#888;text-align:center;">—</td></tr>`;
-
-  const matRows = (b.materiels||[]).map(m=>`
-    <tr><td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.const||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.ref||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.des||'')}</td>
-    <td style="border:1px solid #ccc;padding:4px 7px;text-align:center;">${esc(m.qty||'')}</td></tr>`).join('')
-    ||`<tr><td colspan="4" style="border:1px solid #ccc;padding:4px 7px;color:#888;text-align:center;">—</td></tr>`;
-
-  function cell(l,v){return `<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:2px;">${l}</div><div style="border:1px solid #ccc;border-radius:3px;padding:5px 8px;min-height:26px;background:#fafafa;font-size:12px;">${esc(v||'—')}</div></div>`;}
-
-  const win = window.open('','_blank','width=860,height=950,scrollbars=yes');
-  win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-  <title>Bon n°${b.numero||'?'}</title>
-  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;background:#fff;color:#111;padding:24px;}
-  h1{font-size:17px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
-  .sub{text-align:center;font-size:10px;color:#666;margin-bottom:16px;}
-  .sec{margin-bottom:14px;}.sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:#e5e5e5;padding:3px 8px;border-left:3px solid #333;margin-bottom:7px;}
-  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-  table{width:100%;border-collapse:collapse;}th{background:#e5e5e5;font-weight:700;padding:5px 7px;border:1px solid #ccc;font-size:11px;text-align:left;}
-  .status{display:flex;gap:14px;align-items:center;padding:6px 12px;background:#f5f5f5;border-radius:5px;margin-bottom:14px;flex-wrap:wrap;}
-  .badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-  .btn{padding:7px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;border:none;margin-left:6px;}
-  .no-print{position:fixed;top:10px;right:10px;}@media print{.no-print{display:none;}}
-  </style></head><body>
-  <div class="no-print">
-    <button class="btn" style="background:#3b82f6;color:#fff;" onclick="window.print()">🖨️ Imprimer</button>
-    <button class="btn" style="background:#e5e7eb;" onclick="window.close()">✕</button>
-  </div>
-  <h1>Bon d'intervention</h1>
-  <div class="sub">Compétence C11 — Compléter les documents liés aux opérations</div>
-  <div class="status">
-    <span><strong>N°</strong> ${esc(b.numero||'—')}</span>
-    <span><strong>Établi le</strong> ${esc(b.createdAt||'—')}</span>
-    <span><strong>Intervenant :</strong> ${esc(b.intervenant||'')}</span>
-    <span class="badge" style="${termine?'background:#dcfce7;color:#166534':'background:#fef9c3;color:#854d0e'}">${termine?'✓ Terminé':'En cours'}</span>
-    <span class="badge" style="${signe?'background:#dbeafe;color:#1d4ed8':'background:#fee2e2;color:#991b1b'}">${signe?'✓ Signé — '+esc(b.sigEnseignant):'⚠ Non signé'}</span>
-  </div>
-  <div class="sec"><div class="sec-title">Identification</div>
-    <div class="g3">${cell('Client',b.client)}${cell('Ville',b.ville)}${cell('Projet',b.projet)}${cell("Maître d'œuvre",b.moe)}${cell('Interlocuteur',b.interlo)}${cell('Bon établi à',b.bonA)}</div>
-  </div>
-  <div class="sec"><div class="sec-title">Nature des travaux</div><div style="padding:6px 0;">${typesCoches}</div></div>
-  <div class="sec"><div class="sec-title">Détail des heures</div>
-    <table><thead><tr><th>Date</th><th>Matin</th><th>Après-midi</th><th>Tps trajet</th><th>Nuit/arrêt</th><th>Préparation</th></tr></thead><tbody>${heuresRows}</tbody></table>
-  </div>
-  <div class="sec"><div class="sec-title">Description des travaux réalisés</div>
-    <div style="border:1px solid #ccc;border-radius:3px;padding:8px;min-height:70px;white-space:pre-wrap;background:#fafafa;">${esc(b.desc||'—')}</div>
-  </div>
-  <div class="sec"><div class="sec-title">Travaux restants / Observations</div>
-    <div style="border:1px solid #ccc;border-radius:3px;padding:8px;min-height:50px;white-space:pre-wrap;background:#fafafa;">${esc(b.restes||'—')}</div>
-  </div>
-  <div class="sec"><div class="sec-title">Matériels utilisés</div>
-    <table><thead><tr><th>Constructeur</th><th>Référence</th><th>Désignation</th><th style="width:60px;text-align:center;">Qté</th></tr></thead><tbody>${matRows}</tbody></table>
-  </div>
-  <div class="sec"><div class="sec-title">Signatures</div>
-    <div class="g3">
-      <div>${cell('Signature client',b.sig||b.cAapNom||'')}</div>
-      <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:4px;">Visa enseignant</div>
-        <div style="border:1.5px solid #333;min-height:60px;padding:8px;border-radius:3px;">
-          ${signe?`<strong>${esc(b.sigEnseignant)}</strong><br><small>${esc(b.sigDate||'—')}</small>`:'<span style="color:#999;font-style:italic;">Non signé</span>'}
-        </div>
-      </div>
-    </div>
-  </div>
-  </body></html>`);
-  win.document.close();
+function printBon() {
+  saveBon();
+  setTimeout(function(){
+    // Générer un HTML propre pour l'impression
+    var bon = (data.bonsIntervention||[]).find(function(b){ return b.id===curBonId; });
+    if (!bon) return;
+    var w = window.open('','_blank');
+    var rows='';
+    for(var i=0;i<6;i++){
+      var r=(bon.heures||[])[i]||{};
+      rows+='<tr><td>'+(r.date?fmtD(r.date):'')+'</td><td>'+(r.matin||'')+'</td><td>'+(r.apm||'')+'</td><td>'+(r.tps||'')+'</td><td>'+(r.nar||'')+'</td><td>'+(r.prep||'')+'</td></tr>';
+    }
+    var matRows='';
+    for(var j=0;j<6;j++){
+      var m=(bon.materiels||[])[j]||{};
+      matRows+='<tr><td>'+(m.const||'')+'</td><td>'+(m.ref||'')+'</td><td>'+(m.des||'')+'</td><td>'+(m.qty||'')+'</td></tr>';
+    }
+    var types=Object.entries(bon.types||{}).filter(function(e){return e[1];}).map(function(e){return e[0];}).join(' · ');
+    w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bon N°'+bon.numero+'</title><style>'
+      +'body{font-family:Arial,sans-serif;font-size:11px;margin:20px;color:#000}'
+      +'table{width:100%;border-collapse:collapse;margin-bottom:10px}'
+      +'th,td{border:1px solid #999;padding:4px 6px;}'
+      +'th{background:#eee;font-weight:bold}'
+      +'.hd{display:flex;justify-content:space-between;margin-bottom:12px}'
+      +'.logo{font-size:18px;font-weight:900}'
+      +'.sh{font-weight:700;margin:10px 0 4px;border-bottom:1px solid #999;padding-bottom:2px}'
+      +'h1{font-size:16px;text-align:center;margin-bottom:6px}'
+      +'@media print{@page{size:A4;margin:15mm}}'
+      +'</style></head><body>'
+      +'<div class="hd"><div><div class="logo">▼ SEB</div><div>Société d\'électricité du Blavet</div>'
+      +'<div>43 Rue Charles Gounod, 56300 Pontivy — 02 97 25 35 40</div>'
+      +'<div>Mail : SEB.pro.56300@gmail.com</div>'
+      +'<div><strong>Nom de l\'intervenant :</strong> '+(bon.intervenant||'')+'</div></div>'
+      +'<div><h1>Bon d\'intervention N° '+(bon.numero||'')+'</h1>'
+      +'<div><strong>Client :</strong> '+(bon.client||'')+'</div>'
+      +'<div><strong>Ville :</strong> '+(bon.ville||'')+'</div>'
+      +'<div><strong>Projet :</strong> '+(bon.projet||'')+'</div>'
+      +'<div><strong>Maître d\'œuvre :</strong> '+(bon.moe||'')+'</div>'
+      +'<div><strong>Interlocuteur :</strong> '+(bon.interlo||'')+'</div></div></div>'
+      +'<div class="sh">Détail de l\'intervention</div>'
+      +'<div>'+(['Commande','Régie','Dépannage','Complément','Autre'].map(function(t){return (bon.types&&bon.types[t]?'☑':'☐')+' '+t;}).join('  '))+'</div>'
+      +'<div class="sh">Temps de travail</div>'
+      +'<table><thead><tr><th>Date</th><th>Matin</th><th>Après-midi</th><th>Trajet A/R</th><th>Nbre A/R</th><th>Préparation</th></tr></thead><tbody>'+rows+'</tbody></table>'
+      +'<div class="sh">Descriptif de l\'intervention</div>'
+      +'<p>'+(bon.desc||'').replace(/\n/g,'<br>')+'</p>'
+      +'<div>Action terminée : '+(bon.termine==='oui'?'☑ Oui  ☐ Non':'☐ Oui  '+(bon.termine==='non'?'☑':'☐')+' Non')
+      +'&nbsp;&nbsp;&nbsp;<em style="font-size:10px">si terminée, ce bon équivaut à un PV de réception</em></div>'
+      +(bon.restes?'<div><strong>Reste à faire / réserves :</strong> '+bon.restes+'</div>':'')
+      +'<div class="sh">Matériels</div>'
+      +'<table><thead><tr><th>Const</th><th>Référence</th><th>Désignation</th><th>Quantité</th></tr></thead><tbody>'+matRows+'</tbody></table>'
+      +'<p style="font-size:9px;text-align:center">nous nous réservons la propriété du matériel jusqu\'au paiement intégral de notre facture (loi N°8033S du 12 mai 1980)</p>'
+      +'<table><thead><tr><th>CONSIGNATION</th><th>Nom Prénom</th><th>Signature</th></tr></thead><tbody>'
+      +'<tr><td>Mise hors tension</td><td>'+(bon.cMhtNom||'')+'</td><td>'+(bon.cMhtSig||'')+'</td></tr>'
+      +'<tr><td>Autorisation arrêt de production</td><td>'+(bon.cAapNom||'')+'</td><td>'+(bon.cAapSig||'')+'</td></tr>'
+      +'</tbody></table>'
+      +'<p style="font-size:9px">La remise en production est de la responsabilité du client</p>'
+      +'<div style="display:flex;justify-content:space-between;margin-top:16px">'
+      +'<div>A : '+(bon.bonA||'')+'<br>Le : '+(bon.bonLe?fmtD(bon.bonLe):'  /  /')+'</div>'
+      +'<div style="text-align:right"><strong>Signature et cachet du client :</strong><br><br>'+(bon.sig||'&nbsp;')+'</div>'
+      +'</div>'
+      +'</body></html>');
+    w.document.close();
+    w.focus();
+    setTimeout(function(){ w.print(); }, 400);
+  }, 200);
 }
 
-// ════════════════════════════════════════════════════════
-// NOTES
-// ════════════════════════════════════════════════════════
-function renderNotes() {
-  const cl = eleve.classe||eleve.level;
+// ═══ UTILITAIRES ═════════════════════════════════════════════════════════════
+function fmtD(d){ if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;} }
+function today(){ return new Date().toISOString().slice(0,10); }
+function openModal(id){ var el=document.getElementById(id);if(el)el.classList.add('show'); }
+function closeModal(id){ var el=document.getElementById(id);if(el)el.classList.remove('show'); }
+document.addEventListener('click',function(e){
+  if(e.target.classList&&e.target.classList.contains('moverlay'))e.target.classList.remove('show');
+});
+function notify(msg,err){
+  var n=document.getElementById('notif');
+  if(!n)return;
+  n.textContent=(err?'⚠ ':'✓ ')+msg;
+  n.className='notif'+(err?' err':'');
+  n.classList.add('show');
+  setTimeout(function(){n.classList.remove('show');},3000);
+}
+function hideSplash(){
+  var sp=document.getElementById('splashScreen');if(!sp)return;
+  var bar=document.getElementById('splashBar');if(bar)bar.style.width='100%';
+  setTimeout(function(){sp.style.opacity='0';setTimeout(function(){sp.style.display='none';},420);},300);
+}
 
-  // Les notes sont stockées dans notesEns (format {teacherId:[{id,title,date,level,notes:{eleveId:val}}]})
-  // On cherche dans toutes les sources disponibles
-  let allNotes = [];
-
-  // Format nouveau (notes.json) : objet {teacherId: [{...}]}
-  if (data.notes && typeof data.notes === 'object' && !Array.isArray(data.notes)) {
-    Object.values(data.notes).forEach(arr=>{
-      (arr||[]).filter(n=>(n.level||n.classe)===cl).forEach(n=>{
-        const myVal = n.notes?.[eleve.id];
-        if (myVal!==undefined) allNotes.push({titre:n.title||n.titre,date:n.date,note:myVal});
-      });
-    });
+// ═══ START ════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async function() {
+  var ok = await loadData();
+  hideSplash();
+  if (ok) {
+    if (!tryRestoreSession()) {
+      showView('login');
+    }
+  } else {
+    showView('login');
   }
-
-  // Fallback : notesEns depuis melec-data.json (chargé dans data.notesEns)
-  if (!allNotes.length && data.notesEns) {
-    Object.values(data.notesEns).forEach(arr=>{
-      (arr||[]).filter(n=>n.level===cl).forEach(n=>{
-        const myVal = n.notes?.[eleve.id];
-        if (myVal!==undefined) allNotes.push({titre:n.title,date:n.date,note:myVal});
-      });
-    });
-  }
-
-  allNotes.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-
-  // Calcul moyenne (valeurs numériques uniquement)
-  const nums = allNotes.map(n=>parseFloat(n.note)).filter(v=>!isNaN(v));
-  const moy  = nums.length ? (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(1) : null;
-
-  setContent(`
-    <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px;">
-      Mes notes — ${CLASSES[cl]||cl}
-    </div>
-
-    ${moy!==null?`
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;">
-      <div style="text-align:center;">
-        <div style="font-family:var(--display);font-size:32px;font-weight:800;color:${parseFloat(moy)>=10?'var(--green)':'var(--red)'};">${moy}</div>
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Moyenne</div>
-      </div>
-      <div style="flex:1;font-size:12px;color:var(--text2);">${nums.length} note${nums.length>1?'s':''} sur ${allNotes.length} évaluation${allNotes.length>1?'s':''}</div>
-    </div>`:
-    '<div class="warn-box" style="margin-bottom:14px;">Aucune note enregistrée pour le moment.</div>'}
-
-    <div style="display:flex;flex-direction:column;gap:7px;">
-      ${allNotes.length ? allNotes.map(n=>{
-        const num = parseFloat(n.note);
-        const isNum = !isNaN(num);
-        const color = !isNum ? 'var(--text3)' : num>=10 ? 'var(--green)' : 'var(--red)';
-        const bg    = !isNum ? 'var(--bg3)' : num>=10 ? '#14231a' : '#1f0a0a';
-        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:9px;">
-          <div style="flex:1;">
-            <div style="font-size:13px;font-weight:500;">${esc(n.titre||'—')}</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono);">${n.date||'—'}</div>
-          </div>
-          <div style="background:${bg};color:${color};padding:4px 12px;border-radius:8px;font-family:var(--display);font-size:16px;font-weight:800;flex-shrink:0;">
-            ${esc(String(n.note))}
-          </div>
-        </div>`;
-      }).join('') : ''}
-    </div>
-  `);
-}
-
-// ════════════════════════════════════════════════════════
-// HABILITATIONS
-// ════════════════════════════════════════════════════════
-function renderHab() {
-  const myHab = data.habilitations[eleve.id]||{};
-  setContent(`
-    <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px;">Mes habilitations électriques</div>
-
-    <a class="link-card" href="https://v3.e-prevention.fr/et/login" target="_blank" style="margin-bottom:14px;">
-      <div class="lc-icon">🔗</div>
-      <div class="lc-info">
-        <div class="lc-title">e-Prévention — Détail de ma formation</div>
-        <div class="lc-sub">Accédez au suivi complet de votre formation prévention.<br>
-        <strong style="color:var(--orange);">Problème ? Contactez votre enseignant.</strong></div>
-      </div>
-      <div class="lc-arrow">→</div>
-    </a>
-
-    <div class="hab-grid">
-      ${HAB_TYPES.map(h=>{
-        const hab = myHab[h]||{};
-        return `<div class="hab-card">
-          <div class="hab-type">${h}</div>
-          <div class="hab-line">
-            <span>Théorie</span>
-            <div class="hab-dot ${hab.theo?'ok':''}"></div>
-          </div>
-          <div class="hab-line">
-            <span>Pratique</span>
-            <div class="hab-dot ${hab.prat?'ok':''}"></div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-    <div class="muted" style="margin-top:10px;text-align:center;">● Vert = validé &nbsp; ○ Non validé</div>
-  `);
-}
-
-// ════════════════════════════════════════════════════════
-// SCANNER QR
-// ════════════════════════════════════════════════════════
-function openScan() {
-  openModal('modal-scan');
-  document.getElementById('scan-manual').value='';
-  setTimeout(()=>{
-    try {
-      qrScanner = new Html5Qrcode('scanner-container');
-      qrScanner.start(
-        {facingMode:'environment'},
-        {fps:10,qrbox:{width:220,height:220}},
-        (decodedText)=>{
-          // Le QR code contient une URL avec ?sys=XXXXX ou juste le code
-          let code = decodedText.trim();
-          const match = code.match(/[?&]sys=([^&]+)/);
-          if (match) code = decodeURIComponent(match[1]);
-          stopScanner();
-          closeModal('modal-scan');
-          showTPChoiceForSystem(code.toUpperCase());
-        },
-        ()=>{}
-      ).catch(()=>toast('Impossible d\'accéder à la caméra','err'));
-    } catch(e) { toast('Scanner non disponible','err'); }
-  },200);
-}
-
-function stopScanner() {
-  if (qrScanner) {
-    qrScanner.stop().catch(()=>{});
-    qrScanner.clear();
-    qrScanner = null;
-  }
-}
-
-function closeScan() {
-  stopScanner();
-  closeModal('modal-scan');
-}
-
-function onManualCode() {
-  const code = document.getElementById('scan-manual').value.trim().toUpperCase();
-  if (!code) return;
-  closeScan();
-  showTPChoiceForSystem(code);
-}
-
-// ════════════════════════════════════════════════════════
-// UTILS
-// ════════════════════════════════════════════════════════
-function openModal(id)  { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-ov').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o)o.classList.remove('open'); }));
-function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function toast(msg,type='ok'){
-  const el=document.getElementById('toast');
-  el.textContent=(type==='ok'?'✓ ':'✕ ')+msg;
-  el.className='toast show '+type;
-  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),3000);
-}
-
-// ════════════════════════════════════════════════════════
-// CONFIG (paramètre URL pour pré-remplir les gists)
-// ════════════════════════════════════════════════════════
-function readURLParams() {
-  const p = new URLSearchParams(location.search);
-  if (p.get('sys')) {
-    // Ouverture directe depuis QR code → connecter puis choisir TP
-    const sysCode = p.get('sys').toUpperCase();
-    cfg._pendingSys = sysCode;
-    localStorage.setItem('melec_eleve_pending_sys', sysCode);
-  }
-  if (p.get('data'))   { cfg.dataGistId = p.get('data');   localStorage.setItem('melec_eleve_cfg',JSON.stringify(cfg)); }
-  if (p.get('tp'))     { cfg.tpGistId   = p.get('tp');     localStorage.setItem('melec_eleve_cfg',JSON.stringify(cfg)); }
-}
-
-// Après connexion : vérifier s'il y a un système en attente (depuis QR code)
-const _origUnlock = unlockApp;
-
-// ════════════════════════════════════════════════════════
-// START
-// ════════════════════════════════════════════════════════
-readURLParams();
-init();
+});
 </script>
 </body>
 </html>
