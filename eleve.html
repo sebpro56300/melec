@@ -303,6 +303,9 @@ body{display:flex;flex-direction:column;}
   <button class="nav-btn" id="nb-notes" onclick="showPage('notes')">
     <span class="ni">📊</span>Notes
   </button>
+  <button class="nav-btn" id="nb-bons" onclick="showPage('bons')">
+    <span class="ni">📋</span>Bons
+  </button>
 </div>
 
 <!-- ── MODAL SCANNER ─────────────────────────────────── -->
@@ -335,6 +338,57 @@ body{display:flex;flex-direction:column;}
   </div>
 </div>
 
+<!-- ── MODAL BON D'INTERVENTION ───────────────────────── -->
+<div class="modal-ov" id="modal-bon">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-title">📋 Bon d'intervention</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="fg"><label>N° Bon</label><input type="text" id="bon-num" placeholder="Ex: BI-2025-001"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div class="fg"><label>Client</label><input type="text" id="bon-client"></div>
+        <div class="fg"><label>Ville</label><input type="text" id="bon-ville"></div>
+        <div class="fg"><label>Projet</label><input type="text" id="bon-projet"></div>
+        <div class="fg"><label>Interlocuteur</label><input type="text" id="bon-interlo"></div>
+        <div class="fg"><label>Maître d'œuvre</label><input type="text" id="bon-moe"></div>
+        <div class="fg"><label>Bon établi à</label><input type="text" id="bon-bonatype"></div>
+      </div>
+      <div class="fg"><label>Nature des travaux</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 0;">
+          ${['Commande','Régie','Dépannage','Complément','Autre'].map(t=>`
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;text-transform:none;letter-spacing:0;cursor:pointer;">
+              <input type="checkbox" name="bon-type" value="${t}" style="width:auto;"> ${t}
+            </label>`).join('')}
+        </div>
+      </div>
+      <div class="fg"><label>Description des travaux réalisés</label>
+        <textarea id="bon-desc" placeholder="Décrivez les travaux effectués..." style="min-height:80px;"></textarea>
+      </div>
+      <div class="fg"><label>Travaux restants / Observations</label>
+        <textarea id="bon-restes" placeholder="Travaux à prévoir..."></textarea>
+      </div>
+      <div class="fg"><label>Matériels utilisés</label>
+        <div id="bon-mat-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+        <button class="btn btn-g btn-sm" style="align-self:flex-start;margin-top:5px;" onclick="addMatLine()">+ Ligne matériel</button>
+      </div>
+      <div class="fg"><label>Heures travaillées</label>
+        <div id="bon-heure-list" style="display:flex;flex-direction:column;gap:5px;"></div>
+        <button class="btn btn-g btn-sm" style="align-self:flex-start;margin-top:5px;" onclick="addHeureLine()">+ Ligne heures</button>
+      </div>
+      <div class="fg">
+        <label>Terminé ?</label>
+        <select id="bon-termine">
+          <option value="non">Non — en cours</option>
+          <option value="oui">Oui — terminé</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-bon')">Annuler</button>
+      <button class="btn btn-p" onclick="saveBon()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
@@ -349,17 +403,23 @@ const HAB_TYPES     = ['B0','B1V','BR'];
 
 // IDs des Gists publics — intégrés en dur, aucune config requise côté élève
 const GIST_DATA = 'a953954f369f7fad1597e2a6da38578c'; // eleves, cours, habilitations
-const GIST_TP   = '5cbd51c7c62493addf84845feddd19d7'; // tps, sessions, ressources
+const GIST_TP   = '5cbd51c7c62493addf84845feddd19d7'; // tps, sessions, ressources, bons
+const GIST_INV  = '7199f3da76a616c61c7b7780409bf786'; // inventaire systèmes (QR codes)
+
+// Fine-grained token — accès en ÉCRITURE limité au seul Gist TP
+// Générer sur github.com → Settings → Developer settings → Fine-grained tokens
+// Permissions : Gists = Read and Write  |  Expiration : 1 an
+// REMPLACER LA VALEUR CI-DESSOUS par ton token généré
+const WRITE_TOKEN = 'REMPLACER_PAR_TON_TOKEN_FINE_GRAINED';
 
 // ════════════════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════════════════
-// token : optionnel, uniquement pour l'enseignant qui veut sauver les sessions
-let cfg = { token: '' };
 let eleve = null;
 let data = {
   eleves:[], tps:[], sessions:[], ressources:[],
-  cours:[], habilitations:{}, inventory:[]
+  cours:[], habilitations:{}, inventory:[],
+  bons:[], notesEns:{}
 };
 let currentPage = 'accueil';
 let qrScanner = null;
@@ -434,9 +494,26 @@ async function loadRemote(showToast=true) {
       data.tps        = load2('tps.json',[]);
       data.sessions   = load2('tp-sessions.json',[]);
       data.ressources = load2('ressources.json',[]);
-      const inv       = load2('melec-inventaire.json',null);
+      data.bons       = load2('bons-intervention.json',[]);
+      // Inventaire : chercher dans le gist TP d'abord, sinon charger depuis GIST_INV
+      const inv = load2('melec-inventaire.json',null);
       if (inv?.items) data.inventory = inv.items;
       else if (Array.isArray(inv)) data.inventory = inv;
+    }
+
+    // Inventaire systèmes (pour scan QR) — Gist public séparé
+    if (!data.inventory.length) {
+      try {
+        const r3 = await fetch(`https://api.github.com/gists/${GIST_INV}`, {headers});
+        if (r3.ok) {
+          const g3 = await r3.json();
+          const raw3 = g3.files['melec-inventaire.json']?.content;
+          if (raw3) {
+            const parsed = JSON.parse(raw3);
+            data.inventory = parsed.items || (Array.isArray(parsed)?parsed:[]);
+          }
+        }
+      } catch(e){}
     }
 
     saveLocal();
@@ -462,23 +539,44 @@ function setLoginStatus(msg, color='var(--text3)') {
 }
 
 function saveLocal() {
-  ['eleves','tps','sessions','ressources','cours','inventory'].forEach(k=>{
-    localStorage.setItem('mel_'+k, JSON.stringify(data[k]));
+  ['eleves','tps','sessions','ressources','cours','inventory','bons'].forEach(k=>{
+    localStorage.setItem('mel_'+k, JSON.stringify(data[k]||[]));
   });
   localStorage.setItem('mel_habilitations', JSON.stringify(data.habilitations));
 }
 
-async function saveSession(sessionId) {
-  saveLocal();
-  // Push sessions vers gist TP si token disponible (enseignant connecté)
-  if (!cfg.token) return;
+// Push vers le Gist TP avec le token fine-grained intégré
+async function pushToGist(files) {
+  if (!WRITE_TOKEN || WRITE_TOKEN.startsWith('REMPLACER')) {
+    // Pas de token configuré — sauvegarde locale uniquement
+    return;
+  }
   try {
     await fetch(`https://api.github.com/gists/${GIST_TP}`, {
       method:'PATCH',
-      headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json'},
-      body:JSON.stringify({files:{'tp-sessions.json':{content:JSON.stringify(data.sessions,null,2)}}})
+      headers:{
+        Authorization:`token ${WRITE_TOKEN}`,
+        'Content-Type':'application/json',
+        'X-GitHub-Api-Version':'2022-11-28'
+      },
+      body: JSON.stringify({files})
     });
   } catch(e) {}
+}
+
+async function saveSession() {
+  saveLocal();
+  saveAutoEvals();
+  await pushToGist({
+    'tp-sessions.json': {content: JSON.stringify(data.sessions, null, 2)}
+  });
+}
+
+async function saveBons() {
+  saveLocal();
+  await pushToGist({
+    'bons-intervention.json': {content: JSON.stringify(data.bons, null, 2)}
+  });
 }
 
 // ════════════════════════════════════════════════════════
@@ -486,25 +584,29 @@ async function saveSession(sessionId) {
 // ════════════════════════════════════════════════════════
 function hashSimple(s) { let h=0; for(let c of String(s)){h=(h*31+c.charCodeAt(0))&0xffffffff;} return String(h); }
 
+function normalizeStr(s) {
+  // Normalise : trim, espaces multiples → simple, majuscules
+  return (s||'').trim().replace(/\s+/g,' ').toUpperCase();
+}
+
 function doLogin() {
-  const nom    = document.getElementById('l-nom').value.trim().toUpperCase();
-  const prenom = document.getElementById('l-prenom').value.trim();
-  const pass   = document.getElementById('l-pass').value;
-  const err    = document.getElementById('l-err');
+  const nomSaisi    = normalizeStr(document.getElementById('l-nom').value);
+  const prenomSaisi = (document.getElementById('l-prenom').value||'').trim().toLowerCase();
+  const pass        = document.getElementById('l-pass').value;
+  const err         = document.getElementById('l-err');
   err.style.display='none';
 
   if (!data.eleves.length) {
     err.style.display='block';
-    err.textContent='Données non chargées — configurez les Gist IDs ci-dessous.';
-    document.getElementById('l-cfg-panel').style.display='block';
+    err.textContent='Données non chargées — réessayez dans quelques secondes.';
+    loadRemote(false);
     return;
   }
 
-  // Chercher par nom (champ nom ou name, en majuscules) + prénom (insensible casse)
   const found = data.eleves.find(e=>{
-    const enom = (e.nom||e.name||'').toUpperCase();
-    const eprenom = (e.prenom||'').toLowerCase();
-    return enom===nom && eprenom===prenom.toLowerCase();
+    const enom    = normalizeStr(e.nom||e.name||'');
+    const eprenom = (e.prenom||'').trim().toLowerCase();
+    return enom===nomSaisi && eprenom===prenomSaisi;
   });
 
   if (!found) {
@@ -566,6 +668,7 @@ function showPage(page) {
     cours:     renderCours,
     hab:       renderHab,
     notes:     renderNotes,
+    bons:      renderBons,
   };
   if (renders[page]) renders[page]();
 }
@@ -799,14 +902,7 @@ function chooseTp(tpId, sysId, classe) {
   saveLocal();
   closeModal('modal-tp-choice');
   closeScan();
-  // Push vers gist si token disponible
-  if (cfg.token) {
-    fetch(`https://api.github.com/gists/${GIST_TP}`,{
-      method:'PATCH',
-      headers:{Authorization:`token ${cfg.token}`,'Content-Type':'application/json'},
-      body:JSON.stringify({files:{'tp-sessions.json':{content:JSON.stringify(data.sessions,null,2)}}})
-    }).catch(()=>{});
-  }
+  pushToGist({'tp-sessions.json':{content:JSON.stringify(data.sessions,null,2)}});
   toast('TP démarré ✓','ok');
   showPage('tp');
 }
@@ -837,9 +933,10 @@ function setAutoEval(sessionId, compId, critId, couleur, el) {
   el.closest('.eval-dots-row')?.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
   el.classList.add('sel');
 
-  // Sauvegarder localement ET dans un store dédié auto-évals
+  // Sauvegarder localement ET pousser vers le Gist
   saveAutoEvals();
   saveLocal();
+  saveSession(); // push async vers Gist
   toast('Auto-évaluation enregistrée ✓','ok');
 }
 
@@ -1044,6 +1141,246 @@ function openCoursDoc(coursId) {
     data.ressources.push({...fakeRes,id:tmpId});
   }
   openDoc(tmpId);
+}
+
+// ════════════════════════════════════════════════════════
+// BONS D'INTERVENTION
+// ════════════════════════════════════════════════════════
+let editBonId = null;
+
+function renderBons() {
+  const myBons = (data.bons||[])
+    .filter(b=>b.eleveId===eleve.id)
+    .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+
+  setContent(`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--text2);">
+        Bons d'intervention (${myBons.length})
+      </div>
+      <button class="btn btn-p btn-sm" onclick="openBonModal(null)">+ Nouveau bon</button>
+    </div>
+    ${myBons.length ? myBons.map(b=>{
+      const termine = b.termine==='oui'||b.termine===true;
+      const signe   = !!b.sigEnseignant;
+      return `<div style="background:var(--bg2);border:1px solid ${signe?'var(--accent)':termine?'var(--green)':'var(--border)'};border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <span style="font-size:13px;font-weight:600;flex:1;">Bon n° ${esc(b.numero||'—')}</span>
+          ${signe?'<span class="badge b-blue">✓ Signé</span>':termine?'<span class="badge b-green">Terminé</span>':'<span class="badge b-orange">En cours</span>'}
+        </div>
+        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:8px;">
+          ${b.createdAt||'—'} · ${esc(b.client||'—')} · ${esc(b.projet||'—')}
+        </div>
+        <div style="display:flex;gap:6px;">
+          ${!signe?`<button class="btn btn-g btn-sm" onclick="openBonModal('${b.id}')">✏️ Modifier</button>`:''}
+          <button class="btn btn-g btn-sm" onclick="viewBon('${b.id}')">👁 Voir</button>
+        </div>
+      </div>`;
+    }).join('')
+    : '<div style="padding:30px;text-align:center;color:var(--text3);">Aucun bon d\'intervention<br><small>Créez votre premier bon ci-dessus</small></div>'}
+  `);
+}
+
+function openBonModal(id) {
+  editBonId = id;
+  const b = id ? (data.bons||[]).find(x=>x.id===id) : null;
+
+  // Réinitialiser le formulaire
+  document.getElementById('bon-num').value     = b?.numero||'';
+  document.getElementById('bon-client').value  = b?.client||'';
+  document.getElementById('bon-ville').value   = b?.ville||'';
+  document.getElementById('bon-projet').value  = b?.projet||'';
+  document.getElementById('bon-interlo').value = b?.interlo||'';
+  document.getElementById('bon-moe').value     = b?.moe||'';
+  document.getElementById('bon-bonatype').value= b?.bonA||'';
+  document.getElementById('bon-desc').value    = b?.desc||'';
+  document.getElementById('bon-restes').value  = b?.restes||'';
+  document.getElementById('bon-termine').value = b?.termine||'non';
+
+  // Cases à cocher types
+  document.querySelectorAll('input[name="bon-type"]').forEach(cb=>{
+    cb.checked = !!(b?.types?.[cb.value]);
+  });
+
+  // Matériels
+  const matList = document.getElementById('bon-mat-list');
+  matList.innerHTML='';
+  (b?.materiels||[{const:'',ref:'',des:'',qty:''}]).forEach((m,i)=>addMatLine(m));
+  if (!b?.materiels?.length) matList.innerHTML='';
+
+  // Heures
+  const hList = document.getElementById('bon-heure-list');
+  hList.innerHTML='';
+  (b?.heures||[{date:'',matin:'',apm:'',tps:'',nar:'',prep:''}]).forEach(h=>addHeureLine(h));
+  if (!b?.heures?.length) hList.innerHTML='';
+
+  openModal('modal-bon');
+}
+
+function addMatLine(m={}) {
+  const el = document.getElementById('bon-mat-list');
+  const div = document.createElement('div');
+  div.style.cssText='display:grid;grid-template-columns:1fr 1fr 2fr 60px auto;gap:5px;align-items:center;';
+  div.innerHTML=`
+    <input type="text" placeholder="Constructeur" value="${esc(m.const||'')}" style="font-size:12px;">
+    <input type="text" placeholder="Référence" value="${esc(m.ref||'')}" style="font-size:12px;">
+    <input type="text" placeholder="Désignation" value="${esc(m.des||'')}" style="font-size:12px;">
+    <input type="text" placeholder="Qté" value="${esc(m.qty||'')}" style="font-size:12px;">
+    <button onclick="this.closest('div').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;">✕</button>`;
+  el.appendChild(div);
+}
+
+function addHeureLine(h={}) {
+  const el = document.getElementById('bon-heure-list');
+  const div = document.createElement('div');
+  div.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr auto;gap:4px;align-items:center;';
+  div.innerHTML=`
+    <input type="date" value="${esc(h.date||'')}" style="font-size:11px;" title="Date">
+    <input type="text" placeholder="Matin" value="${esc(h.matin||'')}" style="font-size:11px;">
+    <input type="text" placeholder="Apm" value="${esc(h.apm||'')}" style="font-size:11px;">
+    <input type="text" placeholder="Trajet" value="${esc(h.tps||'')}" style="font-size:11px;">
+    <input type="text" placeholder="Nuit" value="${esc(h.nar||'')}" style="font-size:11px;">
+    <input type="text" placeholder="Prép." value="${esc(h.prep||'')}" style="font-size:11px;">
+    <button onclick="this.closest('div').remove()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;">✕</button>`;
+  el.appendChild(div);
+}
+
+async function saveBon() {
+  const types = {};
+  document.querySelectorAll('input[name="bon-type"]:checked').forEach(cb=>{ types[cb.value]=true; });
+
+  const materiels = [...document.querySelectorAll('#bon-mat-list > div')].map(row=>{
+    const inputs = row.querySelectorAll('input');
+    return {const:inputs[0]?.value||'',ref:inputs[1]?.value||'',des:inputs[2]?.value||'',qty:inputs[3]?.value||''};
+  }).filter(m=>m.des||m.ref);
+
+  const heures = [...document.querySelectorAll('#bon-heure-list > div')].map(row=>{
+    const inputs = row.querySelectorAll('input');
+    return {date:inputs[0]?.value||'',matin:inputs[1]?.value||'',apm:inputs[2]?.value||'',
+            tps:inputs[3]?.value||'',nar:inputs[4]?.value||'',prep:inputs[5]?.value||''};
+  }).filter(h=>h.date||h.matin||h.apm);
+
+  const bon = {
+    id:         editBonId || 'BON'+Date.now().toString(36).toUpperCase(),
+    eleveId:    eleve.id,
+    eleveLevel: eleve.classe||eleve.level,
+    intervenant:eleve.nom+' '+eleve.prenom,
+    numero:     document.getElementById('bon-num').value,
+    client:     document.getElementById('bon-client').value,
+    ville:      document.getElementById('bon-ville').value,
+    projet:     document.getElementById('bon-projet').value,
+    interlo:    document.getElementById('bon-interlo').value,
+    moe:        document.getElementById('bon-moe').value,
+    bonA:       document.getElementById('bon-bonatype').value,
+    desc:       document.getElementById('bon-desc').value,
+    restes:     document.getElementById('bon-restes').value,
+    termine:    document.getElementById('bon-termine').value,
+    types, materiels, heures,
+    createdAt:  editBonId
+                  ? ((data.bons||[]).find(b=>b.id===editBonId)?.createdAt||new Date().toISOString().slice(0,10))
+                  : new Date().toISOString().slice(0,10),
+    updatedAt:  new Date().toISOString().slice(0,10),
+  };
+
+  if (!data.bons) data.bons=[];
+  if (editBonId) {
+    const idx = data.bons.findIndex(b=>b.id===editBonId);
+    if (idx>=0) data.bons[idx]={...data.bons[idx],...bon};
+  } else {
+    data.bons.push(bon);
+  }
+
+  closeModal('modal-bon');
+  toast('Bon enregistré ✓','ok');
+  await saveBons(); // push vers Gist
+  showPage('bons');
+}
+
+function viewBon(id) {
+  const b = (data.bons||[]).find(x=>x.id===id); if(!b) return;
+  // Réutiliser la même fonction d'affichage que melec-suivi
+  const termine = b.termine==='oui'||b.termine===true;
+  const signe   = !!b.sigEnseignant;
+
+  const typesCoches = Object.entries(b.types||{}).map(([k,v])=>`
+    <div style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;font-size:12px;">
+      <div style="width:14px;height:14px;border:1.5px solid #333;display:inline-flex;align-items:center;justify-content:center;font-size:10px;${v?'background:#333;color:#fff':''};">${v?'✓':''}</div>
+      ${esc(k)}
+    </div>`).join('');
+
+  const heuresRows = (b.heures||[]).filter(h=>h.date||h.matin||h.apm).map(h=>`
+    <tr><td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.date||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.matin||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.apm||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.tps||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.nar||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(h.prep||'')}</td></tr>`).join('')
+    ||`<tr><td colspan="6" style="border:1px solid #ccc;padding:4px 7px;color:#888;text-align:center;">—</td></tr>`;
+
+  const matRows = (b.materiels||[]).map(m=>`
+    <tr><td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.const||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.ref||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;">${esc(m.des||'')}</td>
+    <td style="border:1px solid #ccc;padding:4px 7px;text-align:center;">${esc(m.qty||'')}</td></tr>`).join('')
+    ||`<tr><td colspan="4" style="border:1px solid #ccc;padding:4px 7px;color:#888;text-align:center;">—</td></tr>`;
+
+  function cell(l,v){return `<div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:2px;">${l}</div><div style="border:1px solid #ccc;border-radius:3px;padding:5px 8px;min-height:26px;background:#fafafa;font-size:12px;">${esc(v||'—')}</div></div>`;}
+
+  const win = window.open('','_blank','width=860,height=950,scrollbars=yes');
+  win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+  <title>Bon n°${b.numero||'?'}</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;background:#fff;color:#111;padding:24px;}
+  h1{font-size:17px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+  .sub{text-align:center;font-size:10px;color:#666;margin-bottom:16px;}
+  .sec{margin-bottom:14px;}.sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;background:#e5e5e5;padding:3px 8px;border-left:3px solid #333;margin-bottom:7px;}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  table{width:100%;border-collapse:collapse;}th{background:#e5e5e5;font-weight:700;padding:5px 7px;border:1px solid #ccc;font-size:11px;text-align:left;}
+  .status{display:flex;gap:14px;align-items:center;padding:6px 12px;background:#f5f5f5;border-radius:5px;margin-bottom:14px;flex-wrap:wrap;}
+  .badge{padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+  .btn{padding:7px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;border:none;margin-left:6px;}
+  .no-print{position:fixed;top:10px;right:10px;}@media print{.no-print{display:none;}}
+  </style></head><body>
+  <div class="no-print">
+    <button class="btn" style="background:#3b82f6;color:#fff;" onclick="window.print()">🖨️ Imprimer</button>
+    <button class="btn" style="background:#e5e7eb;" onclick="window.close()">✕</button>
+  </div>
+  <h1>Bon d'intervention</h1>
+  <div class="sub">Compétence C11 — Compléter les documents liés aux opérations</div>
+  <div class="status">
+    <span><strong>N°</strong> ${esc(b.numero||'—')}</span>
+    <span><strong>Établi le</strong> ${esc(b.createdAt||'—')}</span>
+    <span><strong>Intervenant :</strong> ${esc(b.intervenant||'')}</span>
+    <span class="badge" style="${termine?'background:#dcfce7;color:#166534':'background:#fef9c3;color:#854d0e'}">${termine?'✓ Terminé':'En cours'}</span>
+    <span class="badge" style="${signe?'background:#dbeafe;color:#1d4ed8':'background:#fee2e2;color:#991b1b'}">${signe?'✓ Signé — '+esc(b.sigEnseignant):'⚠ Non signé'}</span>
+  </div>
+  <div class="sec"><div class="sec-title">Identification</div>
+    <div class="g3">${cell('Client',b.client)}${cell('Ville',b.ville)}${cell('Projet',b.projet)}${cell("Maître d'œuvre",b.moe)}${cell('Interlocuteur',b.interlo)}${cell('Bon établi à',b.bonA)}</div>
+  </div>
+  <div class="sec"><div class="sec-title">Nature des travaux</div><div style="padding:6px 0;">${typesCoches}</div></div>
+  <div class="sec"><div class="sec-title">Détail des heures</div>
+    <table><thead><tr><th>Date</th><th>Matin</th><th>Après-midi</th><th>Tps trajet</th><th>Nuit/arrêt</th><th>Préparation</th></tr></thead><tbody>${heuresRows}</tbody></table>
+  </div>
+  <div class="sec"><div class="sec-title">Description des travaux réalisés</div>
+    <div style="border:1px solid #ccc;border-radius:3px;padding:8px;min-height:70px;white-space:pre-wrap;background:#fafafa;">${esc(b.desc||'—')}</div>
+  </div>
+  <div class="sec"><div class="sec-title">Travaux restants / Observations</div>
+    <div style="border:1px solid #ccc;border-radius:3px;padding:8px;min-height:50px;white-space:pre-wrap;background:#fafafa;">${esc(b.restes||'—')}</div>
+  </div>
+  <div class="sec"><div class="sec-title">Matériels utilisés</div>
+    <table><thead><tr><th>Constructeur</th><th>Référence</th><th>Désignation</th><th style="width:60px;text-align:center;">Qté</th></tr></thead><tbody>${matRows}</tbody></table>
+  </div>
+  <div class="sec"><div class="sec-title">Signatures</div>
+    <div class="g3">
+      <div>${cell('Signature client',b.sig||b.cAapNom||'')}</div>
+      <div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#555;margin-bottom:4px;">Visa enseignant</div>
+        <div style="border:1.5px solid #333;min-height:60px;padding:8px;border-radius:3px;">
+          ${signe?`<strong>${esc(b.sigEnseignant)}</strong><br><small>${esc(b.sigDate||'—')}</small>`:'<span style="color:#999;font-style:italic;">Non signé</span>'}
+        </div>
+      </div>
+    </div>
+  </div>
+  </body></html>`);
+  win.document.close();
 }
 
 // ════════════════════════════════════════════════════════
