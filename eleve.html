@@ -528,19 +528,19 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
 <div class="notif" id="notif"></div>
 
 <script>
-// ═══ CONFIG GIST (identique à l'app enseignant) ════════════════════════════
-var GIST_ID   = 'a953954f369f7fad1597e2a6da38578c';
+// ═══ CONFIG GIST ════════════════════════════════════════════════════════════
+// Gist données : eleves, cours, notes, pfmp, habilitations, appel, bons
+var GIST_DATA_ID  = 'a953954f369f7fad1597e2a6da38578c';
+var GIST_DATA_API = 'https://api.github.com/gists/' + GIST_DATA_ID;
+// Gist TP : tps, tp-sessions, ressources
+var GIST_TP_ID    = '5cbd51c7c62493addf84845feddd19d7';
+var GIST_TP_API   = 'https://api.github.com/gists/' + GIST_TP_ID;
 var _t=['ghp_qEznNZ','A1uDLc87PX','Yjjrt9dT0M','3g4D20Oeli'];
 var GIST_TOKEN = _t[0]+_t[1]+_t[2]+_t[3];
-var GIST_FILE  = 'melec-data.json';
-var GIST_API   = 'https://api.github.com/gists/' + GIST_ID;
+// GIST_API pointe sur le Gist données (compatibilité avec le reste du code)
+var GIST_API   = GIST_DATA_API;
 var LS_BACKUP  = 'melec_eleve_backup';
 var LS_SESSION = 'melec_eleve_session';
-
-// Gist TP — bons d'intervention séparés
-var GIST_TP_ID  = '5cbd51c7c62493addf84845feddd19d7';
-var GIST_TP_API = 'https://api.github.com/gists/' + GIST_TP_ID;
-var BONS_FILE   = 'bons-intervention.json';
 
 // ═══ CONSTANTES ════════════════════════════════════════════════════════════
 var LEVELS = {
@@ -573,39 +573,51 @@ function gistHeaders() {
   };
 }
 
+function readFile(files, name, fallback) {
+  try { var f = files[name]; if (f && f.content) return JSON.parse(f.content); } catch(e){}
+  return fallback;
+}
+
 async function loadData() {
   setSyncState('pulse','Chargement…');
   try {
-    // 1. Charger melec-data.json (élèves, cours, notes, tp, etc.)
-    var r = await fetch(GIST_API + '?t=' + Date.now(), {
-      method:'GET', headers:gistHeaders(), cache:'no-store'
+    // 1. Gist données
+    var r1 = await fetch(GIST_DATA_API + '?t=' + Date.now(), {method:'GET', headers:gistHeaders(), cache:'no-store'});
+    if (!r1.ok) throw new Error('HTTP ' + r1.status);
+    var g1 = (await r1.json()).files || {};
+
+    data = {};
+    data.eleves           = readFile(g1, 'eleves.json',            []);
+    data.cours            = readFile(g1, 'cours.json',             []);
+    data.notesEns         = readFile(g1, 'notes.json',             {});
+    data.notes            = data.notesEns;
+    data.pfmp             = readFile(g1, 'pfmp.json',              []);
+    data.habilitations    = readFile(g1, 'habilitations.json',     {});
+    data.appel            = readFile(g1, 'appel.json',             []);
+    data.bonsIntervention = readFile(g1, 'bons-intervention.json', []);
+
+    // Normaliser : la migration a renommé name -> nom, on remet name pour compatibilité
+    data.eleves = data.eleves.map(function(e) {
+      if (!e.name && e.nom) e.name = e.nom;
+      if (!e.elevePass && e.elevePass !== 0) e.elevePass = '';
+      return e;
     });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    var j = await r.json();
-    var file = j.files && j.files[GIST_FILE];
-    if (!file || !file.content) throw new Error('Fichier vide');
-    data = JSON.parse(file.content);
-    fixData();
 
-    // 2. Charger bons-intervention.json depuis le Gist TP
+    // 2. Gist TP
     try {
-      var r2 = await fetch(GIST_TP_API + '?t=' + Date.now(), {
-        method:'GET', headers:gistHeaders(), cache:'no-store'
-      });
+      var r2 = await fetch(GIST_TP_API + '?t=' + Date.now(), {method:'GET', headers:gistHeaders(), cache:'no-store'});
       if (r2.ok) {
-        var j2 = await r2.json();
-        var bonsFile = j2.files && j2.files[BONS_FILE];
-        if (bonsFile && bonsFile.content) {
-          data.bonsIntervention = JSON.parse(bonsFile.content);
-        }
-      }
-    } catch(e2) { /* bons non critiques, on continue */ }
+        var g2 = (await r2.json()).files || {};
+        data.tp      = readFile(g2, 'tp-sessions.json', []);
+        data.tpBank  = readFile(g2, 'tps.json',         []);
+      } else { data.tp = []; data.tpBank = []; }
+    } catch(e2) { data.tp = []; data.tpBank = []; }
 
+    fixData();
     try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
     setSyncState('ok','Connecté');
     return true;
   } catch(e) {
-    // Fallback backup local
     try {
       var bk = localStorage.getItem(LS_BACKUP);
       if (bk) { data = JSON.parse(bk); fixData(); setSyncState('warn','Mode hors-ligne'); return true; }
@@ -619,22 +631,22 @@ async function saveData() {
   if (!data) return;
   setSyncState('pulse','Sauvegarde…');
   try {
-    // 1. Sauver melec-data.json sans les bons (ils ont leur propre fichier)
-    var dataToSave = Object.assign({}, data);
-    delete dataToSave.bonsIntervention; // ne pas polluer melec-data.json
-    var body = {files:{}};
-    body.files[GIST_FILE] = {content: JSON.stringify(dataToSave)};
-    var r = await fetch(GIST_API, {
-      method:'PATCH', headers:gistHeaders(), body:JSON.stringify(body)
-    });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // 1. Gist données
+    var b1 = {files:{}};
+    b1.files['eleves.json']            = {content: JSON.stringify(data.eleves           || [])};
+    b1.files['cours.json']             = {content: JSON.stringify(data.cours            || [])};
+    b1.files['notes.json']             = {content: JSON.stringify(data.notesEns         || {})};
+    b1.files['pfmp.json']              = {content: JSON.stringify(data.pfmp             || [])};
+    b1.files['habilitations.json']     = {content: JSON.stringify(data.habilitations    || {})};
+    b1.files['appel.json']             = {content: JSON.stringify(data.appel            || [])};
+    b1.files['bons-intervention.json'] = {content: JSON.stringify(data.bonsIntervention || [])};
+    var r1 = await fetch(GIST_DATA_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b1)});
+    if (!r1.ok) throw new Error('HTTP ' + r1.status);
 
-    // 2. Sauver bons-intervention.json dans le Gist TP
-    var body2 = {files:{}};
-    body2.files[BONS_FILE] = {content: JSON.stringify(data.bonsIntervention || [])};
-    await fetch(GIST_TP_API, {
-      method:'PATCH', headers:gistHeaders(), body:JSON.stringify(body2)
-    });
+    // 2. Gist TP
+    var b2 = {files:{}};
+    b2.files['tp-sessions.json'] = {content: JSON.stringify(data.tp || [])};
+    await fetch(GIST_TP_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b2)});
 
     try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
     setSyncState('ok','Sauvegardé');
