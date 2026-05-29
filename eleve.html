@@ -9,6 +9,8 @@
 <meta name="theme-color" content="#1e3a5f">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>MELEC — Espace Élève</title>
+<!-- QR Scanner -->
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <style>
 :root{
   --blue:#0078d4;--blue-dk:#005a9e;--blue-lt:#e8f4fd;
@@ -287,6 +289,57 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
 .consign-table th{background:#1a1a2e;color:#fff;font-size:10px;}
 .consign-table td input{width:100%;border:none;font-size:11px;font-family:inherit;}
 
+/* ── Scanner TP ── */
+#scannerTpView{
+  display:none;position:fixed;inset:0;background:#000;z-index:2000;
+  flex-direction:column;align-items:center;justify-content:center;
+}
+#scannerTpView.open{display:flex;}
+#scannerTpVideo{width:100%;max-width:480px;max-height:60vh;object-fit:cover;border-radius:8px;}
+.scanner-tp-frame{
+  position:absolute;width:220px;height:220px;
+  border:2px solid rgba(255,255,255,.4);border-radius:8px;pointer-events:none;
+}
+.scanner-tp-line{
+  position:absolute;left:0;right:0;height:2px;background:var(--blue);opacity:.8;
+  animation:scanLineTP 2s ease-in-out infinite;
+}
+@keyframes scanLineTP{0%,100%{top:10%;}50%{top:90%;}}
+.scanner-tp-bar{
+  position:absolute;bottom:0;left:0;right:0;
+  background:rgba(0,0,0,.7);padding:14px;text-align:center;
+}
+.scanner-tp-status{color:#fff;font-size:13px;margin-bottom:8px;}
+.scanner-tp-manual{display:flex;gap:8px;margin-top:8px;}
+.scanner-tp-manual input{
+  flex:1;padding:10px;border:1px solid rgba(255,255,255,.3);
+  background:rgba(255,255,255,.1);color:#fff;border-radius:6px;
+  font-size:16px;font-family:inherit;outline:none;
+}
+.scanner-tp-manual input::placeholder{color:rgba(255,255,255,.5);}
+.scanner-tp-manual input:focus{border-color:var(--blue);}
+
+/* ── Modal choix TP ── */
+#tpChoiceModal .modal{max-width:480px;}
+.tp-choice-item{
+  background:#fff;border-radius:8px;box-shadow:var(--shad);
+  margin-bottom:8px;padding:12px;cursor:pointer;
+  border:2px solid transparent;transition:border-color .15s;
+}
+.tp-choice-item:hover{border-color:var(--blue);}
+.tp-choice-title{font-size:13px;font-weight:700;margin-bottom:3px;}
+.tp-choice-meta{font-size:11px;color:var(--muted);}
+
+/* ── Ressources TP ── */
+.res-link{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;background:#f8fafc;border-radius:6px;
+  text-decoration:none;color:var(--txt);font-size:12px;
+  margin-bottom:6px;border:1px solid var(--brd);
+}
+.res-link:hover{background:var(--blue-lt);border-color:var(--blue);}
+.res-icon{font-size:16px;flex-shrink:0;}
+
 /* ── Habilitations ── */
 .hab-self{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap;}
 .hab-self input{width:15px;height:15px;accent-color:var(--blue);}
@@ -450,7 +503,10 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
 
     <!-- MES TP -->
     <div class="view" id="view-tp">
-      <div class="ph"><div class="pt">Mes Travaux Pratiques</div></div>
+      <div class="ph">
+        <div class="pt">Mes Travaux Pratiques</div>
+        <button class="btn pri sml" onclick="openScannerTP()">📷 Scanner un système</button>
+      </div>
       <div id="tpContent"></div>
     </div>
 
@@ -534,6 +590,38 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
       <button class="btn" onclick="closeModal('bonModal')">Fermer</button>
       <button class="btn pri" onclick="saveBon()">💾 Enregistrer</button>
       <button class="btn ok" onclick="printBon()">🖨️ PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scanner TP -->
+<div id="scannerTpView">
+  <video id="scannerTpVideo" playsinline autoplay muted></video>
+  <div class="scanner-tp-frame"><div class="scanner-tp-line"></div></div>
+  <div class="scanner-tp-bar">
+    <div class="scanner-tp-status" id="scannerTpStatus">Pointez vers un QR code système…</div>
+    <div class="scanner-tp-manual">
+      <input type="text" id="scannerTpManual" placeholder="ou tapez le code : MELEC-001"
+             autocomplete="off" spellcheck="false"
+             onkeydown="if(event.key==='Enter')handleScanTP(this.value.trim())">
+      <button class="btn pri sml" onclick="handleScanTP(document.getElementById('scannerTpManual').value.trim())">OK</button>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn sml" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)"
+              onclick="closeScannerTP()">✕ Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal choix TP après scan -->
+<div class="moverlay" id="tpChoiceModal">
+  <div class="modal">
+    <div class="mhd">🔧 <span id="tpChoiceTitle">Choisir un TP</span>
+      <button class="mcl" onclick="closeModal('tpChoiceModal')">✕</button>
+    </div>
+    <div class="mbdy" id="tpChoiceBody"></div>
+    <div class="mft">
+      <button class="btn" onclick="closeModal('tpChoiceModal')">Annuler</button>
     </div>
   </div>
 </div>
@@ -623,8 +711,9 @@ async function loadData() {
       var r2 = await fetch(GIST_TP_API + '?t=' + Date.now(), {method:'GET', headers:gistHeaders(), cache:'no-store'});
       if (r2.ok) {
         var g2 = (await r2.json()).files || {};
-        data.tp      = readFile(g2, 'tp-sessions.json', []);
-        data.tpBank  = readFile(g2, 'tps.json',         []);
+        data.tp        = readFile(g2, 'tp-sessions.json', []);
+        data.tpBank    = readFile(g2, 'tps.json',         []);
+        data.ressources= readFile(g2, 'ressources.json',  []);
       } else { data.tp = []; data.tpBank = []; }
     } catch(e2) { data.tp = []; data.tpBank = []; }
 
@@ -684,6 +773,7 @@ function fixData() {
   if (!data.appel)         data.appel         = [];
   if (!data.bonsIntervention) data.bonsIntervention = [];
   if (!data.tpEleve)      data.tpEleve      = {}; // {eleveId: {tpId: {phases:{}, obs:''}}}
+  if (!data.ressources)   data.ressources   = [];
 }
 
 // ═══ SYNC STATE ══════════════════════════════════════════════════════════════
@@ -848,12 +938,36 @@ function renderDashboard() {
 }
 
 // ═══ RENDER TP ═══════════════════════════════════════════════════════════════
+
+// Retourne les sessions de l'élève connecté, enrichies avec les données tpBank
 function getMyTp() {
   if (!curEleve) return [];
-  return (data.tp||[]).filter(function(t){
-    return t.level===curEleve.level &&
-      (!t.assignedTo||!t.assignedTo.length||t.assignedTo.includes(curEleve.id));
-  });
+  return (data.tp||[])
+    .filter(function(s){ return s.eleveId === curEleve.id; })
+    .map(function(s) {
+      var tpDef = (data.tpBank||[]).find(function(t){ return t.id === s.tpId; }) || {};
+      return {
+        // champs session
+        sessionId:   s.id,
+        eleveId:     s.eleveId,
+        statut:      s.statut || 'assigne',
+        seances:     s.seances || 1,
+        seancesDone: s.seancesDone || 0,
+        date:        s.date || '',
+        // champs bibliothèque
+        id:          s.tpId,
+        title:       tpDef.titre  || s.tpId,
+        desc:        tpDef.description || '',
+        duree_h:     tpDef.duree_h || 0,
+        niveaux:     tpDef.niveaux || [],
+        systemes:    tpDef.systemes || [],
+        ressources:  tpDef.ressources || [],
+        competences: tpDef.competences || [],
+        // compat ancienne logique phases/obs
+        phase:       s.statut === 'termine' ? 'main' : 'real',
+        level:       s.classe || curEleve.level
+      };
+    });
 }
 
 function getMyCours() {
@@ -892,41 +1006,59 @@ function getTpEleve(tpId) {
 }
 
 function isTpTermine(tp) {
-  // Terminé si l'enseignant l'a marqué main, OU si l'élève a déclaré la fin
   var te = getTpEleve(tp.id);
-  return tp.phase === 'main' || tp.termineParEnseignant || te.termineParEleve;
+  return tp.statut === 'termine' || tp.termineParEnseignant || te.termineParEleve;
+}
+
+// Résoudre une ressource : inline {type,titre,url} ou référence ID → ressources.json
+function resolveRessource(r) {
+  if (typeof r === 'object' && r.url) return r;
+  if (typeof r === 'string') {
+    return (data.ressources||[]).find(function(x){ return x.id === r; }) || null;
+  }
+  return null;
+}
+
+function resIcon(type) {
+  var icons = {pdf:'📄', video:'🎬', lien:'🔗', link:'🔗', image:'🖼', doc:'📝'};
+  return icons[(type||'').toLowerCase()] || '📎';
 }
 
 function renderTP() {
   var c = document.getElementById('tpContent');
   if (!c) return;
   var myTp = getMyTp();
-  if (!myTp.length) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucun TP affecté.</p>'; return; }
+  if (!myTp.length) {
+    c.innerHTML = '<p style="color:#aaa;padding:16px;text-align:center">Aucun TP assigné.</p>'
+      + '<div style="text-align:center;margin-top:8px">'
+      + '<button class="btn pri" onclick="openScannerTP()">📷 Scanner un système pour démarrer un TP</button></div>';
+    return;
+  }
 
-  // Séparer en cours / terminés
   var enCours  = myTp.filter(function(tp){ return !isTpTermine(tp); });
   var termines = myTp.filter(function(tp){ return  isTpTermine(tp); });
-
   var html = '';
 
   if (enCours.length) {
     html += '<div class="sh">🔧 TP en cours</div>';
     enCours.forEach(function(tp) {
-      var ph  = TP_PHASES[tp.phase]||TP_PHASES.prep;
-      var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+      var pct = tp.seances ? Math.round(tp.seancesDone/tp.seances*100) : 0;
       var te  = getTpEleve(tp.id);
-      var donePhases = PHASE_ORDER.filter(function(p){ return te.phases[p]; }).length;
       html += '<div class="card">';
-      html += '<div class="card-hd">'+tp.title+'<span class="bdg '+tp.phase+'">'+ph.label+'</span></div>';
+      html += '<div class="card-hd">'+tp.title;
+      if (tp.duree_h) html += '<span style="font-size:10px;font-weight:400;opacity:.8">⏱ '+tp.duree_h+'h</span>';
+      html += '</div>';
       html += '<div class="card-body">';
       if (tp.desc) html += '<p style="font-size:11px;color:var(--muted);margin-bottom:6px">'+tp.desc+'</p>';
+      if (tp.systemes && tp.systemes.length) {
+        html += '<div style="font-size:10px;color:var(--muted);margin-bottom:4px">🖥 '+tp.systemes.join(', ')+'</div>';
+      }
       html += '<div class="pb"><div class="pf" style="width:'+pct+'%"></div></div>';
-      html += '<div style="font-size:10px;color:var(--muted);margin:3px 0 6px">Séances utilisées : '+(tp.seancesEleve||0)+'/'+tp.seances+'</div>';
-      html += '<div style="font-size:11px;color:var(--blue);margin-bottom:8px">'+donePhases+'/4 étapes validées</div>';
+      html += '<div style="font-size:10px;color:var(--muted);margin:3px 0 8px">'+tp.seancesDone+'/'+tp.seances+' séances — '+pct+'%</div>';
       if (te.obs) html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-style:italic">💬 '+te.obs+'</div>';
       html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      html += '<button class="btn pri sml" data-tpid="'+tp.id+'" onclick="openTpModal(this.dataset.tpid)">✏️ Voir / Modifier</button>';
-      html += '<button class="btn sml" style="background:#107c10;color:#fff;border-color:#107c10" data-tpid="'+tp.id+'" onclick="terminerTp(this.dataset.tpid)">✅ Déclarer terminé</button>';
+      html += '<button class="btn pri sml" data-sid="'+tp.sessionId+'" onclick="openTpModal(this.dataset.sid)">✏️ Voir / Modifier</button>';
+      html += '<button class="btn sml" style="background:#107c10;color:#fff;border-color:#107c10" data-sid="'+tp.sessionId+'" onclick="terminerTp(this.dataset.sid)">✅ Déclarer terminé</button>';
       html += '</div></div></div>';
     });
   }
@@ -934,17 +1066,16 @@ function renderTP() {
   if (termines.length) {
     html += '<div class="sh" style="background:#107c10">✅ TP terminés</div>';
     termines.forEach(function(tp) {
-      var ph  = TP_PHASES[tp.phase]||TP_PHASES.prep;
-      var te  = getTpEleve(tp.id);
-      var donePhases = PHASE_ORDER.filter(function(p){ return te.phases[p]; }).length;
-      var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+      var te = getTpEleve(tp.id);
       html += '<div class="card" style="opacity:.85">';
       html += '<div class="card-hd" style="background:#107c10">'+tp.title+'<span class="bdg done">Terminé</span></div>';
       html += '<div class="card-body">';
       if (tp.desc) html += '<p style="font-size:11px;color:var(--muted);margin-bottom:4px">'+tp.desc+'</p>';
-      html += '<div style="font-size:11px;color:var(--muted)">'+donePhases+'/4 étapes — '+(tp.seancesEleve||0)+'/'+tp.seances+' séances</div>';
+      if (tp.systemes && tp.systemes.length) {
+        html += '<div style="font-size:10px;color:var(--muted);margin-bottom:4px">🖥 '+tp.systemes.join(', ')+'</div>';
+      }
       if (te.obs) html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">💬 '+te.obs+'</div>';
-      html += '<button class="btn sml" style="margin-top:8px" data-tpid="'+tp.id+'" onclick="openTpModal(this.dataset.tpid)">👁 Consulter</button>';
+      html += '<button class="btn sml" style="margin-top:8px" data-sid="'+tp.sessionId+'" onclick="openTpModal(this.dataset.sid)">👁 Consulter</button>';
       html += '</div></div>';
     });
   }
@@ -953,9 +1084,13 @@ function renderTP() {
   c.innerHTML = html;
 }
 
-function terminerTp(tpId) {
+function terminerTp(sessionId) {
   if (!curEleve) return;
   if (!confirm('Déclarer ce TP comme terminé ? Vous ne pourrez plus modifier vos étapes.')) return;
+  var s = (data.tp||[]).find(function(x){ return x.id===sessionId; });
+  if (s) s.statut = 'termine';
+  // Aussi marquer dans tpEleve pour compatibilité
+  var tpId = s ? s.tpId : sessionId;
   if (!data.tpEleve) data.tpEleve = {};
   if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
   if (!data.tpEleve[curEleve.id][tpId]) data.tpEleve[curEleve.id][tpId] = {phases:{},obs:''};
@@ -963,44 +1098,62 @@ function terminerTp(tpId) {
   saveData().then(function(){ renderTP(); renderDashboard(); notify('TP déclaré terminé.'); });
 }
 
-function openTpModal(tpId) {
-  var tp = (data.tp||[]).find(function(t){ return t.id===tpId; });
+function openTpModal(sessionId) {
+  var myTp = getMyTp();
+  var tp   = myTp.find(function(t){ return t.sessionId === sessionId; });
   if (!tp) return;
-  curTpId = tpId;
-  var te       = getTpEleve(tpId);
-  var termine  = isTpTermine(tp);
-  var ph  = TP_PHASES[tp.phase]||TP_PHASES.prep;
-  var pct = Math.round((tp.seancesDone||0)/tp.seances*100);
+  curTpId = tp.id; // tpId bibliothèque (pour obs/phases)
+  var te      = getTpEleve(tp.id);
+  var termine = isTpTermine(tp);
 
   document.getElementById('tpModalTitle').textContent = tp.title + (termine ? ' ✅' : '');
-  // Masquer/afficher le bouton Enregistrer selon statut
   var btnSave = document.querySelector('#tpModal .mft .btn.ok');
   if (btnSave) btnSave.style.display = termine ? 'none' : '';
 
-  var html = '<p style="font-size:11px;color:var(--muted);margin-bottom:10px">'+
-    (tp.desc||'')+'<br>Phase enseignant : <span class="bdg '+tp.phase+'">'+ph.label+'</span> — '+
-    pct+'% ('+(tp.seancesDone||0)+'/'+tp.seances+' séances)</p>';
+  var html = '';
 
+  // Infos générales
+  html += '<div style="font-size:11px;color:var(--muted);margin-bottom:10px">';
+  if (tp.desc) html += tp.desc + '<br>';
+  if (tp.duree_h) html += '⏱ Durée estimée : '+tp.duree_h+'h &nbsp;';
+  if (tp.systemes && tp.systemes.length) html += '🖥 Système : '+tp.systemes.join(', ');
+  html += '</div>';
+
+  // Progression séances
+  var pct = tp.seances ? Math.round(tp.seancesDone/tp.seances*100) : 0;
+  html += '<div style="margin-bottom:10px">';
+  html += '<div class="pb"><div class="pf" style="width:'+pct+'%"></div></div>';
+  html += '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+tp.seancesDone+'/'+tp.seances+' séances</div>';
+  html += '</div>';
+
+  // Ressources documentaires
+  var ressources = (tp.ressources||[]).map(resolveRessource).filter(Boolean);
+  if (ressources.length) {
+    html += '<div class="sh">📎 Documents</div>';
+    ressources.forEach(function(r) {
+      html += '<a class="res-link" href="'+r.url+'" target="_blank" rel="noopener">'
+        + '<span class="res-icon">'+resIcon(r.type)+'</span>'
+        + '<span>'+r.titre+'</span>'
+        + '</a>';
+    });
+  }
+
+  // Étapes
   html += '<div class="sh">📌 Mes étapes</div>';
   PHASE_ORDER.forEach(function(pk) {
-    var pl    = TP_PHASES[pk].label;
-    var done  = !!te.phases[pk];
-    var phIdx = PHASE_ORDER.indexOf(tp.phase);
-    var myIdx = PHASE_ORDER.indexOf(pk);
-    var disabled = (myIdx > phIdx || termine) ? 'disabled' : '';
+    var pl   = TP_PHASES[pk].label;
+    var done = !!te.phases[pk];
     html += '<div class="step-row">';
-    html += '<input type="checkbox" class="step-cb" id="step_'+pk+'" '+
-            (done?'checked':'')+' '+disabled+
-            ' onchange="toggleStep(\''+pk+'\')">';
+    html += '<input type="checkbox" class="step-cb" id="step_'+pk+'" '+(done?'checked':'')+(termine?' disabled':'');
+    html += ' onchange="toggleStep(\''+pk+'\')">';
     html += '<label for="step_'+pk+'" class="step-label'+(done?' done':'')+'">'+pl+'</label>';
-    if (myIdx > phIdx) html += '<span style="font-size:10px;color:#bbb">Non démarré</span>';
     html += '</div>';
   });
 
+  // Observations
   html += '<div class="sh">💬 Mes observations</div>';
-  html += '<textarea class="obs-input" id="tpObs" '+(termine?'disabled style="opacity:.6"':'')+
-          ' placeholder="Vos observations, difficultés, remarques…">'+
-          (te.obs||'')+'</textarea>';
+  html += '<textarea class="obs-input" id="tpObs" '+(termine?'disabled style="opacity:.6"':'');
+  html += ' placeholder="Vos observations, difficultés, remarques…">'+(te.obs||'')+'</textarea>';
   if (termine) html += '<p style="font-size:11px;color:var(--ok);margin-top:4px">✅ TP terminé — consultation seule.</p>';
 
   document.getElementById('tpModalBody').innerHTML = html;
@@ -1014,7 +1167,6 @@ function toggleStep(phaseKey) {
   if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
   if (!data.tpEleve[curEleve.id][curTpId]) data.tpEleve[curEleve.id][curTpId] = {phases:{},obs:''};
   data.tpEleve[curEleve.id][curTpId].phases[phaseKey] = cb.checked;
-  // Mise à jour visuelle du label
   var lbl = cb.nextElementSibling;
   if (lbl) { lbl.className = 'step-label' + (cb.checked?' done':''); }
 }
@@ -1025,7 +1177,6 @@ function saveTpObs() {
   if (!data.tpEleve) data.tpEleve = {};
   if (!data.tpEleve[curEleve.id]) data.tpEleve[curEleve.id] = {};
   if (!data.tpEleve[curEleve.id][curTpId]) data.tpEleve[curEleve.id][curTpId] = {phases:{},obs:''};
-  // Récupérer les checkboxes
   PHASE_ORDER.forEach(function(pk) {
     var cb = document.getElementById('step_'+pk);
     if (cb) data.tpEleve[curEleve.id][curTpId].phases[pk] = cb.checked;
@@ -1034,6 +1185,139 @@ function saveTpObs() {
   saveData().then(function(){ renderTP(); renderDashboard(); });
   closeModal('tpModal');
   notify('Observations enregistrées.');
+}
+
+// ═══ SCANNER TP ══════════════════════════════════════════════════════════════
+var zxingTpReader = null;
+
+function openScannerTP() {
+  var view = document.getElementById('scannerTpView');
+  view.classList.add('open');
+  document.getElementById('scannerTpStatus').textContent = 'Démarrage caméra…';
+  document.getElementById('scannerTpManual').value = '';
+  try {
+    zxingTpReader = new ZXing.BrowserMultiFormatReader();
+    var video = document.getElementById('scannerTpVideo');
+    document.getElementById('scannerTpStatus').textContent = 'Pointez vers un QR code système…';
+    zxingTpReader.decodeFromConstraints(
+      {video:{facingMode:{ideal:'environment'}}},
+      video,
+      function(result, err) {
+        if (result) {
+          var code = result.getText();
+          closeScannerTP();
+          handleScanTP(code);
+        }
+      }
+    );
+  } catch(e) {
+    document.getElementById('scannerTpStatus').textContent = '❌ Caméra indisponible — saisissez le code manuellement';
+  }
+}
+
+function closeScannerTP() {
+  document.getElementById('scannerTpView').classList.remove('open');
+  if (zxingTpReader) { try { zxingTpReader.reset(); } catch(e){} zxingTpReader = null; }
+}
+
+function handleScanTP(code) {
+  if (!code) return;
+  closeScannerTP();
+  if (!curEleve) return;
+
+  // Chercher les TPs compatibles : systemes[] contient le code ET niveaux[] contient le niveau élève
+  var eleveNiveau = (LEVELS[curEleve.level]||{}).short || curEleve.level;
+  var tpsCandidats = (data.tpBank||[]).filter(function(tp) {
+    var sysOk = (tp.systemes||[]).some(function(s){
+      return s.toUpperCase() === code.toUpperCase();
+    });
+    var nivOk = !(tp.niveaux&&tp.niveaux.length) ||
+      tp.niveaux.some(function(n){ return n===eleveNiveau || n===curEleve.level; });
+    return sysOk && nivOk;
+  });
+
+  if (!tpsCandidats.length) {
+    notify('Aucun TP trouvé pour le système "'+code+'" à votre niveau.', true);
+    return;
+  }
+
+  // Exclure les TPs déjà en cours pour cet élève
+  var sesActive = (data.tp||[]).filter(function(s){
+    return s.eleveId===curEleve.id && s.statut!=='termine';
+  }).map(function(s){ return s.tpId; });
+
+  var tpsDispos = tpsCandidats.filter(function(tp){
+    return !sesActive.includes(tp.id);
+  });
+
+  if (!tpsDispos.length) {
+    notify('Vous avez déjà un TP en cours sur ce système.', true);
+    return;
+  }
+
+  if (tpsDispos.length === 1) {
+    confirmCreateSession(tpsDispos[0], code);
+  } else {
+    showTpChoice(tpsDispos, code);
+  }
+}
+
+function showTpChoice(tps, code) {
+  document.getElementById('tpChoiceTitle').textContent = 'TPs disponibles — ' + code;
+  var html = '';
+  tps.forEach(function(tp) {
+    var dur = tp.duree_h ? ' &nbsp;·&nbsp; ⏱ '+tp.duree_h+'h' : '';
+    var niv = (tp.niveaux||[]).join(', ');
+    html += '<div class="tp-choice-item" data-tpid="'+tp.id+'" data-code="'+code+'" onclick="confirmCreateSession((data.tpBank||[]).find(function(t){return t.id===this.dataset.tpid}), this.dataset.code)" data-tpid2="'+tp.id+'">';
+    html += '<div class="tp-choice-title">'+tp.titre+'</div>';
+    html += '<div class="tp-choice-meta">'+niv+dur+'</div>';
+    if (tp.description) html += '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+tp.description+'</div>';
+    html += '</div>';
+  });
+  document.getElementById('tpChoiceBody').innerHTML = html;
+  // Rebind onclick proprement (éviter inline avec closures complexes)
+  document.querySelectorAll('.tp-choice-item').forEach(function(el) {
+    el.onclick = function() {
+      var tpId = el.getAttribute('data-tpid2');
+      var code = el.getAttribute('data-code');
+      var tp   = (data.tpBank||[]).find(function(t){ return t.id===tpId; });
+      closeModal('tpChoiceModal');
+      if (tp) confirmCreateSession(tp, code);
+    };
+  });
+  openModal('tpChoiceModal');
+}
+
+function confirmCreateSession(tp, code) {
+  if (!tp || !curEleve) return;
+  if (!confirm('Démarrer le TP "'+tp.titre+'" sur le système '+code+' ?')) return;
+  createSession(tp);
+}
+
+function createSession(tp) {
+  if (!curEleve) return;
+  if (!data.tp) data.tp = [];
+  var newSession = {
+    id:          genId('SES'),
+    tpId:        tp.id,
+    eleveId:     curEleve.id,
+    classe:      curEleve.level,
+    date:        today(),
+    seances:     Math.max(1, Math.round((tp.duree_h||2) / 2)), // 1 séance ≈ 2h
+    seancesDone: 0,
+    statut:      'assigne',
+    evaluations: {}
+  };
+  data.tp.push(newSession);
+  saveData().then(function(){
+    renderTP();
+    renderDashboard();
+    notify('TP "'+tp.titre+'" démarré !');
+  });
+}
+
+function genId(prefix) {
+  return (prefix||'ID') + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
 }
 
 // ═══ RENDER COURS ════════════════════════════════════════════════════════════
