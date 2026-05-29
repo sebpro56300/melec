@@ -288,20 +288,6 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
 .consign-table td input{width:100%;border:none;font-size:11px;font-family:inherit;}
 
 /* ── Habilitations ── */
-.hab-symbol{
-  display:inline-block;font-size:11px;font-weight:700;
-  padding:3px 8px;border-radius:12px;min-width:44px;text-align:center;
-}
-.hab-ok{background:#dff6dd;color:#107c10;}
-.hab-part{background:#fff4ce;color:#7a5900;}
-.hab-no{background:#f3f3f3;color:#999;}
-.hab-row{
-  display:flex;align-items:center;gap:10px;
-  padding:8px 0;border-bottom:1px solid #f0f0f0;
-}
-.hab-row:last-child{border-bottom:none;}
-.hab-name{flex:1;font-size:12px;font-weight:600;}
-.hab-detail{font-size:10px;color:var(--muted);}
 .hab-self{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap;}
 .hab-self input{width:15px;height:15px;accent-color:var(--blue);}
 
@@ -1390,21 +1376,12 @@ function printBon() {
 }
 
 // ═══ HABILITATIONS ═══════════════════════════════════════════════════════════
+// Liste fixe identique à HAB_TYPES dans melec-suivi.html
+var HAB_TYPES = ['B0','B1V','BR'];
 var HAB_LABELS = {
-  'B0':  'B0 — Exécutant électricien (non électricien)',
-  'B0V': 'B0V — Exécutant électricien (voisinage)',
-  'B1':  'B1 — Exécutant électricien BT',
-  'B1V': 'B1V — Exécutant électricien BT (voisinage)',
-  'B2':  'B2 — Chargé de travaux BT',
-  'B2V': 'B2V — Chargé de travaux BT (voisinage)',
-  'BR':  'BR — Chargé d\'intervention BT',
-  'BC':  'BC — Chargé de consignation BT',
-  'H0':  'H0 — Exécutant électricien HT',
-  'H0V': 'H0V — Exécutant électricien HT (voisinage)',
-  'H1':  'H1 — Exécutant électricien HTA',
-  'H1V': 'H1V — Exécutant électricien HTA (voisinage)',
-  'H2':  'H2 — Chargé de travaux HTA',
-  'HC':  'HC — Chargé de consignation HTA'
+  'B0':  'Exécutant électricien',
+  'B1V': 'Exécutant BT (voisinage)',
+  'BR':  'Chargé d\'intervention BT'
 };
 
 function toggleHabSelf(symbol) {
@@ -1412,7 +1389,6 @@ function toggleHabSelf(symbol) {
   if (!data.habEleve) data.habEleve = {};
   if (!data.habEleve[curEleve.id]) data.habEleve[curEleve.id] = {};
   data.habEleve[curEleve.id][symbol] = !data.habEleve[curEleve.id][symbol];
-  // Mise à jour visuelle immédiate
   var cb = document.getElementById('habself_' + symbol);
   if (cb) cb.checked = !!data.habEleve[curEleve.id][symbol];
   saveData().then(function(){ notify('Auto-déclaration enregistrée.'); });
@@ -1424,65 +1400,77 @@ function renderHabilitations() {
 
   var myHab  = (data.habilitations || {})[curEleve.id] || {};
   var mySelf = (data.habEleve      || {})[curEleve.id] || {};
-  var symbols = Object.keys(myHab);
 
-  if (!symbols.length) {
-    c.innerHTML = '<p style="color:#aaa;padding:16px;text-align:center">Aucune habilitation enregistrée pour vous.</p>';
-    return;
-  }
+  // Compter les habilitations complètes (theo ET prat)
+  var nbObtenues = HAB_TYPES.filter(function(s){
+    var h = myHab[s]; return h && h.theo && h.prat;
+  }).length;
 
-  var obtenues = symbols.filter(function(s){ var h=myHab[s]; return h.theo && h.prat; });
-  var encours  = symbols.filter(function(s){ var h=myHab[s]; return (h.theo||h.prat) && !(h.theo&&h.prat); });
-  var autres   = symbols.filter(function(s){ var h=myHab[s]; return !h.theo && !h.prat; });
+  // ── Tableau principal ──────────────────────────────────────
+  var thead = '<tr>'
+    + '<th style="width:36px"></th>'
+    + '<th>Habilitation</th>'
+    + '<th style="text-align:center;width:52px">Théo.</th>'
+    + '<th style="text-align:center;width:52px">Prat.</th>'
+    + '<th style="text-align:center;width:90px">Exercices<br>faits</th>'
+    + '</tr>';
 
-  function buildRow(symbol) {
-    var h        = myHab[symbol];
+  var tbody = HAB_TYPES.map(function(symbol) {
+    var h        = myHab[symbol] || {theo:false, prat:false};
     var full     = h.theo && h.prat;
     var part     = (h.theo || h.prat) && !full;
-    var cls      = full ? 'hab-ok' : part ? 'hab-part' : 'hab-no';
-    var ico      = full ? '✅' : part ? '⏳' : '○';
-    var detail   = [];
-    if (h.theo !== undefined) detail.push('Théo : ' + (h.theo ? '✓' : '✗'));
-    if (h.prat !== undefined) detail.push('Prat : ' + (h.prat ? '✓' : '✗'));
     var selfDone = !!mySelf[symbol];
-    var label    = HAB_LABELS[symbol] || symbol;
-    return '<div class="hab-row">'
-      + '<span class="hab-symbol ' + cls + '">' + ico + ' ' + symbol + '</span>'
-      + '<div style="flex:1"><div class="hab-name">' + label + '</div>'
-      + '<div class="hab-detail">' + detail.join(' &nbsp;·&nbsp; ') + '</div></div>'
-      + '<label class="hab-self">'
-      + '<input type="checkbox" id="habself_' + symbol + '" '
-      + (selfDone ? 'checked' : '')
-      + ' onchange="toggleHabSelf(\'' + symbol + '\')">'
-      + 'Exercices faits'
-      + '</label>'
-      + '</div>';
-  }
 
-  var html = '';
-  if (obtenues.length) {
-    html += '<div class="sh" style="background:#107c10">✅ Habilitations obtenues (' + obtenues.length + ')</div>';
-    html += '<div class="card"><div class="card-body">' + obtenues.map(buildRow).join('') + '</div></div>';
-  }
-  if (encours.length) {
-    html += '<div class="sh" style="background:#7a5900">⏳ En cours d\'obtention (' + encours.length + ')</div>';
-    html += '<div class="card"><div class="card-body">' + encours.map(buildRow).join('') + '</div></div>';
-  }
-  if (autres.length) {
-    html += '<div class="sh">○ Autres (' + autres.length + ')</div>';
-    html += '<div class="card"><div class="card-body">' + autres.map(buildRow).join('') + '</div></div>';
-  }
+    var rowStyle = full
+      ? 'background:#f0fdf4'
+      : part ? 'background:#fffbeb' : '';
 
-  var total = symbols.length;
-  var pct   = total ? Math.round(obtenues.length / total * 100) : 0;
-  html = '<div style="background:#fff;border-radius:8px;box-shadow:var(--shad);padding:12px;margin-bottom:12px">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-    + '<span style="font-size:13px;font-weight:600">Progression</span>'
-    + '<span style="font-size:20px;font-weight:700;color:var(--ok)">' + obtenues.length + '/' + total + '</span>'
+    var badge = full
+      ? '<span style="font-size:16px">✅</span>'
+      : part
+        ? '<span style="font-size:16px">⏳</span>'
+        : '<span style="font-size:16px;color:#ccc">○</span>';
+
+    var theoCell = '<span style="font-size:15px;color:'+(h.theo?'var(--ok)':'#ddd')+'">'+(h.theo?'✓':'✗')+'</span>';
+    var pratCell = '<span style="font-size:15px;color:'+(h.prat?'var(--ok)':'#ddd')+'">'+(h.prat?'✓':'✗')+'</span>';
+
+    var selfCell = '<label style="display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer;font-size:11px">'
+      + '<input type="checkbox" id="habself_'+symbol+'" style="width:16px;height:16px;accent-color:var(--blue)"'
+      + (selfDone?' checked':'')
+      + ' onchange="toggleHabSelf(\''+symbol+'\')">'
+      + '</label>';
+
+    return '<tr style="'+rowStyle+'">'
+      + '<td style="text-align:center;padding:10px 6px">'+badge+'</td>'
+      + '<td style="padding:10px 8px">'
+      + '<div style="font-size:13px;font-weight:700">'+symbol+'</div>'
+      + '<div style="font-size:10px;color:var(--muted)">'+HAB_LABELS[symbol]+'</div>'
+      + '</td>'
+      + '<td style="text-align:center">'+theoCell+'</td>'
+      + '<td style="text-align:center">'+pratCell+'</td>'
+      + '<td style="text-align:center">'+selfCell+'</td>'
+      + '</tr>';
+  }).join('');
+
+  // ── Légende statut ─────────────────────────────────────────
+  var legend = '<div style="font-size:10px;color:var(--muted);margin-top:8px;display:flex;gap:16px;flex-wrap:wrap">'
+    + '<span>✅ Obtenue (théo + prat validés par l\'enseignant)</span>'
+    + '<span>⏳ En cours</span>'
+    + '<span>○ Non démarrée</span>'
+    + '</div>';
+
+  var html = '<div class="card" style="margin-bottom:10px">'
+    + '<div class="card-hd">⚡ Tableau des habilitations — ' + nbObtenues + '/' + HAB_TYPES.length + ' obtenues</div>'
+    + '<div style="overflow-x:auto"><table class="dt" style="min-width:340px">'
+    + '<thead>'+thead+'</thead>'
+    + '<tbody>'+tbody+'</tbody>'
+    + '</table></div>'
+    + '<div style="padding:0 12px 10px">'+legend+'</div>'
     + '</div>'
-    + '<div class="pb"><div class="pf ok" style="width:' + pct + '%"></div></div>'
-    + '<div style="font-size:10px;color:var(--muted);margin-top:3px">' + pct + '% des habilitations obtenues</div>'
-    + '</div>' + html;
+    + '<div style="background:#e8f4fd;border-radius:8px;padding:10px 12px;font-size:11px;color:#0369a1">'
+    + '💡 La colonne <strong>Exercices faits</strong> est votre auto-déclaration : cochez quand vous avez pratiqué. '
+    + 'Votre enseignant peut la consulter. La validation officielle (Théo./Prat.) reste de son ressort.'
+    + '</div>';
 
   c.innerHTML = html;
 }
