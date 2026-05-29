@@ -1379,7 +1379,7 @@ function printBon() {
 // Liste fixe identique à HAB_TYPES dans melec-suivi.html
 var HAB_TYPES = ['B0','B1V','BR'];
 var HAB_LABELS = {
-  'B0':  'Exécutant électricien',
+  'B0':  'Exécutant non électricien',
   'B1V': 'Exécutant BT (voisinage)',
   'BR':  'Chargé d\'intervention BT'
 };
@@ -1470,6 +1470,12 @@ function renderHabilitations() {
     + '<div style="background:#e8f4fd;border-radius:8px;padding:10px 12px;font-size:11px;color:#0369a1">'
     + '💡 La colonne <strong>Exercices faits</strong> est votre auto-déclaration : cochez quand vous avez pratiqué. '
     + 'Votre enseignant peut la consulter. La validation officielle (Théo./Prat.) reste de son ressort.'
+    + '</div>'
+    + '<div style="margin-top:8px">'
+    + '<a href="https://v3.e-prevention.fr/et/login" target="_blank" '
+    + 'style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;background:var(--blue);color:#fff;'
+    + 'border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">'
+    + '🔗 Travailler la validation théorique — e-prévention</a>'
     + '</div>';
 
   c.innerHTML = html;
