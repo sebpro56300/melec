@@ -1030,10 +1030,17 @@ function getMyTp() {
 
 function getMyCours() {
   if (!curEleve) return [];
+  var cl = curEleve.level || curEleve.classe || '';
+  // Mapping identique au mapping TP : accepter toutes les variantes
+  var variantes = {
+    '2MELEC':  ['2MELEC','2nde','2ème','2eme','seconde'],
+    '1MELEC':  ['1MELEC','1ère','1ere','première','premiere'],
+    'T-MELEC': ['T-MELEC','Terminale','terminale','term']
+  }[cl] || [cl];
   return (data.cours||[]).filter(function(c){
-    return c.level===curEleve.level &&
-      (!c.assignedTo||!c.assignedTo.length||c.assignedTo.includes(curEleve.id));
-  });
+    var niveau = c.level || c.classe || '';
+    return variantes.some(function(v){ return niveau === v; });
+  }).sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
 }
 
 function getAllNoteVals() {
@@ -1520,21 +1527,59 @@ function renderCours() {
   var c = document.getElementById('coursContent');
   if (!c) return;
   var myCours = getMyCours();
-  if (!myCours.length) { c.innerHTML='<p style="color:#aaa;padding:16px;text-align:center">Aucun cours affecté.</p>'; return; }
-  var html = '';
-  myCours.forEach(function(cours) {
-    var st = COURS_STATUS[cours.status]||cours.status;
-    var eN = (data.notes||{})[curEleve.id]||{};
-    var n  = eN[cours.id];
-    var nDisp = n!==undefined?n:'—';
-    var ncls  = n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
-    html += '<div class="card">';
-    html += '<div class="card-hd">'+cours.title+'<span class="bdg '+cours.status+'">'+st+'</span></div>';
-    html += '<div class="card-body" style="display:flex;justify-content:space-between;align-items:center">';
+  if (!myCours.length) {
+    c.innerHTML = '<p style="color:#aaa;padding:16px;text-align:center">Aucun cours disponible pour votre classe.</p>';
+    return;
+  }
+
+  var STATUT_LBL = {todo:'À faire', doing:'En cours', done:'Terminé'};
+  var STATUT_CLR = {todo:'#6b7280', doing:'#f59e0b', done:'#16a34a'};
+
+  // Grouper par statut : en cours, à faire, terminés
+  var doing   = myCours.filter(function(c){ return c.status==='doing'; });
+  var todo    = myCours.filter(function(c){ return c.status==='todo' || !c.status; });
+  var done    = myCours.filter(function(c){ return c.status==='done'; });
+
+  function buildCard(cours) {
+    var titre  = cours.titre || cours.title || '—';
+    var statut = cours.status || 'todo';
+    var stLbl  = STATUT_LBL[statut] || statut;
+    var stClr  = STATUT_CLR[statut] || '#6b7280';
+    var eN     = (data.notes||{})[curEleve.id] || {};
+    var n      = eN[cours.id];
+    var nDisp  = n !== undefined ? n : '—';
+    var ncls   = n === undefined ? 'na' : isNaN(parseFloat(n)) ? 'na' : parseFloat(n)>=12 ? 'bon' : parseFloat(n)>=8 ? 'moy' : 'fai';
+
+    var html = '<div class="card">';
+    html += '<div class="card-hd" style="justify-content:space-between">'
+      + '<span>'+(cours.url
+        ? '<a href="'+cours.url+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">📖 '+titre+' ↗</a>'
+        : '📖 '+titre)
+      + '</span>'
+      + '<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:'+stClr+'22;color:'+stClr+'">'+stLbl+'</span>'
+      + '</div>';
+    html += '<div class="card-body" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">';
     html += '<span style="font-size:11px;color:var(--muted)">'+fmtD(cours.date)+'</span>';
-    html += '<span class="note-val '+ncls+'">'+nDisp+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span>';
+    if (n !== undefined) {
+      html += '<span class="note-val '+ncls+'">'+nDisp+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span>';
+    }
     html += '</div></div>';
-  });
+    return html;
+  }
+
+  var html = '';
+  if (doing.length) {
+    html += '<div class="sh" style="background:#f59e0b">⏳ En cours ('+doing.length+')</div>';
+    html += doing.map(buildCard).join('');
+  }
+  if (todo.length) {
+    html += '<div class="sh">📌 À faire ('+todo.length+')</div>';
+    html += todo.map(buildCard).join('');
+  }
+  if (done.length) {
+    html += '<div class="sh" style="background:#16a34a">✅ Terminés ('+done.length+')</div>';
+    html += done.map(buildCard).join('');
+  }
   c.innerHTML = html;
 }
 
@@ -1572,7 +1617,7 @@ function renderNotes() {
       var n=eN[c.id]; var nD=n!==undefined?n:'—';
       var nc=n===undefined?'na':isNaN(parseFloat(n))?'na':parseFloat(n)>=12?'bon':parseFloat(n)>=8?'moy':'fai';
       if(n!==undefined&&!isNaN(parseFloat(n)))allVals.push(parseFloat(n));
-      html+='<tr><td>'+c.title+'</td>';
+      html+='<tr><td>'+(c.titre||c.title||'—')+'</td>';
       html+='<td><span class="note-val '+nc+'" style="font-size:13px">'+nD+(n!==undefined&&!isNaN(parseFloat(n))?'/20':'')+'</span></td></tr>';
     });
     html += '</tbody></table>';
