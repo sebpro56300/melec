@@ -1188,9 +1188,11 @@ function openTpModal(sessionId) {
     tabDocs = '<p style="color:#aaa;font-size:12px;padding:8px 0">Aucun document associé à ce TP.</p>';
   } else {
     tabDocs = ressources.map(function(r) {
-      return '<a class="res-link" href="'+r.url+'" target="_blank" rel="noopener">'
+      var rUrl   = (r.url||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var rTitre = (r.titre||r.title||'Document').replace(/'/g,"\\'");
+      return '<a class="res-link" href="javascript:void(0)" onclick="openDoc(\''+rUrl+'\',\''+rTitre+'\')">'
         + '<span class="res-icon">'+resIcon(r.type)+'</span>'
-        + '<div style="flex:1"><div style="font-weight:600;font-size:12px">'+r.titre+'</div>'
+        + '<div style="flex:1"><div style="font-weight:600;font-size:12px">'+(r.titre||r.title||'Document')+'</div>'
         + (r.description ? '<div style="font-size:10px;color:var(--muted)">'+r.description+'</div>' : '')
         + '</div>'
         + '<span style="font-size:10px;color:var(--muted);flex-shrink:0">↗</span>'
@@ -1553,7 +1555,7 @@ function renderCours() {
     var html = '<div class="card">';
     html += '<div class="card-hd" style="justify-content:space-between">'
       + '<span>'+(cours.url
-        ? '<a href="'+cours.url+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">📖 '+titre+' ↗</a>'
+        ? '<a href="javascript:void(0)" onclick="openDoc(\''+cours.url.replace(/'/g,"\\'")+'\',\''+titre.replace(/'/g,"\\'")+'\');" style="color:inherit;text-decoration:none">📖 '+titre+' ↗</a>'
         : '📖 '+titre)
       + '</span>'
       + '<span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:'+stClr+'22;color:'+stClr+'">'+stLbl+'</span>'
@@ -2006,6 +2008,37 @@ function renderHabilitations() {
 }
 
 // ═══ UTILITAIRES ═════════════════════════════════════════════════════════════
+
+function openDoc(url, titre) {
+  if (!url) return;
+  var w = window.open('', '_blank', 'width=900,height=700,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes');
+  if (!w) { window.open(url, '_blank'); return; } // fallback si popup bloquée
+  var isSafe = url.startsWith('https://') || url.startsWith('http://');
+  var escUrl = url.replace(/'/g, '%27');
+  var escTitre = (titre||'Document').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    + '<title>'+escTitre+'</title>'
+    + '<style>'
+    + 'body,html{margin:0;padding:0;height:100%;display:flex;flex-direction:column;font-family:system-ui,sans-serif;background:#1a1a2e;}'
+    + '.toolbar{display:flex;align-items:center;gap:10px;padding:8px 16px;background:#0f3460;color:#fff;flex-shrink:0;}'
+    + '.toolbar-title{flex:1;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
+    + '.btn-doc{padding:6px 14px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}'
+    + '.btn-print{background:#3b82f6;color:#fff;}'
+    + '.btn-dl{background:#16a34a;color:#fff;}'
+    + '.btn-close{background:rgba(255,255,255,.15);color:#fff;margin-left:auto;}'
+    + '.btn-doc:hover{opacity:.85;}'
+    + 'iframe{flex:1;border:none;width:100%;background:#fff;}'
+    + '</style></head><body>'
+    + '<div class="toolbar">'
+    + '<span class="toolbar-title">'+escTitre+'</span>'
+    + '<button class="btn-doc btn-print" onclick="window.frames[0].focus();window.frames[0].print()">🖨 Imprimer</button>'
+    + '<a class="btn-doc btn-dl" href="'+escUrl+'" download style="text-decoration:none">⬇ Télécharger</a>'
+    + '<button class="btn-doc btn-close" onclick="window.close()">✕ Fermer</button>'
+    + '</div>'
+    + '<iframe src="'+escUrl+'" id="docframe"></iframe>'
+    + '</body></html>');
+  w.document.close();
+}
 function fmtD(d){ if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;} }
 function today(){ return new Date().toISOString().slice(0,10); }
 function openModal(id){ var el=document.getElementById(id);if(el)el.classList.add('show'); }
