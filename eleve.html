@@ -636,8 +636,7 @@ var GIST_DATA_ID  = 'a953954f369f7fad1597e2a6da38578c';
 var GIST_DATA_API = 'https://api.github.com/gists/' + GIST_DATA_ID;
 // Gist TP : tps, tp-sessions, ressources
 var GIST_TP_ID    = '5cbd51c7c62493addf84845feddd19d7';
-var GIST_TP_API   = 'https://api.github.com/gists/' + GIST_TP_ID;
-var _t=['ghp_qEznNZ','A1uDLc87PX','Yjjrt9dT0M','3g4D20Oeli'];
+var GIST_TP_API   = 'https://api.github.com/gists/' + GIST_TP_ID;var _t=['ghp_qEznNZ','A1uDLc87PX','Yjjrt9dT0M','3g4D20Oeli'];
 var GIST_TOKEN = _t[0]+_t[1]+_t[2]+_t[3];
 // GIST_API pointe sur le Gist données (compatibilité avec le reste du code)
 var GIST_API   = GIST_DATA_API;
@@ -714,6 +713,11 @@ async function loadData() {
         data.tp        = readFile(g2, 'tp-sessions.json', []);
         data.tpBank    = readFile(g2, 'tps.json',         []);
         data.ressources= readFile(g2, 'ressources.json',  []);
+        // inventaire pour résoudre qr_code → id système
+        var inv = readFile(g2, 'melec-inventaire.json', null);
+        if (inv && inv.items) data.inventory = inv.items;
+        else if (Array.isArray(inv)) data.inventory = inv;
+        else data.inventory = [];
       } else { data.tp = []; data.tpBank = []; }
     } catch(e2) { data.tp = []; data.tpBank = []; }
 
@@ -774,6 +778,7 @@ function fixData() {
   if (!data.bonsIntervention) data.bonsIntervention = [];
   if (!data.tpEleve)      data.tpEleve      = {}; // {eleveId: {tpId: {phases:{}, obs:''}}}
   if (!data.ressources)   data.ressources   = [];
+  if (!data.inventory)    data.inventory    = [];
 }
 
 // ═══ SYNC STATE ══════════════════════════════════════════════════════════════
@@ -1225,30 +1230,51 @@ function handleScanTP(code) {
   closeScannerTP();
   if (!curEleve) return;
 
-  // Chercher les TPs compatibles : systemes[] contient le code ET niveaux[] contient le niveau élève
-  var eleveNiveau = (LEVELS[curEleve.level]||{}).short || curEleve.level;
+  code = code.trim().toUpperCase();
+
+  // Résoudre le code : chercher dans inventory par id OU qr_code
+  var sys = (data.inventory||[]).find(function(x) {
+    return (x.id||'').toUpperCase() === code ||
+           (x.qr_code||'').toUpperCase() === code;
+  });
+  // sysId = l'id interne utilisé dans tp.systemes[]
+  var sysId  = sys ? sys.id : code;
+  var sysNom = sys ? (sys.nom || sysId) : code;
+
+  // Mapping classe → niveaux acceptés (identique à test_eleve)
+  var cl = curEleve.level || curEleve.classe || '';
+  var eleveNiveaux = {
+    '2MELEC':  ['2nde','2ème','2eme','seconde'],
+    '1MELEC':  ['1ère','1ere','première','premiere'],
+    'T-MELEC': ['Terminale','terminale','term']
+  }[cl] || [];
+
+  // TPs liés à ce système ET compatibles avec le niveau de l'élève
   var tpsCandidats = (data.tpBank||[]).filter(function(tp) {
-    var sysOk = (tp.systemes||[]).some(function(s){
-      return s.toUpperCase() === code.toUpperCase();
+    var sysOk = (tp.systemes||[]).some(function(s) {
+      return s === sysId || s.toUpperCase() === code;
     });
-    var nivOk = !(tp.niveaux&&tp.niveaux.length) ||
-      tp.niveaux.some(function(n){ return n===eleveNiveau || n===curEleve.level; });
-    return sysOk && nivOk;
+    if (!sysOk) return false;
+    if (!tp.niveaux || !tp.niveaux.length) return true;
+    return tp.niveaux.some(function(n) {
+      return eleveNiveaux.some(function(en) {
+        return n.toLowerCase().includes(en.toLowerCase()) ||
+               en.toLowerCase().includes(n.toLowerCase());
+      });
+    });
   });
 
   if (!tpsCandidats.length) {
-    notify('Aucun TP trouvé pour le système "'+code+'" à votre niveau.', true);
+    notify('Aucun TP disponible pour le système "' + sysNom + '" à votre niveau.', true);
     return;
   }
 
   // Exclure les TPs déjà en cours pour cet élève
-  var sesActive = (data.tp||[]).filter(function(s){
-    return s.eleveId===curEleve.id && s.statut!=='termine';
-  }).map(function(s){ return s.tpId; });
+  var sesActives = (data.tp||[])
+    .filter(function(s){ return s.eleveId===curEleve.id && s.statut!=='termine'; })
+    .map(function(s){ return s.tpId; });
 
-  var tpsDispos = tpsCandidats.filter(function(tp){
-    return !sesActive.includes(tp.id);
-  });
+  var tpsDispos = tpsCandidats.filter(function(tp){ return !sesActives.includes(tp.id); });
 
   if (!tpsDispos.length) {
     notify('Vous avez déjà un TP en cours sur ce système.', true);
@@ -1256,57 +1282,58 @@ function handleScanTP(code) {
   }
 
   if (tpsDispos.length === 1) {
-    confirmCreateSession(tpsDispos[0], code);
+    confirmCreateSession(tpsDispos[0], sysId, sysNom);
   } else {
-    showTpChoice(tpsDispos, code);
+    showTpChoice(tpsDispos, sysId, sysNom);
   }
 }
 
-function showTpChoice(tps, code) {
-  document.getElementById('tpChoiceTitle').textContent = 'TPs disponibles — ' + code;
+function showTpChoice(tps, sysId, sysNom) {
+  document.getElementById('tpChoiceTitle').textContent = '🔬 Système : ' + (sysNom||sysId);
   var html = '';
   tps.forEach(function(tp) {
     var dur = tp.duree_h ? ' &nbsp;·&nbsp; ⏱ '+tp.duree_h+'h' : '';
     var niv = (tp.niveaux||[]).join(', ');
-    html += '<div class="tp-choice-item" data-tpid="'+tp.id+'" data-code="'+code+'" onclick="confirmCreateSession((data.tpBank||[]).find(function(t){return t.id===this.dataset.tpid}), this.dataset.code)" data-tpid2="'+tp.id+'">';
+    var nbRes = (tp.ressources||[]).length;
+    html += '<div class="tp-choice-item" data-tpid="'+tp.id+'">';
     html += '<div class="tp-choice-title">'+tp.titre+'</div>';
-    html += '<div class="tp-choice-meta">'+niv+dur+'</div>';
+    html += '<div class="tp-choice-meta">'+niv+dur+(nbRes?' &nbsp;·&nbsp; '+nbRes+' doc.':'')+'</div>';
     if (tp.description) html += '<div style="font-size:10px;color:var(--muted);margin-top:3px">'+tp.description+'</div>';
     html += '</div>';
   });
   document.getElementById('tpChoiceBody').innerHTML = html;
-  // Rebind onclick proprement (éviter inline avec closures complexes)
   document.querySelectorAll('.tp-choice-item').forEach(function(el) {
     el.onclick = function() {
-      var tpId = el.getAttribute('data-tpid2');
-      var code = el.getAttribute('data-code');
+      var tpId = el.getAttribute('data-tpid');
       var tp   = (data.tpBank||[]).find(function(t){ return t.id===tpId; });
       closeModal('tpChoiceModal');
-      if (tp) confirmCreateSession(tp, code);
+      if (tp) confirmCreateSession(tp, sysId, sysNom);
     };
   });
   openModal('tpChoiceModal');
 }
 
-function confirmCreateSession(tp, code) {
+function confirmCreateSession(tp, sysId, sysNom) {
   if (!tp || !curEleve) return;
-  if (!confirm('Démarrer le TP "'+tp.titre+'" sur le système '+code+' ?')) return;
-  createSession(tp);
+  if (!confirm('Démarrer le TP "'+tp.titre+'" sur le système '+(sysNom||sysId)+' ?')) return;
+  createSession(tp, sysId);
 }
 
-function createSession(tp) {
+function createSession(tp, sysId) {
   if (!curEleve) return;
   if (!data.tp) data.tp = [];
   var newSession = {
     id:          genId('SES'),
     tpId:        tp.id,
     eleveId:     curEleve.id,
-    classe:      curEleve.level,
+    classe:      curEleve.level || curEleve.classe || '',
+    systemeId:   sysId || '',
     date:        today(),
-    seances:     Math.max(1, Math.round((tp.duree_h||2) / 2)), // 1 séance ≈ 2h
+    seances:     tp.seances || Math.max(1, Math.round((tp.duree_h||2) / 2)),
     seancesDone: 0,
-    statut:      'assigne',
-    evaluations: {}
+    statut:      'en_cours',
+    evaluations: {},
+    teacherId:   ''
   };
   data.tp.push(newSession);
   saveData().then(function(){
