@@ -55,14 +55,7 @@ body{
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 .sync-lbl{font-size:11px;font-family:var(--mono);color:var(--text3);}
 
-.ens-badge{
-  display:flex;align-items:center;gap:6px;padding:4px 10px;
-  background:var(--bg3);border:1px solid var(--border);border-radius:20px;
-  font-size:12px;cursor:pointer;transition:all .15s;
-}
-.ens-badge:hover{border-color:var(--accent);}
-.ens-badge .ens-name{font-weight:600;color:var(--text);}
-.ens-badge .ens-lock{color:var(--text3);font-size:13px;}
+
 
 .btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;}
 .btn-p{background:var(--accent);color:#fff;}.btn-p:hover{background:#2563eb;}
@@ -272,52 +265,16 @@ select option{background:var(--bg2);}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
 
-/* GARDE AUTH — overlay bloquant */
-#auth-guard{
-  position:fixed;inset:0;background:rgba(0,0,0,.92);
-  z-index:9999;display:flex;align-items:center;justify-content:center;
-  flex-direction:column;gap:20px;
+/* LOCK BAR — aucun enseignant connecté */
+#lock-bar{
+  background:#fff4ce;border-bottom:2px solid #ffb900;
+  padding:7px 16px;font-size:12px;color:#7a5900;
+  display:none;align-items:center;gap:8px;flex-shrink:0;
 }
-#auth-guard.hidden{display:none;}
-.auth-box{
-  background:var(--bg2);border:1px solid var(--border2);
-  border-radius:14px;padding:28px 32px;width:340px;max-width:95vw;
-}
-.auth-box h2{font-family:var(--display);font-size:18px;font-weight:800;
-  color:var(--accent2);margin-bottom:4px;}
-.auth-box p{font-size:12px;color:var(--text3);margin-bottom:18px;}
-.auth-err{font-size:11px;color:var(--red);margin-top:6px;display:none;}
+#lock-bar.show{display:flex;}
 </style>
 </head>
 <body>
-
-<!-- ══ AUTH GUARD — bloque tout accès sans authentification ══ -->
-<div id="auth-guard">
-  <div class="auth-box">
-    <h2>⚡ MELEC Suivi</h2>
-    <p>Espace enseignant — identification requise</p>
-    <div class="fg">
-      <label>Enseignant</label>
-      <select id="guard-ens"></select>
-    </div>
-    <div class="fg">
-      <label>Mot de passe</label>
-      <input type="password" id="guard-pass" placeholder="••••••••"
-        onkeydown="if(event.key==='Enter')guardLogin()">
-    </div>
-    <div class="auth-err" id="guard-err">Mot de passe incorrect</div>
-    <button class="btn btn-p" style="width:100%;margin-top:12px;" onclick="guardLogin()">
-      Se connecter
-    </button>
-    <div style="font-size:10px;color:var(--text3);margin-top:10px;text-align:center;">
-      Aucun enseignant ? Ouvrez Config ci-dessous pour en ajouter.
-    </div>
-  </div>
-  <!-- Accès config uniquement pour créer le premier enseignant -->
-  <button class="btn btn-g btn-sm" onclick="guardCfgAccess()" style="opacity:.5;">
-    ⚙️ Configurer (sans accès aux données)
-  </button>
-</div>
 
 <!-- HEADER -->
 <div id="header">
@@ -331,12 +288,18 @@ select option{background:var(--bg2);}
     <div class="sync-dot" id="sync-dot"></div>
     <span class="sync-lbl" id="sync-lbl">—</span>
     <button class="btn btn-g btn-sm" onclick="saveAll()">↑ Sauvegarder</button>
-    <div class="ens-badge" onclick="openModal('modal-login')">
-      <span class="ens-lock">🔒</span>
-      <span class="ens-name" id="ens-name">—</span>
-      <span style="font-size:11px;color:var(--text3);margin-left:2px;" onclick="event.stopPropagation();logout()" title="Déconnexion">⏏</span>
-    </div>
+    <span style="font-size:11px;color:var(--text2);">Enseignant :</span>
+    <select id="teacher-select" onchange="askTeacherPassword()"
+      style="padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--sans);">
+      <option value="">— Sélectionner —</option>
+    </select>
+    <span id="ens-lock-icon" style="font-size:15px;color:var(--text3);" title="Non connecté">🔒</span>
   </div>
+</div>
+
+<!-- LOCK BAR -->
+<div id="lock-bar">
+  🔒 Aucun enseignant sélectionné — identifiez-vous pour accéder aux fonctions de saisie.
 </div>
 
 <!-- ONGLETS PRINCIPAUX -->
@@ -356,19 +319,19 @@ select option{background:var(--bg2);}
 </div>
 
 <!-- MODALES -->
-<div class="modal-ov" id="modal-login">
-  <div class="modal">
-    <div class="modal-title">🔐 Identification enseignant</div>
-    <div class="fg"><label>Enseignant</label>
-      <select id="login-ens"></select>
+<!-- MODALE MOT DE PASSE ENSEIGNANT -->
+<div class="modal-ov" id="modal-pw">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title" id="pw-teacher-name">🔐 Identification</div>
+    <div class="fg">
+      <label>Mot de passe</label>
+      <input type="password" id="pw-input" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')confirmPassword()">
     </div>
-    <div class="fg"><label>Mot de passe</label>
-      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <div style="font-size:11px;color:var(--red);margin-top:4px;display:none;" id="login-err">Mot de passe incorrect</div>
+    <div style="font-size:11px;color:var(--red);margin-top:4px;display:none;" id="pw-error">Mot de passe incorrect</div>
     <div class="modal-foot">
-      <button class="btn btn-g" onclick="closeModal('modal-login')">Annuler</button>
-      <button class="btn btn-p" onclick="doLogin()">Valider</button>
+      <button class="btn btn-g" onclick="cancelTeacherSelect()">Annuler</button>
+      <button class="btn btn-p" onclick="confirmPassword()">Valider</button>
     </div>
   </div>
 </div>
@@ -611,91 +574,82 @@ let confirmCb = null;
 let editCtx = {}; // contexte d'édition en cours
 
 // ════════════════════════════════════════════════════════════
-// AUTH GUARD — obligatoire au démarrage
+// AUTH ENSEIGNANT — select + modale mot de passe (style v8)
 // ════════════════════════════════════════════════════════════
-function initGuard() {
-  loadLocal(); // charger les données locales d'abord
-  const sel = document.getElementById('guard-ens');
-  if (data.teachers.length) {
-    sel.innerHTML = data.teachers.map(t=>`<option value="${t.id}">${esc(t.nom)}</option>`).join('');
-  } else {
-    sel.innerHTML = '<option value="">Aucun enseignant configuré</option>';
-  }
-  // Si session active en localStorage (<8h), restaurer
-  const saved = localStorage.getItem('melec_session');
-  if (saved) {
-    try {
-      const s = JSON.parse(saved);
-      if (s.ts && Date.now()-s.ts < 8*3600*1000) {
-        const t = data.teachers.find(x=>x.id===s.id);
-        if (t) { unlockApp(t); return; }
-      }
-    } catch(e){}
-  }
-  document.getElementById('auth-guard').classList.remove('hidden');
-}
+let pendingTeacherId = null;
 
-function guardLogin() {
-  const id   = document.getElementById('guard-ens').value;
-  const pass = document.getElementById('guard-pass').value;
-  const t    = data.teachers.find(x=>x.id===id);
-  const err  = document.getElementById('guard-err');
-
-  if (!t) { err.style.display='block'; err.textContent='Sélectionnez un enseignant'; return; }
-  if (t.pass && hashSimple(pass)!==t.pass && pass!=='admin') {
-    err.style.display='block'; err.textContent='Mot de passe incorrect'; return;
-  }
-  unlockApp(t);
-}
-
-function guardCfgAccess() {
-  // Accès limité à Config uniquement sans auth
-  document.getElementById('auth-guard').classList.add('hidden');
-  state.enseignant = null;
-  // Désactiver toutes les sections sauf config
-  state.tab='config'; state.section='gists';
-  renderSidebar(); renderConfig();
-  // Ré-afficher le guard si on quitte config
-  document.querySelectorAll('.tab').forEach((btn,i)=>{
-    if(['sys','tps','bib','aff'].includes(['quotidien','eleves','activites','config'][i]||'')) {
-      btn.onclick = ()=>{ toast('Connectez-vous d\'abord','err'); document.getElementById('auth-guard').classList.remove('hidden'); };
-    }
+function updateTeacherSelect() {
+  const sel = document.getElementById('teacher-select');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Sélectionner —</option>';
+  data.teachers.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = t.nom || t.name || t.id;
+    if (state.enseignant && t.id === state.enseignant.id) o.selected = true;
+    sel.appendChild(o);
   });
+  if (!state.enseignant) sel.value = '';
 }
 
-function unlockApp(teacher) {
+function askTeacherPassword() {
+  const id = document.getElementById('teacher-select').value;
+  if (!id) { state.enseignant = null; setLockState(); return; }
+  const t = data.teachers.find(x => x.id === id);
+  if (!t) return;
+  // Si pas de mot de passe défini → connexion directe
+  if (!t.pass) { unlockTeacher(t); return; }
+  pendingTeacherId = id;
+  document.getElementById('pw-teacher-name').textContent = '👨‍🏫 ' + (t.nom || t.name);
+  document.getElementById('pw-input').value = '';
+  document.getElementById('pw-error').style.display = 'none';
+  openModal('modal-pw');
+  setTimeout(() => document.getElementById('pw-input').focus(), 100);
+}
+
+function confirmPassword() {
+  const val = document.getElementById('pw-input').value;
+  const t = data.teachers.find(x => x.id === pendingTeacherId);
+  if (!t) return;
+  if (hashSimple(val) !== t.pass && val !== 'admin') {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    return;
+  }
+  closeModal('modal-pw');
+  unlockTeacher(t);
+}
+
+function cancelTeacherSelect() {
+  const sel = document.getElementById('teacher-select');
+  if (state.enseignant) sel.value = state.enseignant.id;
+  else sel.value = '';
+  closeModal('modal-pw');
+}
+
+function unlockTeacher(teacher) {
   state.enseignant = teacher;
-  document.getElementById('ens-name').textContent = teacher.nom.split(' ')[0];
-  document.querySelector('.ens-lock').textContent = '✓';
-  document.getElementById('auth-guard').classList.add('hidden');
-  // Sauver la session (8h)
-  localStorage.setItem('melec_session', JSON.stringify({id:teacher.id, ts:Date.now()}));
-  // Lancer l'app
+  document.getElementById('ens-lock-icon').textContent = '✓';
+  document.getElementById('ens-lock-icon').style.color = 'var(--green)';
+  setLockState();
   if (cfg.token && cfg.dataGistId) loadRemote();
-  else setSyncState('err','Config manquante');
-  switchTab('quotidien', document.querySelector('.tab'));
-  // Restaurer les tabs normaux
-  initTabs();
-}
-
-function initTabs() {
-  const tabs=['quotidien','eleves','activites','config'];
-  document.querySelectorAll('.tab').forEach((btn,i)=>{
-    btn.onclick = ()=>switchTab(tabs[i],btn);
-  });
-  document.querySelectorAll('.tab')[0].classList.add('on');
+  else { setSyncState('err','Config Gist manquante'); render(); }
+  toast('Connecté : ' + (teacher.nom || teacher.name), 'ok');
 }
 
 function logout() {
   state.enseignant = null;
-  localStorage.removeItem('melec_session');
-  document.getElementById('auth-guard').classList.remove('hidden');
-  document.getElementById('guard-pass').value = '';
-  document.getElementById('guard-err').style.display = 'none';
-  // Réinitialiser le select enseignant
-  const sel = document.getElementById('guard-ens');
-  sel.innerHTML = data.teachers.map(t=>`<option value="${t.id}">${esc(t.nom)}</option>`).join('');
-  toast('Déconnecté','ok');
+  document.getElementById('teacher-select').value = '';
+  document.getElementById('ens-lock-icon').textContent = '🔒';
+  document.getElementById('ens-lock-icon').style.color = 'var(--text3)';
+  setLockState();
+  toast('Déconnecté', 'ok');
+}
+
+function setLockState() {
+  const locked = !state.enseignant;
+  document.getElementById('lock-bar').classList.toggle('show', locked);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -704,8 +658,12 @@ function logout() {
 function init() {
   const c = localStorage.getItem('melec_suivi_cfg');
   if (c) cfg = Object.assign(cfg, JSON.parse(c));
-  prefillForms();
-  initGuard(); // auth en premier
+  loadLocal();
+  updateTeacherSelect();
+  setLockState();
+  // Chargement distant si config présente
+  if (cfg.token && cfg.dataGistId) loadRemote();
+  else { setSyncState('err', 'Config Gist manquante'); render(); }
 }
 
 function loadLocal() {
@@ -775,11 +733,13 @@ async function loadRemote() {
 
     saveLocal();
     setSyncState('ok','Synchronisé');
+    updateTeacherSelect();
     render();
     toast('Données chargées','ok');
   } catch(e) {
     setSyncState('err', e.message.substring(0,30));
     toast('Erreur : '+e.message,'err');
+    updateTeacherSelect();
     render();
   }
 }
@@ -2114,12 +2074,12 @@ function openAddTeacher() {
   const pass = prompt('Mot de passe :');
   if (!pass) return;
   data.teachers.push({ id:genId('T'), nom:nom.trim(), specialite:spec, pass:hashSimple(pass) });
-  saveLocal(); renderTeachers(); toast('Enseignant ajouté','ok');
+  saveLocal(); updateTeacherSelect(); renderTeachers(); toast('Enseignant ajouté','ok');
 }
 
 function deleteTeacher(id) {
   askConfirm('Supprimer cet enseignant ?','',()=>{
-    data.teachers=data.teachers.filter(t=>t.id!==id); saveLocal(); renderTeachers(); toast('Supprimé','ok');
+    data.teachers=data.teachers.filter(t=>t.id!==id); saveLocal(); updateTeacherSelect(); renderTeachers(); toast('Supprimé','ok');
   });
 }
 
@@ -2283,43 +2243,6 @@ function askEffacer() {
     saveLocal(); render(); toast('Données effacées','ok');
   },'EFFACER');
 }
-
-// ════════════════════════════════════════════════════════════
-// AUTH ENSEIGNANT
-// ════════════════════════════════════════════════════════════
-function prefillForms() {
-  const sel = document.getElementById('login-ens');
-  // refresh dynamique au clic
-}
-
-function openLoginModal() {
-  const sel = document.getElementById('login-ens');
-  sel.innerHTML = data.teachers.map(t=>`<option value="${t.id}">${esc(t.nom)}</option>`).join('');
-  document.getElementById('login-pass').value='';
-  document.getElementById('login-err').style.display='none';
-  openModal('modal-login');
-}
-
-function doLogin() {
-  const id   = document.getElementById('login-ens').value;
-  const pass = document.getElementById('login-pass').value;
-  const t = data.teachers.find(x=>x.id===id);
-  if (!t) return;
-  if (t.pass && hashSimple(pass)!==t.pass && pass!=='admin') {
-    document.getElementById('login-err').style.display='block'; return;
-  }
-  state.enseignant = t;
-  document.getElementById('ens-name').textContent = t.nom.split(' ')[0];
-  document.querySelector('.ens-lock').textContent = '✓';
-  closeModal('modal-login');
-  toast('Connecté : '+t.nom,'ok');
-}
-
-// Ouvrir login modal depuis le badge
-document.querySelector('.ens-badge').onclick = () => {
-  if (!data.teachers.length) { toast('Aucun enseignant configuré (Config → Enseignants)','err'); return; }
-  openLoginModal();
-};
 
 // ════════════════════════════════════════════════════════════
 // MODALES UTILS
