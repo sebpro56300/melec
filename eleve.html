@@ -742,6 +742,7 @@ async function loadData() {
     data.pfmp             = readFile(g1, 'pfmp.json',              []);
     data.habilitations    = readFile(g1, 'habilitations.json',     {});
     data.habEleve         = readFile(g1, 'hab-eleve.json',         {});
+    data.tpEleve          = readFile(g1, 'tp-eleve.json',          {});
     data.appel            = readFile(g1, 'appel.json',             []);
     data.bonsIntervention = readFile(g1, 'bons-intervention.json', []);
 
@@ -794,6 +795,7 @@ async function saveData() {
     b1.files['pfmp.json']              = {content: JSON.stringify(data.pfmp             || [])};
     b1.files['habilitations.json']     = {content: JSON.stringify(data.habilitations    || {})};
     b1.files['hab-eleve.json']         = {content: JSON.stringify(data.habEleve         || {})};
+    b1.files['tp-eleve.json']          = {content: JSON.stringify(data.tpEleve          || {})};
     b1.files['appel.json']             = {content: JSON.stringify(data.appel            || [])};
     b1.files['bons-intervention.json'] = {content: JSON.stringify(data.bonsIntervention || [])};
     var r1 = await fetch(GIST_DATA_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b1)});
