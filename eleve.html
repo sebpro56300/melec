@@ -1241,26 +1241,10 @@ function handleScanTP(code) {
   var sysId  = sys ? sys.id : code;
   var sysNom = sys ? (sys.nom || sysId) : code;
 
-  // Mapping classe → niveaux acceptés (identique à test_eleve)
-  var cl = curEleve.level || curEleve.classe || '';
-  var eleveNiveaux = {
-    '2MELEC':  ['2nde','2ème','2eme','seconde'],
-    '1MELEC':  ['1ère','1ere','première','premiere'],
-    'T-MELEC': ['Terminale','terminale','term']
-  }[cl] || [];
-
-  // TPs liés à ce système ET compatibles avec le niveau de l'élève
+  // TPs liés à ce système, sans restriction de niveau
   var tpsCandidats = (data.tpBank||[]).filter(function(tp) {
-    var sysOk = (tp.systemes||[]).some(function(s) {
+    return (tp.systemes||[]).some(function(s) {
       return s === sysId || s.toUpperCase() === code;
-    });
-    if (!sysOk) return false;
-    if (!tp.niveaux || !tp.niveaux.length) return true;
-    return tp.niveaux.some(function(n) {
-      return eleveNiveaux.some(function(en) {
-        return n.toLowerCase().includes(en.toLowerCase()) ||
-               en.toLowerCase().includes(n.toLowerCase());
-      });
     });
   });
 
