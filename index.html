@@ -562,6 +562,7 @@ let data = {
   teachers: [],
   appel: [],
   habilitations: {},
+  habEleve: {},   // auto-déclarations élèves (hab-eleve.json)
   pfmp: [],
   notes: {},
   bons: [],
@@ -671,6 +672,7 @@ function loadLocal() {
   try { data.teachers   = JSON.parse(localStorage.getItem('ml_teachers')|| '[]'); } catch(e){}
   try { data.appel      = JSON.parse(localStorage.getItem('ml_appel')   || '[]'); } catch(e){}
   try { data.habilitations = JSON.parse(localStorage.getItem('ml_hab')  || '{}'); } catch(e){}
+  try { data.habEleve      = JSON.parse(localStorage.getItem('ml_hab_eleve') || '{}'); } catch(e){}
   try { data.pfmp       = JSON.parse(localStorage.getItem('ml_pfmp')    || '[]'); } catch(e){}
   try { data.notes      = JSON.parse(localStorage.getItem('ml_notes')   || '{}'); } catch(e){}
   try { data.bons       = JSON.parse(localStorage.getItem('ml_bons')    || '[]'); } catch(e){}
@@ -684,6 +686,7 @@ function saveLocal() {
   localStorage.setItem('ml_teachers', JSON.stringify(data.teachers));
   localStorage.setItem('ml_appel',    JSON.stringify(data.appel));
   localStorage.setItem('ml_hab',      JSON.stringify(data.habilitations));
+  localStorage.setItem('ml_hab_eleve',JSON.stringify(data.habEleve));
   localStorage.setItem('ml_pfmp',     JSON.stringify(data.pfmp));
   localStorage.setItem('ml_notes',    JSON.stringify(data.notes));
   localStorage.setItem('ml_bons',     JSON.stringify(data.bons));
@@ -715,6 +718,7 @@ async function loadRemote() {
     data.teachers      = load('teachers.json', []);
     data.appel         = load('appel.json', []);
     data.habilitations = load('habilitations.json', {});
+    data.habEleve      = load('hab-eleve.json', {});   // auto-déclarations élèves (lecture seule)
     data.pfmp          = load('pfmp.json', []);
     data.notes         = load('notes.json', {});
     data.bons          = load('bons-intervention.json', []);
@@ -1334,15 +1338,29 @@ function deletePFMP(id){askConfirm('Supprimer ce stage ?','',()=>{data.pfmp=data
 // ════════════════════════════════════════════════════════════
 function renderHab() {
   const elv = elevesByClasse();
-  const header = HAB_TYPES.map(h=>`<th colspan="2" style="text-align:center;">${h}</th>`).join('');
-  const subheader = HAB_TYPES.map(()=>'<th style="font-size:9px;text-align:center;">Théo.</th><th style="font-size:9px;text-align:center;">Prat.</th>').join('');
+  const habEleve = data.habEleve || {};
+
+  // En-têtes : 2 colonnes par type (Théo + Prat) + 1 colonne "Exo" par type
+  const header = HAB_TYPES.map(h=>`<th colspan="3" style="text-align:center;">${h}</th>`).join('');
+  const subheader = HAB_TYPES.map(()=>
+    '<th style="font-size:9px;text-align:center;">Théo.</th>' +
+    '<th style="font-size:9px;text-align:center;">Prat.</th>' +
+    '<th style="font-size:9px;text-align:center;color:var(--accent2);">Exo. ✎</th>'
+  ).join('');
+
   const rows = elv.map(e=>{
-    const hab = data.habilitations[e.id]||{};
+    const hab  = data.habilitations[e.id] || {};
+    const self = habEleve[e.id] || {};
     const cells = HAB_TYPES.map(h=>{
-      const theo = hab[h]?.theo||false;
-      const prat = hab[h]?.prat||false;
+      const theo     = hab[h]?.theo  || false;
+      const prat     = hab[h]?.prat  || false;
+      const selfDone = !!self[h];
+      const selfCell = selfDone
+        ? `<span title="Élève a déclaré avoir fait les exercices" style="font-size:15px;color:var(--accent2);">✎</span>`
+        : `<span style="font-size:13px;color:var(--border2);">—</span>`;
       return `<td style="text-align:center;"><div class="hab-dot ${theo?'ok':'nok'}" onclick="toggleHab('${e.id}','${h}','theo')" title="${h} Théorique"></div></td>
-              <td style="text-align:center;"><div class="hab-dot ${prat?'ok':'nok'}" onclick="toggleHab('${e.id}','${h}','prat')" title="${h} Pratique"></div></td>`;
+              <td style="text-align:center;"><div class="hab-dot ${prat?'ok':'nok'}" onclick="toggleHab('${e.id}','${h}','prat')" title="${h} Pratique"></div></td>
+              <td style="text-align:center;">${selfCell}</td>`;
     }).join('');
     return `<tr><td><strong>${esc(e.nom)}</strong> ${esc(e.prenom)}</td>${cells}</tr>`;
   }).join('');
@@ -1361,7 +1379,10 @@ function renderHab() {
         </table>` : '<div class="empty"><div class="ei">⚡</div><div class="et">Aucun élève</div></div>'}
       </div>
     </div>
-    <div class="muted" style="margin-top:8px;">● Vert = validé &nbsp;○ Vide = non validé — Cliquer pour basculer</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--text3);">
+      <span>● Vert = validé par l'enseignant &nbsp;○ Vide = non validé — Cliquer pour basculer</span>
+      <span style="color:var(--accent2);">✎ = élève a déclaré avoir fait les exercices (depuis espace élève)</span>
+    </div>
   `);
 }
 
