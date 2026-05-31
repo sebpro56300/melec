@@ -288,6 +288,7 @@ select option{background:var(--bg2);}
     <div class="sync-dot" id="sync-dot"></div>
     <span class="sync-lbl" id="sync-lbl">—</span>
     <button class="btn btn-g btn-sm" onclick="saveAll()">↑ Sauvegarder</button>
+    <button class="btn btn-g btn-sm" onclick="pollSessions()" title="Recharger les statuts élèves">⟳</button>
     <span style="font-size:11px;color:var(--text2);">Enseignant :</span>
     <select id="teacher-select" onchange="askTeacherPassword()"
       style="padding:4px 8px;border-radius:6px;font-size:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:var(--sans);">
@@ -665,6 +666,30 @@ function init() {
   // Chargement distant si config présente
   if (cfg.token && cfg.dataGistId) loadRemote();
   else { setSyncState('err', 'Config Gist manquante'); render(); }
+  // Polling léger : recharger les sessions élèves toutes les 60s
+  setInterval(pollSessions, 60000);
+}
+
+// Recharge uniquement tp-sessions.json (modifications élèves)
+async function pollSessions() {
+  if (!cfg.token || !cfg.tpGistId) return;
+  try {
+    const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28' };
+    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
+    if (!r.ok) return;
+    const g = await r.json();
+    const f = g.files['tp-sessions.json'];
+    if (!f) return;
+    const fresh = JSON.parse(f.content);
+    // Ne mettre à jour que si différent (comparaison rapide par longueur + dernier statut)
+    const changed = JSON.stringify(fresh) !== JSON.stringify(data.sessions);
+    if (changed) {
+      data.sessions = fresh;
+      saveLocal();
+      render();
+      setSyncState('ok', 'Sync auto ✓');
+    }
+  } catch(e) { /* silencieux */ }
 }
 
 function loadLocal() {
@@ -1016,7 +1041,7 @@ function openAppelModal() {
     <div class="pres-card">
       <div class="pres-name">${esc(e.nom)} ${esc(e.prenom)}</div>
       <div class="pres-btns">
-        <button class="pres-btn P" data-id="${e.id}" data-val="P" onclick="togglePres(this)">P</button>
+        <button class="pres-btn P on" data-id="${e.id}" data-val="P" onclick="togglePres(this)">P</button>
         <button class="pres-btn A" data-id="${e.id}" data-val="A" onclick="togglePres(this)">A</button>
         <button class="pres-btn R" data-id="${e.id}" data-val="R" onclick="togglePres(this)">R</button>
       </div>
@@ -1598,12 +1623,14 @@ function addSeance(sessionId) {
   const s = data.sessions.find(x=>x.id===sessionId);
   if (s) { s.seancesDone=(s.seancesDone||0)+1; if(s.seancesDone>=s.seances)s.statut='termine'; }
   saveLocal(); render();
+  saveAll();
 }
 
 function toggleStatutTP(sessionId) {
   const s = data.sessions.find(x=>x.id===sessionId);
   if (s) s.statut = s.statut==='termine'?'en_cours':'termine';
   saveLocal(); render();
+  saveAll();
 }
 
 function deleteSession(id) {
@@ -1927,11 +1954,18 @@ function renderBons() {
 
 function signerBon(id) {
   const ens = state.enseignant;
-  if (!ens) { toast('Connectez-vous d\'abord (badge en haut à droite)','err'); return; }
-  askConfirm('Signer ce bon d\'intervention ?',`Signature : ${ens.nom}`,()=>{
+  if (!ens) { toast('Connectez-vous d\'abord','err'); return; }
+  askConfirm('Signer ce bon d\'intervention ?',`Signature enseignant + client : ${ens.nom}`,()=>{
     const b = data.bons.find(x=>x.id===id);
-    if (b) { b.sigEnseignant=ens.nom; b.sigDate=today(); b.sigTeacherId=ens.id; }
-    saveLocal(); render(); toast('Bon signé ✓','ok');
+    if (b) {
+      b.sigEnseignant = ens.nom;
+      b.sigDate       = today();
+      b.sigTeacherId  = ens.id;
+      b.sig           = ens.nom; // signature client (jeu de rôle : l'enseignant incarne le client)
+      b.sigClientDate = today();
+    }
+    saveLocal(); render();
+    saveAll().then(()=>toast('Bon signé (enseignant + client) ✓','ok'));
   });
 }
 
