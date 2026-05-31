@@ -633,6 +633,7 @@ function cancelTeacherSelect() {
 
 function unlockTeacher(teacher) {
   state.enseignant = teacher;
+  sessionStorage.setItem('melec_session', JSON.stringify({ id: teacher.id }));
   document.getElementById('ens-lock-icon').textContent = '✓';
   document.getElementById('ens-lock-icon').style.color = 'var(--green)';
   setLockState();
@@ -643,6 +644,7 @@ function unlockTeacher(teacher) {
 
 function logout() {
   state.enseignant = null;
+  sessionStorage.removeItem('melec_session');
   document.getElementById('teacher-select').value = '';
   document.getElementById('ens-lock-icon').textContent = '🔒';
   document.getElementById('ens-lock-icon').style.color = 'var(--text3)';
@@ -663,11 +665,23 @@ function init() {
   if (c) cfg = Object.assign(cfg, JSON.parse(c));
   loadLocal();
   updateTeacherSelect();
+  // Restaurer la session de l'onglet si elle existe (pas de re-saisie sur F5)
+  try {
+    const saved = sessionStorage.getItem('melec_session');
+    if (saved) {
+      const { id } = JSON.parse(saved);
+      const t = data.teachers.find(x => x.id === id);
+      if (t) {
+        state.enseignant = t;
+        document.getElementById('teacher-select').value = t.id;
+        document.getElementById('ens-lock-icon').textContent = '✓';
+        document.getElementById('ens-lock-icon').style.color = 'var(--green)';
+      }
+    }
+  } catch(e) {}
   setLockState();
-  // Chargement distant si config présente
   if (cfg.token && cfg.dataGistId) loadRemote();
   else { setSyncState('err', 'Config Gist manquante'); render(); }
-  // Polling léger : recharger les sessions élèves toutes les 60s
   setInterval(pollSessions, 60000);
 }
 
