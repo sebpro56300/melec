@@ -689,46 +689,33 @@ function init() {
 async function pollSessions() {
   if (!cfg.token || !cfg.tpGistId) return;
   try {
-    const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28' };
-
-    let changed = false;
+    const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28', 'Cache-Control':'no-cache' };
+    const bust = '?t=' + Date.now();
 
     // tp-sessions.json → Gist TP
-    const r1 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
+    const r1 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}${bust}`, { headers:h });
     if (r1.ok) {
       const g1 = await r1.json();
       const fSes = g1.files['tp-sessions.json'];
-      if (fSes) {
-        const fresh = JSON.parse(fSes.content);
-        if (JSON.stringify(fresh) !== JSON.stringify(data.sessions)) {
-          data.sessions = fresh;
-          changed = true;
-        }
-      }
+      if (fSes) data.sessions = JSON.parse(fSes.content);
     }
 
     // tp-eleve.json → Gist données
     if (cfg.dataGistId) {
-      const r2 = await fetch(`https://api.github.com/gists/${cfg.dataGistId}`, { headers:h });
+      const r2 = await fetch(`https://api.github.com/gists/${cfg.dataGistId}${bust}`, { headers:h });
       if (r2.ok) {
         const g2 = await r2.json();
         const fElv = g2.files['tp-eleve.json'];
-        if (fElv) {
-          const fresh = JSON.parse(fElv.content);
-          if (JSON.stringify(fresh) !== JSON.stringify(data.tpEleve)) {
-            data.tpEleve = fresh;
-            changed = true;
-          }
-        }
+        if (fElv) data.tpEleve = JSON.parse(fElv.content);
       }
     }
 
-    if (changed) {
-      saveLocal();
-      render();
-      setSyncState('ok', 'Sync auto ✓');
-    }
-  } catch(e) { /* silencieux */ }
+    saveLocal();
+    render();
+    setSyncState('ok', 'Sync ✓ ' + new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
+  } catch(e) {
+    setSyncState('err', 'Erreur sync');
+  }
 }
 
 function loadLocal() {
@@ -1502,10 +1489,15 @@ function renderTPs() {
       ? `<span title="${esc(obsEleve)}" style="font-size:13px;cursor:default;">💬</span>`
       : '';
 
-    // Badge statut de la session la plus récente
-    const statutBadge = s0.statut==='termine'
+    // Statut effectif : si "assigne" mais que l'élève a coché des phases → afficher "En cours"
+    const phases = data.tpEleve?.[s0.eleveId]?.[s0.tpId]?.phases || {};
+    const hasPhases = Object.values(phases).some(v => v === true);
+    const statutEffectif = s0.statut === 'assigne' && hasPhases ? 'en_cours' : s0.statut;
+
+    // Badge statut
+    const statutBadge = statutEffectif==='termine'
       ? '<span class="badge b-green">✓ Terminé</span>'
-      : s0.statut==='en_cours'
+      : statutEffectif==='en_cours'
         ? '<span class="badge b-blue">En cours</span>'
         : '<span class="badge b-gray">Assigné</span>';
 
@@ -1557,9 +1549,12 @@ function renderTPs() {
       sList.forEach((s, idx) => {
         const nCE = Object.keys(s.evaluations||{}).filter(k=>(s.evaluations[k]?.niveauGlobal||'')!=='').length;
         const pct = s.seances>0 ? Math.round((s.seancesDone||0)/s.seances*100) : 0;
-        const stBdg = s.statut==='termine'
+        const sPhases = data.tpEleve?.[s.eleveId]?.[s.tpId]?.phases || {};
+        const sHasPhases = Object.values(sPhases).some(v => v === true);
+        const sStatut = s.statut === 'assigne' && sHasPhases ? 'en_cours' : s.statut;
+        const stBdg = sStatut==='termine'
           ? '<span class="badge b-green" style="font-size:9px;">✓</span>'
-          : s.statut==='en_cours'
+          : sStatut==='en_cours'
             ? '<span class="badge b-blue" style="font-size:9px;">En cours</span>'
             : '<span class="badge b-gray" style="font-size:9px;">Assigné</span>';
         const evBdg = nCompTotal > 0
