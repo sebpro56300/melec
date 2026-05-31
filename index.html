@@ -1515,6 +1515,16 @@ function renderTPs() {
            🎯 ${nCompEval}/${nCompTotal}</span>`
       : '<span class="badge b-gray">—</span>';
 
+    // Phases élève
+    const PHASES = [{k:'prep',l:'Prép.'},{k:'real',l:'Réal.'},{k:'mise',l:'Mise en service'},{k:'main',l:'Maintenance'}];
+    const phaseBadges = PHASES.map(p => {
+      const done = !!phases[p.k];
+      return `<span style="font-size:10px;padding:1px 6px;border-radius:10px;white-space:nowrap;
+        background:${done?'var(--green)':'var(--bg3)'};color:${done?'#fff':'var(--text3)'};
+        border:1px solid ${done?'var(--green)':'var(--border)'};">${done?'✓':' '} ${p.l}</span>`;
+    }).join('');
+    const hasAnyPhase = Object.values(phases).some(v => v === true);
+
     // Ligne-groupe principale
     rows += `<tr style="background:var(--bg2);">
       <td style="padding:6px 8px;">
@@ -1533,7 +1543,15 @@ function renderTPs() {
         <button class="btn btn-d btn-sm" onclick="deleteSession('${s0.id}')">✕</button>
       </td>
     </tr>`;
-    // Ligne observation élève (si présente) — visible sans déplier
+    // Ligne phases (toujours affichée pour montrer la progression)
+    rows += `<tr style="background:var(--bg2);border-top:none;">
+      <td></td>
+      <td colspan="5" style="padding:2px 8px 5px;">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">${phaseBadges}</div>
+      </td>
+      <td></td>
+    </tr>`;
+    // Ligne observation élève (si présente)
     if (obsEleve) {
       rows += `<tr style="background:var(--bg2);border-top:none;">
         <td></td>
