@@ -685,32 +685,41 @@ function init() {
   setInterval(pollSessions, 60000);
 }
 
-// Recharge tp-sessions.json ET tp-eleve.json (modifications élèves)
+// Recharge tp-sessions.json (Gist TP) ET tp-eleve.json (Gist données)
 async function pollSessions() {
   if (!cfg.token || !cfg.tpGistId) return;
   try {
     const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28' };
-    const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
-    if (!r.ok) return;
-    const g = await r.json();
 
     let changed = false;
 
-    const fSes = g.files['tp-sessions.json'];
-    if (fSes) {
-      const fresh = JSON.parse(fSes.content);
-      if (JSON.stringify(fresh) !== JSON.stringify(data.sessions)) {
-        data.sessions = fresh;
-        changed = true;
+    // tp-sessions.json → Gist TP
+    const r1 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
+    if (r1.ok) {
+      const g1 = await r1.json();
+      const fSes = g1.files['tp-sessions.json'];
+      if (fSes) {
+        const fresh = JSON.parse(fSes.content);
+        if (JSON.stringify(fresh) !== JSON.stringify(data.sessions)) {
+          data.sessions = fresh;
+          changed = true;
+        }
       }
     }
 
-    const fElv = g.files['tp-eleve.json'];
-    if (fElv) {
-      const fresh = JSON.parse(fElv.content);
-      if (JSON.stringify(fresh) !== JSON.stringify(data.tpEleve)) {
-        data.tpEleve = fresh;
-        changed = true;
+    // tp-eleve.json → Gist données
+    if (cfg.dataGistId) {
+      const r2 = await fetch(`https://api.github.com/gists/${cfg.dataGistId}`, { headers:h });
+      if (r2.ok) {
+        const g2 = await r2.json();
+        const fElv = g2.files['tp-eleve.json'];
+        if (fElv) {
+          const fresh = JSON.parse(fElv.content);
+          if (JSON.stringify(fresh) !== JSON.stringify(data.tpEleve)) {
+            data.tpEleve = fresh;
+            changed = true;
+          }
+        }
       }
     }
 
@@ -776,6 +785,7 @@ async function loadRemote() {
     data.appel         = load('appel.json', []);
     data.habilitations = load('habilitations.json', {});
     data.habEleve      = load('hab-eleve.json', {});   // auto-déclarations élèves (lecture seule)
+    data.tpEleve       = load('tp-eleve.json', {});    // observations élèves — dans Gist données
     data.pfmp          = load('pfmp.json', []);
     data.notes         = load('notes.json', {});
     data.bons          = load('bons-intervention.json', []);
@@ -789,7 +799,6 @@ async function loadRemote() {
         data.tps       = g2.files['tps.json']         ? JSON.parse(g2.files['tps.json'].content)         : [];
         data.sessions  = g2.files['tp-sessions.json'] ? JSON.parse(g2.files['tp-sessions.json'].content) : [];
         data.ressources= g2.files['ressources.json']  ? JSON.parse(g2.files['ressources.json'].content)  : [];
-        data.tpEleve   = g2.files['tp-eleve.json']    ? JSON.parse(g2.files['tp-eleve.json'].content)    : {};
       }
     }
 
