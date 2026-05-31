@@ -1398,66 +1398,116 @@ function toggleHab(eleveId, type, field) {
 // ════════════════════════════════════════════════════════════
 function renderTPs() {
   const cl = state.classe;
-  // ── Nettoyage préventif : s'assurer que chaque session a un id unique
+  // ── Nettoyage préventif
   let dirty = false;
   const seenIds = new Set();
   data.sessions.forEach(s => {
-    if (!s.id || seenIds.has(s.id)) {
-      s.id = genId('SES');
-      dirty = true;
-    }
+    if (!s.id || seenIds.has(s.id)) { s.id = genId('SES'); dirty = true; }
     seenIds.add(s.id);
-    // Normaliser classe
     if (!s.classe && s.level) { s.classe = s.level; dirty = true; }
     if (!s.evaluations) { s.evaluations = {}; dirty = true; }
   });
   if (dirty) saveLocal();
 
   const sessions = sessionsByClasse();
-  const EVAL_COLS=['bleu','rouge','orange','vclair','vfonce'];
 
-  const rows = sessions.map(s=>{
-    const tp = data.tps.find(t=>t.id===s.tpId);
-    const e  = data.eleves.find(x=>x.id===s.eleveId);
-    const pct = s.seances>0 ? Math.round((s.seancesDone||0)/s.seances*100):0;
-    const nCompEval = Object.keys(s.evaluations||{}).filter(k=>(s.evaluations[k]?.niveauGlobal||'')!=='').length;
+  // ── Grouper par (tpId + eleveId)
+  const groupMap = new Map();
+  sessions.forEach(s => {
+    const key = s.tpId + '|' + s.eleveId;
+    if (!groupMap.has(key)) groupMap.set(key, []);
+    groupMap.get(key).push(s);
+  });
+
+  // ── Construire les lignes (une ligne-groupe + sous-lignes dépliables)
+  let rows = '';
+  groupMap.forEach((sList, key) => {
+    const s0  = sList[sList.length - 1]; // session la plus récente
+    const tp  = data.tps.find(t => t.id === s0.tpId);
+    const e   = data.eleves.find(x => x.id === s0.eleveId);
+    const nb  = sList.length;
+    const multi = nb > 1;
+    const grpId = 'grp_' + key.replace(/\|/g,'_');
+
+    // Badge statut de la session la plus récente
+    const statutBadge = s0.statut==='termine'
+      ? '<span class="badge b-green">✓ Terminé</span>'
+      : s0.statut==='en_cours'
+        ? '<span class="badge b-blue">En cours</span>'
+        : '<span class="badge b-gray">Assigné</span>';
+
+    // Compteur réalisations
+    const nbBadge = multi
+      ? `<span class="badge b-orange" title="${nb} session(s) pour ce TP">🔁 ×${nb}</span>`
+      : '';
+
+    // Éval de la dernière session
     const nCompTotal = (tp?.competences||[]).length;
-    return `<tr>
-      <td><strong>${esc(tp?tp.titre:s.tpId)}</strong></td>
-      <td>${esc(e?e.nom+' '+e.prenom:s.eleveId)}</td>
-      <td class="td-mono">${s.date||'—'}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div style="flex:1;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;"></div>
-          </div>
-          <span style="font-size:10px;font-family:var(--mono);color:var(--text2);">${s.seancesDone||0}/${s.seances||'?'}</span>
-        </div>
+    const nCompEval  = Object.keys(s0.evaluations||{}).filter(k=>(s0.evaluations[k]?.niveauGlobal||'')!=='').length;
+    const evalBadge  = nCompTotal > 0
+      ? `<span class="badge ${nCompEval===nCompTotal?'b-green':nCompEval>0?'b-orange':'b-gray'}"
+           style="cursor:pointer" onclick="openEvalModal('${s0.id}')" title="Évaluation dernière session">
+           🎯 ${nCompEval}/${nCompTotal}</span>`
+      : '<span class="badge b-gray">—</span>';
+
+    // Ligne-groupe principale
+    rows += `<tr style="background:var(--bg2);">
+      <td style="padding:6px 8px;">
+        ${multi ? `<button class="btn btn-g btn-sm" style="padding:1px 5px;min-width:22px;"
+          onclick="toggleGrp('${grpId}')">▶</button>` : '<span style="display:inline-block;width:22px;"></span>'}
       </td>
-      <td>
-        ${s.statut==='termine'?'<span class="badge b-green">✓ Terminé</span>':
-          s.statut==='en_cours'?'<span class="badge b-blue">En cours</span>':
-          '<span class="badge b-gray">Assigné</span>'}
-      </td>
-      <td>
-        ${nCompTotal>0
-          ? `<span class="badge ${nCompEval===nCompTotal?'b-green':nCompEval>0?'b-orange':'b-gray'}"
-              style="cursor:pointer" onclick="openEvalModal('${s.id}')"
-              title="Ouvrir l'évaluation">
-              🎯 ${nCompEval}/${nCompTotal}
-            </span>`
-          : '<span class="badge b-gray" title="Aucune compétence définie sur ce TP">—</span>'}
-      </td>
+      <td><strong>${esc(tp ? tp.titre : s0.tpId)}</strong></td>
+      <td>${esc(e ? e.nom+' '+e.prenom : s0.eleveId)}</td>
+      <td class="td-mono">${s0.date||'—'}</td>
+      <td>${statutBadge} ${nbBadge}</td>
+      <td>${evalBadge}</td>
       <td style="white-space:nowrap;">
-        <button class="btn btn-g btn-sm" onclick="addSeance('${s.id}')">+1</button>
-        <button class="btn btn-g btn-sm" onclick="toggleStatutTP('${s.id}')">
-          ${s.statut==='termine'?'↺':'✓'}
-        </button>
-        <button class="btn btn-g btn-sm" onclick="openEvalModal('${s.id}')">📋</button>
-        <button class="btn btn-d btn-sm" onclick="deleteSession('${s.id}')">✕</button>
+        <button class="btn btn-g btn-sm" onclick="addSeance('${s0.id}')">+1</button>
+        <button class="btn btn-g btn-sm" onclick="toggleStatutTP('${s0.id}')">${s0.statut==='termine'?'↺':'✓'}</button>
+        <button class="btn btn-g btn-sm" onclick="openEvalModal('${s0.id}')">📋</button>
+        <button class="btn btn-d btn-sm" onclick="deleteSession('${s0.id}')">✕</button>
       </td>
     </tr>`;
-  }).join('');
+
+    // Sous-lignes (toutes les sessions, cachées par défaut si multi)
+    if (multi) {
+      sList.forEach((s, idx) => {
+        const nCE = Object.keys(s.evaluations||{}).filter(k=>(s.evaluations[k]?.niveauGlobal||'')!=='').length;
+        const pct = s.seances>0 ? Math.round((s.seancesDone||0)/s.seances*100) : 0;
+        const stBdg = s.statut==='termine'
+          ? '<span class="badge b-green" style="font-size:9px;">✓</span>'
+          : s.statut==='en_cours'
+            ? '<span class="badge b-blue" style="font-size:9px;">En cours</span>'
+            : '<span class="badge b-gray" style="font-size:9px;">Assigné</span>';
+        const evBdg = nCompTotal > 0
+          ? `<span class="badge ${nCE===nCompTotal?'b-green':nCE>0?'b-orange':'b-gray'}"
+               style="font-size:9px;cursor:pointer" onclick="openEvalModal('${s.id}')">🎯 ${nCE}/${nCompTotal}</span>`
+          : '<span class="badge b-gray" style="font-size:9px;">—</span>';
+        rows += `<tr class="subrow-${grpId}" style="display:none;background:var(--bg);border-left:3px solid var(--accent2);">
+          <td></td>
+          <td colspan="2" style="font-size:11px;color:var(--text2);padding-left:20px;">
+            Session ${idx+1} — ${s.date||'?'}
+          </td>
+          <td>
+            <div style="display:flex;align-items:center;gap:5px;">
+              <div style="width:50px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:2px;"></div>
+              </div>
+              <span style="font-size:10px;color:var(--text2);">${s.seancesDone||0}/${s.seances||'?'}</span>
+            </div>
+          </td>
+          <td>${stBdg}</td>
+          <td>${evBdg}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-g btn-sm" onclick="addSeance('${s.id}')">+1</button>
+            <button class="btn btn-g btn-sm" onclick="toggleStatutTP('${s.id}')">${s.statut==='termine'?'↺':'✓'}</button>
+            <button class="btn btn-g btn-sm" onclick="openEvalModal('${s.id}')">📋</button>
+            <button class="btn btn-d btn-sm" onclick="deleteSession('${s.id}')">✕</button>
+          </td>
+        </tr>`;
+      });
+    }
+  });
 
   setContent(`
     ${pageHeader('Travaux Pratiques','Assignations — '+classeLabel(cl),`
@@ -1465,9 +1515,10 @@ function renderTPs() {
       <button class="btn btn-p" onclick="openAssignTPModal()">+ Assigner</button>`)}
     <div class="card">
       <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
-        ${sessions.length ? `<table>
+        ${groupMap.size ? `<table>
           <thead><tr>
-            <th>TP</th><th>Élève</th><th>Date</th><th>Séances</th>
+            <th style="width:28px;"></th>
+            <th>TP</th><th>Élève</th><th>Dernière date</th>
             <th>Statut</th><th>Éval.</th><th>Actions</th>
           </tr></thead>
           <tbody>${rows}</tbody>
@@ -1478,7 +1529,18 @@ function renderTPs() {
         </div>`}
       </div>
     </div>
+    <div class="muted" style="margin-top:8px;font-size:11px;">
+      🔁 Badge orange = TP réalisé plusieurs fois — cliquer ▶ pour voir chaque session
+    </div>
   `);
+}
+
+function toggleGrp(grpId) {
+  const rows = document.querySelectorAll('.subrow-'+grpId);
+  const btn  = document.querySelector(`button[onclick="toggleGrp('${grpId}')"]`);
+  const open = rows[0]?.style.display !== 'none';
+  rows.forEach(r => r.style.display = open ? 'none' : '');
+  if (btn) btn.textContent = open ? '▶' : '▼';
 }
 
 function openAssignTPModal() {
