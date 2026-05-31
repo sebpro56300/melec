@@ -571,6 +571,7 @@ let data = {
   ressources: [],  // depuis ressources.json (tp-admin gist, lecture seule)
   tps: [],
   sessions: [],
+  tpEleve:  {},   // observations et phases élèves (tp-eleve.json)
 };
 let confirmCb = null;
 let editCtx = {}; // contexte d'édition en cours
@@ -670,7 +671,7 @@ function init() {
   setInterval(pollSessions, 60000);
 }
 
-// Recharge uniquement tp-sessions.json (modifications élèves)
+// Recharge tp-sessions.json ET tp-eleve.json (modifications élèves)
 async function pollSessions() {
   if (!cfg.token || !cfg.tpGistId) return;
   try {
@@ -678,13 +679,28 @@ async function pollSessions() {
     const r = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
     if (!r.ok) return;
     const g = await r.json();
-    const f = g.files['tp-sessions.json'];
-    if (!f) return;
-    const fresh = JSON.parse(f.content);
-    // Ne mettre à jour que si différent (comparaison rapide par longueur + dernier statut)
-    const changed = JSON.stringify(fresh) !== JSON.stringify(data.sessions);
+
+    let changed = false;
+
+    const fSes = g.files['tp-sessions.json'];
+    if (fSes) {
+      const fresh = JSON.parse(fSes.content);
+      if (JSON.stringify(fresh) !== JSON.stringify(data.sessions)) {
+        data.sessions = fresh;
+        changed = true;
+      }
+    }
+
+    const fElv = g.files['tp-eleve.json'];
+    if (fElv) {
+      const fresh = JSON.parse(fElv.content);
+      if (JSON.stringify(fresh) !== JSON.stringify(data.tpEleve)) {
+        data.tpEleve = fresh;
+        changed = true;
+      }
+    }
+
     if (changed) {
-      data.sessions = fresh;
       saveLocal();
       render();
       setSyncState('ok', 'Sync auto ✓');
@@ -704,6 +720,7 @@ function loadLocal() {
   try { data.cours      = JSON.parse(localStorage.getItem('ml_cours')   || '[]'); } catch(e){}
   try { data.tps        = JSON.parse(localStorage.getItem('ml_tps')     || '[]'); } catch(e){}
   try { data.sessions   = JSON.parse(localStorage.getItem('ml_sessions')|| '[]'); } catch(e){}
+  try { data.tpEleve    = JSON.parse(localStorage.getItem('ml_tp_eleve')|| '{}'); } catch(e){}
 }
 
 function saveLocal() {
@@ -718,6 +735,7 @@ function saveLocal() {
   localStorage.setItem('ml_cours',    JSON.stringify(data.cours));
   localStorage.setItem('ml_tps',      JSON.stringify(data.tps));
   localStorage.setItem('ml_sessions', JSON.stringify(data.sessions));
+  localStorage.setItem('ml_tp_eleve', JSON.stringify(data.tpEleve));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -757,6 +775,7 @@ async function loadRemote() {
         data.tps       = g2.files['tps.json']         ? JSON.parse(g2.files['tps.json'].content)         : [];
         data.sessions  = g2.files['tp-sessions.json'] ? JSON.parse(g2.files['tp-sessions.json'].content) : [];
         data.ressources= g2.files['ressources.json']  ? JSON.parse(g2.files['ressources.json'].content)  : [];
+        data.tpEleve   = g2.files['tp-eleve.json']    ? JSON.parse(g2.files['tp-eleve.json'].content)    : {};
       }
     }
 
@@ -1454,6 +1473,12 @@ function renderTPs() {
     const multi = nb > 1;
     const grpId = 'grp_' + key.replace(/\|/g,'_');
 
+    // Observation élève (partagée par tpId, indépendante de la session)
+    const obsEleve = (data.tpEleve?.[s0.eleveId]?.[s0.tpId]?.obs || '').trim();
+    const obsBadge = obsEleve
+      ? `<span title="${esc(obsEleve)}" style="font-size:13px;cursor:default;">💬</span>`
+      : '';
+
     // Badge statut de la session la plus récente
     const statutBadge = s0.statut==='termine'
       ? '<span class="badge b-green">✓ Terminé</span>'
@@ -1482,7 +1507,7 @@ function renderTPs() {
           onclick="toggleGrp('${grpId}')">▶</button>` : '<span style="display:inline-block;width:22px;"></span>'}
       </td>
       <td><strong>${esc(tp ? tp.titre : s0.tpId)}</strong></td>
-      <td>${esc(e ? e.nom+' '+e.prenom : s0.eleveId)}</td>
+      <td>${esc(e ? e.nom+' '+e.prenom : s0.eleveId)} ${obsBadge}</td>
       <td class="td-mono">${s0.date||'—'}</td>
       <td>${statutBadge} ${nbBadge}</td>
       <td>${evalBadge}</td>
@@ -1493,6 +1518,16 @@ function renderTPs() {
         <button class="btn btn-d btn-sm" onclick="deleteSession('${s0.id}')">✕</button>
       </td>
     </tr>`;
+    // Ligne observation élève (si présente) — visible sans déplier
+    if (obsEleve) {
+      rows += `<tr style="background:var(--bg2);border-top:none;">
+        <td></td>
+        <td colspan="5" style="padding:2px 8px 6px;font-size:11px;color:var(--text2);font-style:italic;">
+          💬 ${esc(obsEleve)}
+        </td>
+        <td></td>
+      </tr>`;
+    }
 
     // Sous-lignes (toutes les sessions, cachées par défaut si multi)
     if (multi) {
