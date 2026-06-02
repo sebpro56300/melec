@@ -592,7 +592,14 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
       <div id="scanMatContent">
         <div style="background:#fff;border-radius:10px;box-shadow:var(--shad);padding:16px;margin-bottom:12px">
           <p style="font-size:13px;margin-bottom:12px">Scannez le QR code d'un matériel ou saisissez son code pour l'ajouter dans les <strong>matériels utilisés</strong> du bon d'intervention en cours.</p>
-          <button class="btn pri" style="width:100%" onclick="openScannerMat()">📷 Scanner un matériel</button>
+          <button class="btn pri" style="width:100%;margin-bottom:10px" onclick="openScannerMat()">📷 Scanner un matériel</button>
+          <div style="display:flex;gap:8px">
+            <input type="text" id="matCodeManuel" placeholder="Saisir un code : MELEC-037"
+                   style="flex:1;padding:10px;border:1px solid var(--brd);border-radius:6px;font-size:14px;font-family:inherit;outline:none"
+                   autocomplete="off" spellcheck="false"
+                   onkeydown="if(event.key==='Enter')handleScanMat(this.value.trim())">
+            <button class="btn pri" onclick="handleScanMat(document.getElementById('matCodeManuel').value.trim());document.getElementById('matCodeManuel').value=''">OK</button>
+          </div>
         </div>
         <div id="scanMatHistorique"></div>
       </div>
@@ -727,6 +734,9 @@ var GIST_DATA_API = 'https://api.github.com/gists/' + GIST_DATA_ID;
 var GIST_TP_ID    = '5cbd51c7c62493addf84845feddd19d7';
 var GIST_TP_API   = 'https://api.github.com/gists/' + GIST_TP_ID;var _t=['ghp_qEznNZ','A1uDLc87PX','Yjjrt9dT0M','3g4D20Oeli'];
 var GIST_TOKEN = _t[0]+_t[1]+_t[2]+_t[3];
+// Gist inventaire : melec-inventaire.json
+var GIST_INV_ID  = '7199f3da76a616c61c7b7780409bf786';
+var GIST_INV_API = 'https://api.github.com/gists/' + GIST_INV_ID;
 // GIST_API pointe sur le Gist données (compatibilité avec le reste du code)
 var GIST_API   = GIST_DATA_API;
 var LS_BACKUP  = 'melec_eleve_backup';
@@ -803,13 +813,20 @@ async function loadData() {
         data.tp        = readFile(g2, 'tp-sessions.json', []);
         data.tpBank    = readFile(g2, 'tps.json',         []);
         data.ressources= readFile(g2, 'ressources.json',  []);
-        // inventaire pour résoudre qr_code → id système
-        var inv = readFile(g2, 'melec-inventaire.json', null);
+      } else { data.tp = []; data.tpBank = []; }
+    } catch(e2) { data.tp = []; data.tpBank = []; }
+
+    // 3. Gist inventaire
+    try {
+      var r3 = await fetch(GIST_INV_API + '?t=' + Date.now(), {method:'GET', headers:gistHeaders(), cache:'no-store'});
+      if (r3.ok) {
+        var g3 = (await r3.json()).files || {};
+        var inv = readFile(g3, 'melec-inventaire.json', null);
         if (inv && inv.items) data.inventory = inv.items;
         else if (Array.isArray(inv)) data.inventory = inv;
         else data.inventory = [];
-      } else { data.tp = []; data.tpBank = []; }
-    } catch(e2) { data.tp = []; data.tpBank = []; }
+      } else { data.inventory = []; }
+    } catch(e3) { data.inventory = []; }
 
     fixData();
     try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
