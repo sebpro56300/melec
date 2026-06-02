@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0d1117">
-<title>MELEC — Suivi Pédagogique</title>
+<title>MELEC — Suivi Pédagogique v9</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root{
@@ -278,7 +278,7 @@ select option{background:var(--bg2);}
 
 <!-- HEADER -->
 <div id="header">
-  <div class="logo">⚡MELEC<small>Suivi</small></div>
+  <div class="logo">⚡MELEC<small>Suivi v9</small></div>
   <div class="classe-pills">
     <button class="cp on" onclick="setClasse('2MELEC',this)">2nde</button>
     <button class="cp" onclick="setClasse('1MELEC',this)">1ère</button>
@@ -685,47 +685,12 @@ function init() {
   setInterval(pollSessions, 60000);
 }
 
-// Recharge tp-sessions.json (Gist TP) ET tp-eleve.json (Gist données)
+// Recharge les données élèves — délègue à loadRemote qui fonctionne
 async function pollSessions() {
   const token = (cfg.token || '').replace(/\s+/g, '');
-  if (!token)        { setSyncState('err', 'Token manquant'); toast('Token GitHub non configuré','err'); return; }
-  if (!cfg.tpGistId) { setSyncState('err', 'Gist TP manquant'); toast('ID Gist TP non configuré','err'); return; }
-
-  setSyncState('ok', '⟳ Synchro…');
-  try {
-    const h = { Authorization:`token ${token}`, 'X-GitHub-Api-Version':'2022-11-28', 'Cache-Control':'no-cache', 'Pragma':'no-cache' };
-
-    // tp-sessions.json → Gist TP
-    const r1 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h, cache:'no-store' });
-    if (!r1.ok) {
-      const msg = `Gist TP : HTTP ${r1.status}`;
-      setSyncState('err', msg); toast(msg, 'err'); return;
-    }
-    const g1 = await r1.json();
-    const fSes = g1.files['tp-sessions.json'];
-    if (fSes) data.sessions = JSON.parse(fSes.content);
-    else toast('tp-sessions.json absent du Gist TP', 'err');
-
-    // tp-eleve.json → Gist données
-    if (cfg.dataGistId) {
-      const r2 = await fetch(`https://api.github.com/gists/${cfg.dataGistId}`, { headers:h, cache:'no-store' });
-      if (!r2.ok) {
-        const msg = `Gist données : HTTP ${r2.status}`;
-        setSyncState('err', msg); toast(msg, 'err'); return;
-      }
-      const g2 = await r2.json();
-      const fElv = g2.files['tp-eleve.json'];
-      if (fElv) data.tpEleve = JSON.parse(fElv.content);
-    }
-
-    saveLocal();
-    render();
-    setSyncState('ok', 'Sync ✓ ' + new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
-  } catch(e) {
-    const msg = e.message || 'Erreur réseau';
-    setSyncState('err', msg.substring(0,30));
-    toast(`Sync (token ${token.length} car.) : ${msg}`, 'err');
-  }
+  if (!token)        { setSyncState('err', 'Token manquant'); toast('Token GitHub non configuré — vérifiez Config','err'); return; }
+  if (!cfg.tpGistId) { setSyncState('err', 'Gist TP manquant'); toast('ID Gist TP non configuré — vérifiez Config','err'); return; }
+  await loadRemote();
 }
 
 function loadLocal() {
