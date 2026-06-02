@@ -687,34 +687,46 @@ function init() {
 
 // Recharge tp-sessions.json (Gist TP) ET tp-eleve.json (Gist données)
 async function pollSessions() {
-  if (!cfg.token || !cfg.tpGistId) return;
+  // Vérifications préalables
+  if (!cfg.token)     { setSyncState('err', 'Token manquant'); toast('Token GitHub non configuré','err'); return; }
+  if (!cfg.tpGistId)  { setSyncState('err', 'Gist TP manquant'); toast('ID Gist TP non configuré','err'); return; }
+
+  setSyncState('ok', '⟳ Synchro…');
   try {
     const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28', 'Cache-Control':'no-cache' };
     const bust = '?t=' + Date.now();
 
     // tp-sessions.json → Gist TP
     const r1 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}${bust}`, { headers:h });
-    if (r1.ok) {
-      const g1 = await r1.json();
-      const fSes = g1.files['tp-sessions.json'];
-      if (fSes) data.sessions = JSON.parse(fSes.content);
+    if (!r1.ok) {
+      const msg = `Gist TP : HTTP ${r1.status}`;
+      setSyncState('err', msg); toast(msg, 'err'); return;
     }
+    const g1 = await r1.json();
+    const fSes = g1.files['tp-sessions.json'];
+    if (fSes) data.sessions = JSON.parse(fSes.content);
+    else toast('tp-sessions.json absent du Gist TP', 'err');
 
     // tp-eleve.json → Gist données
     if (cfg.dataGistId) {
       const r2 = await fetch(`https://api.github.com/gists/${cfg.dataGistId}${bust}`, { headers:h });
-      if (r2.ok) {
-        const g2 = await r2.json();
-        const fElv = g2.files['tp-eleve.json'];
-        if (fElv) data.tpEleve = JSON.parse(fElv.content);
+      if (!r2.ok) {
+        const msg = `Gist données : HTTP ${r2.status}`;
+        setSyncState('err', msg); toast(msg, 'err'); return;
       }
+      const g2 = await r2.json();
+      const fElv = g2.files['tp-eleve.json'];
+      if (fElv) data.tpEleve = JSON.parse(fElv.content);
+      // tp-eleve.json peut être absent si aucun élève n'a encore sauvegardé
     }
 
     saveLocal();
     render();
     setSyncState('ok', 'Sync ✓ ' + new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}));
   } catch(e) {
-    setSyncState('err', 'Erreur sync');
+    const msg = e.message || 'Erreur réseau';
+    setSyncState('err', msg.substring(0,30));
+    toast('Sync : ' + msg, 'err');
   }
 }
 
