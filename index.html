@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0d1117">
-<title>MELEC — Suivi Pédagogique v9</title>
+<title>MELEC — Suivi Pédagogique</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root{
@@ -687,13 +687,13 @@ function init() {
 
 // Recharge tp-sessions.json (Gist TP) ET tp-eleve.json (Gist données)
 async function pollSessions() {
-  // Vérifications préalables
-  if (!cfg.token)     { setSyncState('err', 'Token manquant'); toast('Token GitHub non configuré','err'); return; }
-  if (!cfg.tpGistId)  { setSyncState('err', 'Gist TP manquant'); toast('ID Gist TP non configuré','err'); return; }
+  const token = (cfg.token || '').replace(/\s+/g, '');
+  if (!token)        { setSyncState('err', 'Token manquant'); toast('Token GitHub non configuré','err'); return; }
+  if (!cfg.tpGistId) { setSyncState('err', 'Gist TP manquant'); toast('ID Gist TP non configuré','err'); return; }
 
   setSyncState('ok', '⟳ Synchro…');
   try {
-    const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28', 'Cache-Control':'no-cache' };
+    const h = { Authorization:`token ${token}`, 'X-GitHub-Api-Version':'2022-11-28', 'Cache-Control':'no-cache' };
     const bust = '?t=' + Date.now();
 
     // tp-sessions.json → Gist TP
@@ -717,7 +717,6 @@ async function pollSessions() {
       const g2 = await r2.json();
       const fElv = g2.files['tp-eleve.json'];
       if (fElv) data.tpEleve = JSON.parse(fElv.content);
-      // tp-eleve.json peut être absent si aucun élève n'a encore sauvegardé
     }
 
     saveLocal();
@@ -726,7 +725,7 @@ async function pollSessions() {
   } catch(e) {
     const msg = e.message || 'Erreur réseau';
     setSyncState('err', msg.substring(0,30));
-    toast('Sync : ' + msg, 'err');
+    toast(`Sync (token ${token.length} car.) : ${msg}`, 'err');
   }
 }
 
