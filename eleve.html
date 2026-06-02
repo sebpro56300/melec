@@ -387,6 +387,13 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
 .crit-grid{display:grid;grid-template-columns:1fr 80px;gap:6px;padding:10px 12px;align-items:center;}
 .crit-grid-hd{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
 
+/* ── Scanner Matériel (réutilise les variables scanner TP) ── */
+#scannerMatView{
+  display:none;position:fixed;inset:0;background:#000;z-index:2000;
+  flex-direction:column;align-items:center;justify-content:center;
+}
+#scannerMatView.open{display:flex;}
+
 /* ── Habilitations ── */
 .hab-self{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap;}
 .hab-self input{width:15px;height:15px;accent-color:var(--blue);}
@@ -514,6 +521,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
     <div class="si" data-view="notes" onclick="showView('notes')"><span class="ic">📊</span> Mes Notes</div>
     <div class="si" data-view="bons" onclick="showView('bons')"><span class="ic">📋</span> Bons d'intervention</div>
     <div class="si" data-view="habilitations" onclick="showView('habilitations')"><span class="ic">⚡</span> Habilitations</div>
+    <div class="si" data-view="scan-materiel" onclick="showView('scan-materiel')"><span class="ic">📦</span> Scanner matériel</div>
     <div style="margin-top:auto;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)">
       <button class="btn sml" onclick="logout()" style="width:100%;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#ccc;font-size:11px">↩ Déconnexion</button>
     </div>
@@ -578,6 +586,18 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
       <div id="bonsContent"></div>
     </div>
 
+    <!-- SCAN MATÉRIEL -->
+    <div class="view" id="view-scan-materiel">
+      <div class="ph"><div class="pt">Scanner du matériel</div></div>
+      <div id="scanMatContent">
+        <div style="background:#fff;border-radius:10px;box-shadow:var(--shad);padding:16px;margin-bottom:12px">
+          <p style="font-size:13px;margin-bottom:12px">Scannez le QR code d'un matériel ou saisissez son code pour l'ajouter dans les <strong>matériels utilisés</strong> du bon d'intervention en cours.</p>
+          <button class="btn pri" style="width:100%" onclick="openScannerMat()">📷 Scanner un matériel</button>
+        </div>
+        <div id="scanMatHistorique"></div>
+      </div>
+    </div>
+
     <!-- HABILITATIONS -->
     <div class="view" id="view-habilitations">
       <div class="ph"><div class="pt">Mes Habilitations</div></div>
@@ -606,6 +626,9 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
     </div>
     <div class="nav-item" data-view="habilitations" onclick="showView('habilitations')">
       <span class="ic">⚡</span>Hab.
+    </div>
+    <div class="nav-item" data-view="scan-materiel" onclick="showView('scan-materiel')">
+      <span class="ic">📦</span>Matériel
     </div>
   </div>
 
@@ -669,6 +692,25 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
     <div class="mbdy" id="tpChoiceBody"></div>
     <div class="mft">
       <button class="btn" onclick="closeModal('tpChoiceModal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scanner Matériel -->
+<div id="scannerMatView">
+  <video id="scannerMatVideo" playsinline autoplay muted style="width:100%;max-width:480px;max-height:60vh;object-fit:cover;border-radius:8px"></video>
+  <div class="scanner-tp-frame"><div class="scanner-tp-line"></div></div>
+  <div class="scanner-tp-bar">
+    <div class="scanner-tp-status" id="scannerMatStatus">Pointez vers un QR code matériel…</div>
+    <div class="scanner-tp-manual">
+      <input type="text" id="scannerMatManual" placeholder="ou tapez le code : MELEC-037"
+             autocomplete="off" spellcheck="false"
+             onkeydown="if(event.key==='Enter')handleScanMat(this.value.trim())">
+      <button class="btn pri sml" onclick="handleScanMat(document.getElementById('scannerMatManual').value.trim())">OK</button>
+    </div>
+    <div style="margin-top:10px">
+      <button class="btn sml" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3)"
+              onclick="closeScannerMat()">✕ Annuler</button>
     </div>
   </div>
 </div>
@@ -923,6 +965,7 @@ function renderAll() {
   renderView('notes');
   renderView('bons');
   renderView('habilitations');
+  renderView('scan-materiel');
 }
 
 function renderView(v) {
@@ -933,6 +976,7 @@ function renderView(v) {
   if (v==='notes')     renderNotes();
   if (v==='bons')      renderBons();
   if (v==='habilitations') renderHabilitations();
+  if (v==='scan-materiel') renderScanMateriel();
 }
 
 // ═══ RENDER DASHBOARD ════════════════════════════════════════════════════════
@@ -993,10 +1037,10 @@ function renderDashboard() {
     + '<span style="color:#fff;font-size:13px;font-weight:700">Suivi de diplôme</span>'
     + '</div>'
     + '<div style="background:#fff;padding:12px 14px">'
-    + '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Consultez votre progression sur Cpro.</p>'
+    + '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Consultez votre progression vers le diplôme sur la console nationale.</p>'
     + '<a href="javascript:void(0)" onclick="openDoc(\'https://www.cpro-sti.fr/0560039N/index.php\',\'Suivi de diplôme — CPRO-STI\',\'lien\')"'
     + ' style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#1e3a5f;color:#fff;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none">'
-    + '↗ Accéder à Cpro</a>'
+    + '↗ Accéder à ma console diplôme</a>'
     + '</div>'
     + '</div>'
     + '<div style="margin-top:10px;background:#fff8e1;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
@@ -2041,7 +2085,139 @@ function renderHabilitations() {
   c.innerHTML = html;
 }
 
-// ═══ UTILITAIRES ═════════════════════════════════════════════════════════════
+// ═══ SCANNER MATÉRIEL ════════════════════════════════════════════════════════
+
+// Catégories considérées comme "matériel utilisable dans un bon"
+// (tout sauf Systèmes didactiques, Armoires)
+var CAT_EXCLUES_BON = ['Systèmes didactiques', 'Armoires'];
+
+var zxingMatReader  = null;
+var matScannés      = []; // historique de la session en cours
+
+function renderScanMateriel() {
+  var h = document.getElementById('scanMatHistorique');
+  if (!h) return;
+  if (!matScannés.length) {
+    h.innerHTML = '<p style="color:#aaa;font-size:12px;text-align:center;padding:8px">Aucun matériel scanné dans cette session.</p>';
+    return;
+  }
+  var html = '<div class="sh">📦 Matériels scannés cette session</div><div class="card"><div class="card-body">';
+  matScannés.forEach(function(item, idx) {
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #f0f0f0">'
+      + '<span style="font-size:20px">'+(item.icon||'📦')+'</span>'
+      + '<div style="flex:1">'
+      + '<div style="font-size:12px;font-weight:700">'+item.nom+'</div>'
+      + '<div style="font-size:10px;color:var(--muted)">'+item.id+(item.marque?' · '+item.marque:'')+(item.categorie?' · '+item.categorie:'')+'</div>'
+      + '</div>'
+      + '<button class="btn pri sml" data-idx="'+idx+'" onclick="addMatToBon('+idx+')">➕ Ajouter au bon</button>'
+      + '</div>';
+  });
+  html += '</div></div>';
+  h.innerHTML = html;
+}
+
+function openScannerMat() {
+  var view = document.getElementById('scannerMatView');
+  view.classList.add('open');
+  document.getElementById('scannerMatStatus').textContent = 'Démarrage caméra…';
+  document.getElementById('scannerMatManual').value = '';
+  try {
+    zxingMatReader = new ZXing.BrowserMultiFormatReader();
+    var video = document.getElementById('scannerMatVideo');
+    document.getElementById('scannerMatStatus').textContent = 'Pointez vers un QR code matériel…';
+    zxingMatReader.decodeFromConstraints(
+      {video:{facingMode:{ideal:'environment'}}},
+      video,
+      function(result, err) {
+        if (result) {
+          var code = result.getText();
+          closeScannerMat();
+          handleScanMat(code);
+        }
+      }
+    );
+  } catch(e) {
+    document.getElementById('scannerMatStatus').textContent = '❌ Caméra indisponible — saisissez le code manuellement';
+  }
+}
+
+function closeScannerMat() {
+  document.getElementById('scannerMatView').classList.remove('open');
+  if (zxingMatReader) { try { zxingMatReader.reset(); } catch(e){} zxingMatReader = null; }
+}
+
+function handleScanMat(code) {
+  if (!code) return;
+  closeScannerMat();
+  code = code.trim().toUpperCase();
+
+  // Chercher dans l'inventaire par id ou qr_code
+  var item = (data.inventory||[]).find(function(x) {
+    return (x.id||'').toUpperCase() === code || (x.qr_code||'').toUpperCase() === code;
+  });
+
+  if (!item) {
+    notify('Matériel "'+code+'" introuvable dans l\'inventaire.', true);
+    return;
+  }
+
+  // Avertir si c'est une catégorie non pertinente pour un bon
+  if (CAT_EXCLUES_BON.includes(item.categorie)) {
+    notify('"'+item.nom+'" est un '+item.categorie.toLowerCase()+', pas un consommable.', true);
+    return;
+  }
+
+  // Ajouter à l'historique de session
+  matScannés.push(item);
+  renderScanMateriel();
+
+  // Proposer d'ajouter au bon immédiatement
+  addMatToBon(matScannés.length - 1);
+}
+
+function addMatToBon(idx) {
+  var item = matScannés[idx];
+  if (!item) return;
+
+  // Vérifier qu'un bon est ouvert
+  var bonModal = document.getElementById('bonModal');
+  var bonOuvert = bonModal && bonModal.classList.contains('show');
+
+  if (!bonOuvert || !curBonId) {
+    // Pas de bon ouvert : proposer d'en créer un ou d'en ouvrir un existant
+    if (confirm('Aucun bon en cours. Voulez-vous créer un nouveau bon d\'intervention ?')) {
+      openNewBon();
+      // Attendre que la modal soit construite puis injecter
+      setTimeout(function(){ injectMatDansBon(item); }, 150);
+    }
+    return;
+  }
+
+  injectMatDansBon(item);
+}
+
+function injectMatDansBon(item) {
+  // Trouver la première ligne vide dans la table matériels (mDes_0 à mDes_5)
+  for (var j = 0; j < 6; j++) {
+    var des = document.getElementById('mDes_'+j);
+    if (des && !des.value.trim()) {
+      var constEl = document.getElementById('mConst_'+j);
+      var refEl   = document.getElementById('mRef_'+j);
+      var qtyEl   = document.getElementById('mQty_'+j);
+      if (constEl) constEl.value = item.marque || '';
+      if (refEl)   refEl.value   = item.id     || '';
+      if (des)     des.value     = item.nom     || '';
+      if (qtyEl)   qtyEl.value   = '1';
+      notify('✅ "'+item.nom+'" ajouté au bon (ligne '+(j+1)+').'); 
+      // Scroller vers la table matériels dans la modal
+      des.scrollIntoView({behavior:'smooth', block:'center'});
+      des.style.background = '#fffbe6';
+      setTimeout(function(){ des.style.background = ''; }, 1500);
+      return;
+    }
+  }
+  notify('Le bon est plein (6 lignes matériels). Enregistrez et créez un nouveau bon.', true);
+}
 
 var TYPE_ICON = {pdf:'📄',word:'📝',excel:'📊',image:'🖼️',video:'🎬',txt:'📃',lien:'🔗'};
 
