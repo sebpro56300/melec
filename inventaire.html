@@ -485,14 +485,19 @@ label { font-size: 12px; color: var(--grey); margin-bottom: 4px; display: block;
         </div>
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group">
+            <label>RÉFÉRENCE</label>
+            <input id="new-reference" type="text" placeholder="REF-001, EAN…">
+          </div>
+          <div class="form-group">
             <label>N° RÉGION</label>
             <input id="new-num-region" type="text" placeholder="REG-01">
           </div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
           <div class="form-group">
             <label>MARQUE</label>
             <input id="new-marque" type="text" placeholder="Fluke, Legrand…">
           </div>
-        </div>
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group">
             <label>TYPE / MODÈLE</label>
@@ -1465,6 +1470,7 @@ function addItem() {
     nom,
     categorie:    document.getElementById('new-cat').value,
     icon:         document.getElementById('new-icon').value || CAT_ICONS[document.getElementById('new-cat').value] || '📦',
+    reference:    document.getElementById('new-reference').value.trim() || null,
     num_region:   document.getElementById('new-num-region').value.trim() || null,
     marque:       document.getElementById('new-marque').value.trim() || null,
     type_machine: document.getElementById('new-type').value.trim() || null,
@@ -1483,7 +1489,7 @@ function addItem() {
   db.items.push(item);
   renderInventory();
   renderQrSelectList();
-  ['new-name','new-icon','new-etagere','new-num-region','new-marque','new-type','new-serie','new-controle'].forEach(fid => {
+  ['new-name','new-icon','new-etagere','new-reference','new-num-region','new-marque','new-type','new-serie','new-controle'].forEach(fid => {
     const el = document.getElementById(fid); if (el) el.value = '';
   });
   document.getElementById('new-annee').value = '';
@@ -1561,7 +1567,9 @@ function editItem(id) {
         </div>
       </div>
       <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group"><label>RÉFÉRENCE</label><input id="edit-reference" type="text" value="${item.reference||''}"></div>
         <div class="form-group"><label>N° RÉGION</label><input id="edit-num-region" type="text" value="${item.num_region||''}"></div>
+      </div>
         <div class="form-group"><label>MARQUE</label><input id="edit-marque" type="text" value="${item.marque||''}"></div>
       </div>
       <div class="form-row" style="margin-bottom:10px">
@@ -1665,6 +1673,7 @@ function saveEditItem(id) {
   item.categorie    = newCat;
   // Icône : si champ saisi → on garde, sinon on recalcule depuis la nouvelle catégorie
   item.icon         = newIcon || CAT_ICONS[newCat] || '📦';
+  item.reference    = document.getElementById('edit-reference').value.trim() || null;
   item.num_region   = document.getElementById('edit-num-region').value.trim() || null;
   item.marque       = document.getElementById('edit-marque').value.trim() || null;
   item.type_machine = document.getElementById('edit-type').value.trim() || null;
@@ -2152,13 +2161,13 @@ function exportXLSX() {
   }
 
   // ── Données ───────────────────────────────────────────────
-  const HEADERS = ['Code','Désignation','N° Région','Marque','Type/Modèle','N° Série',
+  const HEADERS = ['Code','Référence','Désignation','N° Région','Marque','Type/Modèle','N° Série',
                    'Année','CE','Contrôle','Qté totale','Qté disponible','Sorties',
                    'Seuil','Localisation','Nominatif'];
 
   function itemRow(item) {
     return [
-      item.id, item.nom,
+      item.id, item.reference||'', item.nom,
       item.num_region||'', item.marque||'', item.type_machine||'',
       item.num_serie||'', item.annee||'', item.ce||'', item.controle||'',
       item.quantite_totale, item.quantite_dispo,
