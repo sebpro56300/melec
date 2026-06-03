@@ -1571,14 +1571,15 @@ function editItem(id) {
         <div class="form-group"><label>RÉFÉRENCE</label><input id="edit-reference" type="text" value="${item.reference||''}"></div>
         <div class="form-group"><label>N° RÉGION</label><input id="edit-num-region" type="text" value="${item.num_region||''}"></div>
       </div>
+      <div class="form-row" style="margin-bottom:10px">
         <div class="form-group"><label>MARQUE</label><input id="edit-marque" type="text" value="${item.marque||''}"></div>
-      </div>
-      <div class="form-row" style="margin-bottom:10px">
         <div class="form-group"><label>TYPE / MODÈLE</label><input id="edit-type" type="text" value="${item.type_machine||''}"></div>
-        <div class="form-group"><label>N° SÉRIE</label><input id="edit-serie" type="text" value="${item.num_serie||''}"></div>
       </div>
       <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group"><label>N° SÉRIE</label><input id="edit-serie" type="text" value="${item.num_serie||''}"></div>
         <div class="form-group"><label>ANNÉE</label><input id="edit-annee" type="number" value="${item.annee||''}" min="1990" max="2099"></div>
+      </div>
+      <div class="form-row" style="margin-bottom:10px">
         <div class="form-group">
           <label>CE</label>
           <select id="edit-ce">
@@ -1587,10 +1588,7 @@ function editItem(id) {
             <option value="Non" ${item.ce==='Non'?'selected':''}>Non</option>
           </select>
         </div>
-      </div>
-      <div class="form-group" style="margin-bottom:10px">
-        <label>CONTRÔLE</label>
-        <input id="edit-controle" type="text" value="${item.controle||''}">
+        <div class="form-group"><label>CONTRÔLE</label><input id="edit-controle" type="text" value="${item.controle||''}"></div>
       </div>
       <div style="background:var(--navy4);border-radius:10px;padding:14px;margin-bottom:10px">
         <div style="font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:var(--amber);margin-bottom:12px">📦 GESTION DU STOCK</div>
