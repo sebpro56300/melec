@@ -1587,6 +1587,14 @@ function showTpChoice(tps, sysId, sysNom) {
 
 function confirmCreateSession(tp, sysId, sysNom) {
   if (!tp || !curEleve) return;
+  // Vérifier qu'aucun TP n'est déjà en cours
+  var enCours = (data.tp||[]).filter(function(s){
+    return s.eleveId === curEleve.id && s.statut !== 'termine';
+  });
+  if (enCours.length) {
+    notify('Vous avez déjà un TP en cours. Terminez-le avant d\'en démarrer un nouveau.', true);
+    return;
+  }
   if (!confirm('Démarrer le TP "'+tp.titre+'" sur le système '+(sysNom||sysId)+' ?')) return;
   createSession(tp, sysId);
 }
@@ -2222,7 +2230,7 @@ function injectMatDansBon(item) {
       var refEl   = document.getElementById('mRef_'+j);
       var qtyEl   = document.getElementById('mQty_'+j);
       if (constEl) constEl.value = item.marque || '';
-      if (refEl)   refEl.value   = item.id     || '';
+      if (refEl)   refEl.value   = item.ref    || '';
       if (des)     des.value     = item.nom     || '';
       if (qtyEl)   qtyEl.value   = '1';
       notify('✅ "'+item.nom+'" ajouté au bon (ligne '+(j+1)+').'); 
