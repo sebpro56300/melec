@@ -575,6 +575,8 @@ let data = {
 };
 let confirmCb = null;
 let editCtx = {}; // contexte d'édition en cours
+let dirtyLocal = false; // modifications locales non encore sauvegardées sur le Gist
+let isSyncing  = false; // true pendant loadRemote / saveAll — évite de marquer dirty
 
 // ════════════════════════════════════════════════════════════
 // AUTH ENSEIGNANT — select + modale mot de passe (style v8)
@@ -690,6 +692,7 @@ async function pollSessions() {
   const token = (cfg.token || '').replace(/\s+/g, '');
   if (!token)        { setSyncState('err', 'Token manquant'); toast('Token GitHub non configuré — vérifiez Config','err'); return; }
   if (!cfg.tpGistId) { setSyncState('err', 'Gist TP manquant'); toast('ID Gist TP non configuré — vérifiez Config','err'); return; }
+  if (dirtyLocal)    { setSyncState('ok', '⏸ Modifs locales en attente'); return; }
   await loadRemote();
 }
 
@@ -709,6 +712,7 @@ function loadLocal() {
 }
 
 function saveLocal() {
+  if (!isSyncing) dirtyLocal = true;
   localStorage.setItem('ml_eleves',   JSON.stringify(data.eleves));
   localStorage.setItem('ml_teachers', JSON.stringify(data.teachers));
   localStorage.setItem('ml_appel',    JSON.stringify(data.appel));
@@ -727,6 +731,7 @@ function saveLocal() {
 // GIST — CHARGEMENT
 // ════════════════════════════════════════════════════════════
 async function loadRemote() {
+  isSyncing = true;
   setSyncState('spin','Chargement...');
   try {
     const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28' };
@@ -765,11 +770,13 @@ async function loadRemote() {
     }
 
     saveLocal();
+    isSyncing = false;
     setSyncState('ok','Synchronisé');
     updateTeacherSelect();
     render();
     toast('Données chargées','ok');
   } catch(e) {
+    isSyncing = false;
     setSyncState('err', e.message.substring(0,30));
     toast('Erreur : '+e.message,'err');
     updateTeacherSelect();
@@ -779,6 +786,7 @@ async function loadRemote() {
 
 async function saveAll() {
   if (!cfg.token || !cfg.dataGistId) { toast('Configurez le Gist (Config)','err'); return; }
+  isSyncing = true;
   setSyncState('spin','Sauvegarde...');
   try {
     const h = { Authorization:`token ${cfg.token}`, 'Content-Type':'application/json', 'X-GitHub-Api-Version':'2022-11-28' };
@@ -804,15 +812,17 @@ async function saveAll() {
     }
     setSyncState('ok','Sauvegardé');
     saveLocal();
+    isSyncing = false;
+    dirtyLocal = false;
     toast('Sauvegardé sur GitHub ✓','ok');
-  } catch(e) { setSyncState('err','Err.sync'); toast('Erreur : '+e.message,'err'); }
+  } catch(e) { isSyncing = false; setSyncState('err','Err.sync'); toast('Erreur : '+e.message,'err'); }
 }
 
 function setSyncState(cls,msg) {
   const d = document.getElementById('sync-dot');
   const l = document.getElementById('sync-lbl');
   d.className = 'sync-dot '+(cls==='spin'?'spin':cls==='ok'?'ok':'err');
-  l.textContent = msg;
+  l.textContent = dirtyLocal && cls==='ok' ? msg+' ●' : msg;
 }
 
 // ════════════════════════════════════════════════════════════
