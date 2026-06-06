@@ -687,13 +687,47 @@ function init() {
   setInterval(pollSessions, 60000);
 }
 
-// Recharge les données élèves — délègue à loadRemote qui fonctionne
+// Recharge uniquement les fichiers écrits par les élèves — sans écraser les données enseignant
 async function pollSessions() {
-  const token = (cfg.token || '').replace(/\s+/g, '');
-  if (!token)        { setSyncState('err', 'Token manquant'); toast('Token GitHub non configuré — vérifiez Config','err'); return; }
-  if (!cfg.tpGistId) { setSyncState('err', 'Gist TP manquant'); toast('ID Gist TP non configuré — vérifiez Config','err'); return; }
-  if (dirtyLocal)    { setSyncState('ok', '⏸ Modifs locales en attente'); return; }
-  await loadRemote();
+  if (!cfg.token || !cfg.dataGistId) return;
+  try {
+    const h = { Authorization:`token ${cfg.token}`, 'X-GitHub-Api-Version':'2022-11-28' };
+
+    // Gist données → fichiers élèves uniquement
+    const r1 = await fetch(`https://api.github.com/gists/${cfg.dataGistId}`, { headers:h });
+    if (!r1.ok) { setSyncState('err', 'HTTP '+r1.status); return; }
+    const g1 = await r1.json();
+
+    const parse = (fname, fallback) => {
+      const f = g1.files[fname];
+      if (!f) return fallback;
+      try { return JSON.parse(f.content); } catch(e) { return fallback; }
+    };
+
+    // Fichiers écrits exclusivement par les élèves → toujours recharger
+    data.bons     = parse('bons-intervention.json', data.bons);
+    data.habEleve = parse('hab-eleve.json',          data.habEleve);
+    data.tpEleve  = parse('tp-eleve.json',           data.tpEleve);
+
+    // Gist TP → sessions élèves
+    if (cfg.tpGistId) {
+      const r2 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
+      if (r2.ok) {
+        const g2 = await r2.json();
+        const fSes = g2.files['tp-sessions.json'];
+        if (fSes) data.sessions = JSON.parse(fSes.content);
+      }
+    }
+
+    // Sauver en local sans marquer dirty (c'est une sync, pas une modif enseignant)
+    isSyncing = true;
+    saveLocal();
+    isSyncing = false;
+    render();
+    setSyncState('ok', 'Sync ✓ ' + new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) + (dirtyLocal?' ●':''));
+  } catch(e) {
+    setSyncState('err', (e.message||'Erreur').substring(0,30));
+  }
 }
 
 function loadLocal() {
