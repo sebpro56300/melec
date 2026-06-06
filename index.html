@@ -2009,6 +2009,15 @@ function renderBons() {
   const bons = data.bons.filter(b=>b.eleveLevel===cl||b.eleveClasse===cl)
     .sort((a,b)=>(b.createdAt||b.bonLe||'').localeCompare(a.createdAt||a.bonLe||''));
 
+  // DEBUG — à supprimer une fois le problème résolu
+  const debugInfo = data.bons.length
+    ? `<div style="font-size:10px;color:var(--text3);background:var(--bg3);padding:4px 8px;border-radius:6px;margin-bottom:8px;">
+        🔍 Debug : ${data.bons.length} bon(s) total dans data.bons —
+        levels présents : ${[...new Set(data.bons.map(b=>b.eleveLevel||b.eleveClasse||'∅'))].join(', ')} —
+        filtre actif : <strong>${cl}</strong> → ${bons.length} affiché(s)
+       </div>`
+    : `<div style="font-size:10px;color:var(--red);padding:4px 8px;">⚠️ data.bons est vide</div>`;
+
   const rows = bons.map(b=>{
     const e=data.eleves.find(x=>x.id===b.eleveId);
     const termine = b.termine==='oui'||b.termine===true;
@@ -2031,6 +2040,7 @@ function renderBons() {
 
   setContent(`
     ${pageHeader('Bons d\'intervention','Travaux réalisés — '+classeLabel(cl))}
+    ${debugInfo}
     <div class="card">
       <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${bons.length ? `<table>
