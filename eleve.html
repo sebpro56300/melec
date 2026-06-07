@@ -1032,6 +1032,45 @@ function renderDashboard() {
     '<div class="kpi"><div class="kv" style="color:'+(myNotes.length?(parseFloat(moy)>=12?'var(--ok)':parseFloat(moy)>=8?'#7a5900':'#c00'):'#888')+'">'+moy+(myNotes.length?'/20':'')+'</div><div class="kl">Moyenne générale</div></div>' +
     '<div class="kpi"><div class="kv">'+myBons.length+'</div><div class="kl">Bons saisis</div></div>';
 
+  // ── Affectations actives de l'élève ─────────────────────────────────────
+  var mesAff = (data.affectations||[]).filter(function(a){
+    return a.eleveId === String(el.id) && (
+      a.type === 'annuelle' ||
+      (a.dateFin >= today() && a.dateDebut <= today())
+    );
+  });
+  if (mesAff.length) {
+    html += '<div class="sh">📍 Mon poste & équipements</div>';
+    mesAff.forEach(function(a) {
+      var item = (data.inventory||[]).find(function(x){ return x.id === a.materielId; });
+      var nom  = item ? (item.nom || a.materielId) : a.materielId;
+      var isAnn = a.type === 'annuelle';
+      var icon  = isAnn ? '🔌' : '🔒';
+      var badgeTxt  = isAnn ? 'Annuel' : 'Provisoire';
+      var badgeClr  = isAnn ? 'rgba(59,130,246,.18)' : 'rgba(245,158,11,.18)';
+      var badgeBord = isAnn ? 'rgba(59,130,246,.4)'  : 'rgba(245,158,11,.4)';
+      var badgeFg   = isAnn ? '#93c5fd'               : '#fcd34d';
+      html += '<div class="card" style="margin-bottom:8px">';
+      html += '<div class="card-body" style="display:flex;align-items:center;justify-content:space-between;gap:10px">';
+      html += '<div style="display:flex;align-items:center;gap:10px">';
+      html += '<span style="font-size:22px">' + icon + '</span>';
+      html += '<div>';
+      html += '<div style="font-weight:600;font-size:14px">' + nom + '</div>';
+      html += '<div style="font-size:11px;color:var(--muted)">' + a.materielId
+            + (isAnn ? ' · Année ' + (a.annee||'—') : ' · Aujourd'hui') + '</div>';
+      html += '</div></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px">';
+      html += '<span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;border:1px solid '
+            + badgeBord + ';background:' + badgeClr + ';color:' + badgeFg + '">' + badgeTxt + '</span>';
+      if (!isAnn) {
+        html += '<button class="btn sml" style="background:#ef4444;color:#fff;border-color:#ef4444;font-size:11px;padding:4px 10px"'
+              + ' onclick="libererDepuisDash(\'' + a.id + '\')">🔓 Libérer</button>';
+      }
+      html += '</div>';
+      html += '</div></div>';
+    });
+  }
+
   // Dernière feuille d'appel
   var seances = (data.appel||[]).filter(function(a){ return a.level===el.level; })
     .sort(function(a,b){ return b.date.localeCompare(a.date); });
@@ -1762,6 +1801,12 @@ function confirmAff(materielId, type) {
       ? '🔌 Affectation enregistrée pour l\'année !'
       : '🔒 Armoire réservée — libérez-la quand vous avez terminé.');
   });
+}
+
+function libererDepuisDash(affId) {
+  if (!confirm('Libérer cette armoire ?')) return;
+  data.affectations = (data.affectations||[]).filter(function(a){ return a.id !== affId; });
+  saveData().then(function(){ renderDashboard(); notify('🔓 Armoire libérée.'); });
 }
 
 function libererPoste(materielId) {
