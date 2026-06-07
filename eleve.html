@@ -789,18 +789,19 @@ async function loadData() {
     data = {};
     data.eleves           = readFile(g1, 'eleves.json',            []);
     data.cours            = readFile(g1, 'cours.json',             []);
-    data.notesEns         = readFile(g1, 'notes.json',             {});
-    data.notes            = data.notesEns;
+    data.notes         = readFile(g1, 'notes.json',             {});
+    data.notes            = data.notes;
     data.pfmp             = readFile(g1, 'pfmp.json',              []);
     data.habilitations    = readFile(g1, 'habilitations.json',     {});
     data.habEleve         = readFile(g1, 'hab-eleve.json',         {});
     data.tpEleve          = readFile(g1, 'tp-eleve.json',          {});
     data.appel            = readFile(g1, 'appel.json',             []);
-    data.bonsIntervention = readFile(g1, 'bons-intervention.json', []);
+    data.bons = readFile(g1, 'bons-intervention.json', []);
 
     // Normaliser : la migration a renommé name -> nom, on remet name pour compatibilité
     data.eleves = data.eleves.map(function(e) {
       if (!e.name && e.nom) e.name = e.nom;
+      if (!e.nom && e.name) e.nom  = e.name; // compat données anciennes
       if (!e.elevePass && e.elevePass !== 0) e.elevePass = '';
       return e;
     });
@@ -810,11 +811,11 @@ async function loadData() {
       var r2 = await fetch(GIST_TP_API + '?t=' + Date.now(), {method:'GET', headers:gistHeaders(), cache:'no-store'});
       if (r2.ok) {
         var g2 = (await r2.json()).files || {};
-        data.tp        = readFile(g2, 'tp-sessions.json', []);
+        data.sessions        = readFile(g2, 'tp-sessions.json', []);
         data.tpBank    = readFile(g2, 'tps.json',         []);
         data.ressources= readFile(g2, 'ressources.json',  []);
-      } else { data.tp = []; data.tpBank = []; }
-    } catch(e2) { data.tp = []; data.tpBank = []; }
+      } else { data.sessions = []; data.tpBank = []; }
+    } catch(e2) { data.sessions = []; data.tpBank = []; }
 
     // 3. Gist inventaire
     try {
@@ -850,19 +851,19 @@ async function saveData() {
     var b1 = {files:{}};
     b1.files['eleves.json']            = {content: JSON.stringify(data.eleves           || [])};
     b1.files['cours.json']             = {content: JSON.stringify(data.cours            || [])};
-    b1.files['notes.json']             = {content: JSON.stringify(data.notesEns         || {})};
+    b1.files['notes.json']             = {content: JSON.stringify(data.notes         || {})};
     b1.files['pfmp.json']              = {content: JSON.stringify(data.pfmp             || [])};
     b1.files['habilitations.json']     = {content: JSON.stringify(data.habilitations    || {})};
     b1.files['hab-eleve.json']         = {content: JSON.stringify(data.habEleve         || {})};
     b1.files['tp-eleve.json']          = {content: JSON.stringify(data.tpEleve          || {})};
     b1.files['appel.json']             = {content: JSON.stringify(data.appel            || [])};
-    b1.files['bons-intervention.json'] = {content: JSON.stringify(data.bonsIntervention || [])};
+    b1.files['bons-intervention.json'] = {content: JSON.stringify(data.bons || [])};
     var r1 = await fetch(GIST_DATA_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b1)});
     if (!r1.ok) throw new Error('HTTP ' + r1.status);
 
     // 2. Gist TP
     var b2 = {files:{}};
-    b2.files['tp-sessions.json'] = {content: JSON.stringify(data.tp || [])};
+    b2.files['tp-sessions.json'] = {content: JSON.stringify(data.sessions || [])};
     await fetch(GIST_TP_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b2)});
 
     try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
@@ -874,19 +875,18 @@ async function saveData() {
 }
 
 function fixData() {
-  if (!data.eleves)       data.eleves       = [];
-  if (!data.tp)           data.tp           = [];
-  if (!data.cours)        data.cours        = [];
-  if (!data.notes)        data.notes        = {};
-  if (!data.notesEns)     data.notesEns     = {};
-  if (!data.pfmp)         data.pfmp         = [];
+  if (!data.eleves)        data.eleves        = [];
+  if (!data.sessions)      data.sessions      = [];
+  if (!data.bons)          data.bons          = [];
+  if (!data.cours)         data.cours         = [];
+  if (!data.notes)         data.notes         = {};
+  if (!data.pfmp)          data.pfmp          = [];
   if (!data.habilitations) data.habilitations = {};
   if (!data.habEleve)      data.habEleve      = {};
   if (!data.appel)         data.appel         = [];
-  if (!data.bonsIntervention) data.bonsIntervention = [];
-  if (!data.tpEleve)      data.tpEleve      = {}; // {eleveId: {tpId: {phases:{}, obs:''}}}
-  if (!data.ressources)   data.ressources   = [];
-  if (!data.inventory)    data.inventory    = [];
+  if (!data.tpEleve)       data.tpEleve       = {};
+  if (!data.ressources)    data.ressources    = [];
+  if (!data.inventory)     data.inventory     = [];
 }
 
 // ═══ SYNC STATE ══════════════════════════════════════════════════════════════
@@ -912,7 +912,7 @@ function doLogin() {
   if (!data) { if(err) err.style.display='block', err.textContent='Données non chargées.'; return; }
 
   var eleve = data.eleves.find(function(e) {
-    return e.name === nom
+    return (e.nom||e.name) === nom
       && e.prenom.toLowerCase() === prenom.toLowerCase()
       && e.elevePass && hashPass(pass) === e.elevePass;
   });
@@ -944,9 +944,9 @@ function tryRestoreSession() {
 }
 
 function onLoggedIn() {
-  document.getElementById('hdEleve').textContent = curEleve.name + ' ' + curEleve.prenom;
+  document.getElementById('hdEleve').textContent = (curEleve.nom||curEleve.name) + ' ' + curEleve.prenom;
   var sbEl = document.getElementById('sbEleve');
-  if (sbEl) sbEl.textContent = curEleve.name + ' ' + curEleve.prenom;
+  if (sbEl) sbEl.textContent = (curEleve.nom||curEleve.name) + ' ' + curEleve.prenom;
   document.getElementById('btnLogout').style.display = '';
   document.getElementById('bottomNav').style.display = 'flex';
   showView('dashboard');
@@ -1054,10 +1054,10 @@ function renderDashboard() {
     + '<span style="color:#fff;font-size:13px;font-weight:700">Suivi de diplôme</span>'
     + '</div>'
     + '<div style="background:#fff;padding:12px 14px">'
-    + '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Consultez votre progression vers le diplôme sur la console nationale.</p>'
+    + '<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Consultez votre progression sur Cpro.</p>'
     + '<a href="javascript:void(0)" onclick="openDoc(\'https://www.cpro-sti.fr/0560039N/index.php\',\'Suivi de diplôme — CPRO-STI\',\'lien\')"'
     + ' style="display:inline-flex;align-items:center;gap:7px;padding:9px 16px;background:#1e3a5f;color:#fff;border-radius:7px;font-size:13px;font-weight:600;text-decoration:none">'
-    + '↗ Accéder à ma console diplôme</a>'
+    + '↗ Accéder à Cpro</a>'
     + '</div>'
     + '</div>'
     + '<div style="margin-top:10px;background:#fff8e1;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;display:flex;gap:10px;align-items:flex-start">'
@@ -1078,7 +1078,7 @@ var curSessionId  = null; // session en cours d'édition dans la modal
 // Retourne les sessions de l'élève connecté, enrichies avec les données tpBank
 function getMyTp() {
   if (!curEleve) return [];
-  return (data.tp||[])
+  return (data.sessions||[])
     .filter(function(s){ return s.eleveId === curEleve.id; })
     .map(function(s) {
       var tpDef = (data.tpBank||[]).find(function(t){ return t.id === s.tpId; }) || {};
@@ -1101,14 +1101,14 @@ function getMyTp() {
         competences: tpDef.competences || [],
         // compat ancienne logique phases/obs
         phase:       s.statut === 'termine' ? 'main' : 'real',
-        level:       s.classe || curEleve.level
+        niveau:      s.niveau || curEleve.niveau || curEleve.level || curEleve.classe
       };
     });
 }
 
 function getMyCours() {
   if (!curEleve) return [];
-  var cl = curEleve.level || curEleve.classe || '';
+  var cl = curEleve.niveau || curEleve.level || curEleve.classe || '';
   // Mapping identique au mapping TP : accepter toutes les variantes
   var variantes = {
     '2MELEC':  ['2MELEC','2nde','2ème','2eme','seconde'],
@@ -1116,7 +1116,7 @@ function getMyCours() {
     'T-MELEC': ['T-MELEC','Terminale','terminale','term']
   }[cl] || [cl];
   return (data.cours||[]).filter(function(c){
-    var niveau = c.level || c.classe || '';
+    var niveau = c.niveau || c.level || c.classe || '';
     return variantes.some(function(v){ return niveau === v; });
   }).sort(function(a,b){ return (b.date||'').localeCompare(a.date||''); });
 }
@@ -1127,7 +1127,7 @@ function getAllNoteVals() {
   var vals = [];
   var eN   = (data.notes||{})[id] || {};
   Object.values(eN).forEach(function(v){ var n=parseFloat(v); if(!isNaN(n)) vals.push(n); });
-  Object.values(data.notesEns||{}).forEach(function(tNotes){
+  Object.values(data.notes||{}).forEach(function(tNotes){
     tNotes.forEach(function(ev){
       var v=(ev.notes||{})[id];
       if(v!==undefined){ var n=parseFloat(v); if(!isNaN(n)) vals.push(n); }
@@ -1138,7 +1138,7 @@ function getAllNoteVals() {
 
 function getMyBons() {
   if (!curEleve) return [];
-  return (data.bonsIntervention||[]).filter(function(b){ return b.eleveId===curEleve.id; })
+  return (data.bons||[]).filter(function(b){ return b.eleveId===curEleve.id; })
     .sort(function(a,b){ return b.createdAt.localeCompare(a.createdAt); });
 }
 
@@ -1252,7 +1252,7 @@ function renderTP() {
 function terminerTp(sessionId) {
   if (!curEleve) return;
   if (!confirm('Déclarer ce TP comme terminé ? Vous ne pourrez plus modifier vos étapes.')) return;
-  var s = (data.tp||[]).find(function(x){ return x.id===sessionId; });
+  var s = (data.sessions||[]).find(function(x){ return x.id===sessionId; });
   if (s) s.statut = 'termine';
   saveData().then(function(){ renderTP(); renderDashboard(); notify('TP déclaré terminé.'); });
 }
@@ -1267,7 +1267,7 @@ function openTpModal(sessionId) {
 
   var te      = getTpEleve(tp.id);
   var termine = isTpTermine(tp);
-  var session = (data.tp||[]).find(function(s){ return s.id === sessionId; });
+  var session = (data.sessions||[]).find(function(s){ return s.id === sessionId; });
   var evals   = (session && session.evaluations) ? session.evaluations : {};
   var comps   = tp.competences || [];
 
@@ -1427,7 +1427,7 @@ function setCritEleve(compId, critId, couleur, el) {
 
 function saveAutoEval() {
   if (!curEleve || !curSessionId) return;
-  var session = (data.tp||[]).find(function(s){ return s.id === curSessionId; });
+  var session = (data.sessions||[]).find(function(s){ return s.id === curSessionId; });
   if (!session) return;
   if (!session.evaluations) session.evaluations = {};
 
@@ -1542,7 +1542,7 @@ function handleScanTP(code) {
   }
 
   // Exclure les TPs déjà en cours pour cet élève
-  var sesActives = (data.tp||[])
+  var sesActives = (data.sessions||[])
     .filter(function(s){ return s.eleveId===curEleve.id && s.statut!=='termine'; })
     .map(function(s){ return s.tpId; });
 
@@ -1588,7 +1588,7 @@ function showTpChoice(tps, sysId, sysNom) {
 function confirmCreateSession(tp, sysId, sysNom) {
   if (!tp || !curEleve) return;
   // Vérifier qu'aucun TP n'est déjà en cours
-  var enCours = (data.tp||[]).filter(function(s){
+  var enCours = (data.sessions||[]).filter(function(s){
     return s.eleveId === curEleve.id && s.statut !== 'termine';
   });
   if (enCours.length) {
@@ -1601,12 +1601,12 @@ function confirmCreateSession(tp, sysId, sysNom) {
 
 function createSession(tp, sysId) {
   if (!curEleve) return;
-  if (!data.tp) data.tp = [];
+  if (!data.sessions) data.sessions = [];
   var newSession = {
     id:          genId('SES'),
     tpId:        tp.id,
     eleveId:     curEleve.id,
-    classe:      curEleve.level || curEleve.classe || '',
+    niveau:      curEleve.niveau || curEleve.level || curEleve.classe || '',
     systemeId:   sysId || '',
     date:        today(),
     seances:     tp.seances || Math.max(1, Math.round((tp.duree_h||2) / 2)),
@@ -1615,7 +1615,7 @@ function createSession(tp, sysId) {
     evaluations: {},
     teacherId:   ''
   };
-  data.tp.push(newSession);
+  data.sessions.push(newSession);
   saveData().then(function(){
     renderTP();
     renderDashboard();
@@ -1731,7 +1731,7 @@ function renderNotes() {
   // Notes enseignants
   var hasEns = false;
   data.teachers && data.teachers.forEach(function(t){
-    var tNotes=((data.notesEns||{})[t.id]||[]).filter(function(n){return n.level===curEleve.level;});
+    var tNotes=((data.notes||{})[t.id]||[]).filter(function(n){return n.niveau===curEleve.niveau||n.level===curEleve.niveau||n.level===curEleve.level;});
     if(!tNotes.length)return;
     var evs=tNotes.filter(function(ev){return (ev.notes||{})[id]!==undefined;});
     if(!evs.length)return;
@@ -1829,7 +1829,7 @@ function buildBonForm(bon) {
     + '<div class="fg"><label class="fl">Projet</label><input class="fi" id="bonProjet" value="'+(bon.projet||'')+'"></div></div>'
     + '<div class="row2"><div class="fg"><label class="fl">Maître d\'œuvre</label><input class="fi" id="bonMoe" value="'+(bon.moe||'')+'"></div>'
     + '<div class="fg"><label class="fl">Interlocuteur</label><input class="fi" id="bonInterlo" value="'+(bon.interlo||'')+'"></div></div>'
-    + '<div class="fg"><label class="fl">Nom de l\'intervenant</label><input class="fi" id="bonIntervenant" value="'+(bon.intervenant||curEleve.name+' '+curEleve.prenom)+'"></div>'
+    + '<div class="fg"><label class="fl">Nom de l\'intervenant</label><input class="fi" id="bonIntervenant" value="'+(bon.intervenant||(curEleve.nom||curEleve.name)+' '+curEleve.prenom)+'"></div>'
     + '<div class="sh">Détail de l\'intervention</div>'
     + '<div class="cb-row">'+['Commande','Régie','Dépannage','Complément','Autre'].map(typeCheck).join('')+'</div>'
     + '<div class="sh">Temps de travail</div>'
@@ -1908,7 +1908,7 @@ function openNewBon() {
 async function openBon(id) {
   // Recharger depuis le Gist pour avoir la signature la plus récente
   await loadData();
-  var bon = (data.bonsIntervention||[]).find(function(b){ return b.id===id; });
+  var bon = (data.bons||[]).find(function(b){ return b.id===id; });
   if (!bon) return;
   curBonId = id;
   var titre = 'Bon N° ' + (bon.numero||id);
@@ -1922,15 +1922,15 @@ function saveBon() {
   if (!curEleve) return;
   var bon = collectBon();
   bon.eleveId    = curEleve.id;
-  bon.eleveLevel = curEleve.level;
-  if (!data.bonsIntervention) data.bonsIntervention = [];
+  bon.eleveNiveau = curEleve.niveau || curEleve.level || curEleve.classe || '';
+  if (!data.bons) data.bons = [];
   if (curBonId) {
-    var idx = data.bonsIntervention.findIndex(function(b){ return b.id===curBonId; });
-    if (idx>=0) { bon.id=curBonId; bon.createdAt=data.bonsIntervention[idx].createdAt; data.bonsIntervention[idx]=bon; }
+    var idx = data.bons.findIndex(function(b){ return b.id===curBonId; });
+    if (idx>=0) { bon.id=curBonId; bon.createdAt=data.bons[idx].createdAt; data.bons[idx]=bon; }
   } else {
     bon.id = 'BI'+Date.now();
     bon.createdAt = new Date().toISOString();
-    data.bonsIntervention.push(bon);
+    data.bons.push(bon);
     curBonId = bon.id;
   }
   saveData().then(function(){ renderBons(); notify('Bon enregistré.'); });
@@ -1940,7 +1940,7 @@ function printBon() {
   saveBon();
   setTimeout(function(){
     // Générer un HTML propre pour l'impression
-    var bon = (data.bonsIntervention||[]).find(function(b){ return b.id===curBonId; });
+    var bon = (data.bons||[]).find(function(b){ return b.id===curBonId; });
     if (!bon) return;
     var w = window.open('','_blank');
     var rows='';
@@ -2216,7 +2216,7 @@ function addMatToBon(idx) {
   var bonModal = document.getElementById('bonModal');
   if (bonModal && !bonModal.classList.contains('show')) {
     // Rouvrir la modal du bon en cours
-    var bon = (data.bonsIntervention||[]).find(function(b){ return b.id===curBonId; });
+    var bon = (data.bons||[]).find(function(b){ return b.id===curBonId; });
     if (bon) {
       document.getElementById('bonModalTitle').textContent = 'Bon d\'intervention';
       document.getElementById('bonModalBody').innerHTML = buildBonForm(bon);
