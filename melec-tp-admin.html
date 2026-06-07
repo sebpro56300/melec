@@ -684,12 +684,10 @@ async function loadEleves() {
     // Structure : {eleves:[...]} ou [{...}] directement
     const arr=Array.isArray(raw)?raw:(raw.eleves||[]);
     eleves=arr.map(e=>({
-      id:  e.id,
-      nom: (e.name||'')+(e.prenom?' '+e.prenom:''),  // "NOM Prénom"
-      name: e.name||'',
+      id:     e.id,
+      nom:    (e.nom||e.name||'').trim(),
       prenom: e.prenom||'',
-      // level = "1MELEC" | "2MELEC" | "T-MELEC" → on s'en sert comme classe
-      classe: e.level||e.classe||'Sans classe'
+      niveau: e.niveau||e.level||e.classe||'Sans classe'
     }));
     toast('Élèves chargés ('+eleves.length+')','s');
   } catch(e){toast('Élèves : '+e.message,'e');}
@@ -1547,21 +1545,20 @@ function openAffModal(materielId){
 
   document.getElementById('aff-modal-title').textContent=(type==='annuelle'?'📅':'⏱️')+' Affecter — '+item?.nom;
 
-  // Construire le select élèves groupé par classe (level)
+  // Construire le select élèves groupé par niveau
   let eleveOptions='';
   if(eleves.length){
     const classes={};
     eleves.forEach(e=>{
-      const cl=e.classe||'Sans classe';
+      const cl=e.niveau||'Sans classe';
       if(!classes[cl]) classes[cl]=[];
       classes[cl].push(e);
     });
-    // Ordre fixe des classes
     const ordre=['2MELEC','1MELEC','T-MELEC'];
     const sorted=[...ordre.filter(c=>classes[c]),...Object.keys(classes).filter(c=>!ordre.includes(c)).sort()];
     eleveOptions=sorted.map(cl=>{
       const opts=classes[cl].map(e=>{
-        const display=e.name&&e.prenom?e.name+' '+e.prenom:e.nom||e.name||e.id;
+        const display=e.nom&&e.prenom?e.nom+' '+e.prenom:e.nom||e.id;
         const sel=activeAff?.eleveId===String(e.id)?'selected':'';
         return `<option value="${esc(String(e.id))}" ${sel}>${esc(display)}</option>`;
       }).join('');
@@ -1600,7 +1597,8 @@ function confirmAff(){
   const{type,activeAff}=affModalCtx;
   const sel=document.getElementById('aff-eleve');
   const eleveId=sel.value;
-  const eleveNom=sel.options[sel.selectedIndex]?.text||eleveId;
+  const eleveObj=eleves.find(e=>String(e.id)===eleveId);
+  const eleveNom=eleveObj?(eleveObj.nom+(eleveObj.prenom?' '+eleveObj.prenom:'')):sel.options[sel.selectedIndex]?.text||eleveId;
   if(!eleveId||eleveId===''){toast('Sélectionnez un élève','e');return;}
 
   // Supprimer l'affectation active existante si annuelle (une seule à la fois)
