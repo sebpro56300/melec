@@ -892,8 +892,8 @@ function setSection(s) {
 const SIDEBAR_DEFS = {
   quotidien: [
     { s:'dashboard', ico:'🏠', label:'Tableau de bord' },
-    { s:'appel',     ico:'📋', label:'Appel', badge:()=>data.appel.filter(a=>a.level===state.classe).length },
-    { s:'notes',     ico:'🗒️', label:'Notes', badge:()=>Object.values(data.notes).reduce((a,arr)=>a+(arr||[]).filter(n=>n.level===state.classe).length,0) },
+    { s:'appel',     ico:'📋', label:'Appel', badge:()=>data.appel.filter(a=>a.niveau===state.classe).length },
+    { s:'notes',     ico:'🗒️', label:'Notes', badge:()=>Object.values(data.notes).reduce((a,arr)=>a+(arr||[]).filter(n=>n.niveau===state.classe).length,0) },
   ],
   eleves: [
     { s:'fiches',    ico:'👤', label:'Fiches élèves', badge:()=>elevesByClasse().length },
@@ -902,8 +902,8 @@ const SIDEBAR_DEFS = {
   ],
   activites: [
     { s:'tps',       ico:'🔬', label:'TPs', badge:()=>sessionsByClasse().length },
-    { s:'cours',     ico:'📖', label:'Cours', badge:()=>data.cours.filter(c=>c.level===state.classe).length },
-    { s:'bons',      ico:'📋', label:'Bons d\'intervention', badge:()=>data.bons.filter(b=>b.eleveLevel===state.classe).length },
+    { s:'cours',     ico:'📖', label:'Cours', badge:()=>data.cours.filter(c=>c.niveau===state.classe).length },
+    { s:'bons',      ico:'📋', label:'Bons d\'intervention', badge:()=>data.bons.filter(b=>b.eleveNiveau===state.classe).length },
   ],
   config: [
     { s:'gists',     ico:'🔗', label:'Connexion Gist' },
@@ -950,9 +950,8 @@ function render() {
 // ════════════════════════════════════════════════════════════
 // HELPERS
 // ════════════════════════════════════════════════════════════
-function elevesByClasse(cl) { return data.eleves.filter(e=>e.classe===(cl||state.classe)); }
-// Normalise classe depuis level ou classe selon l'ancien/nouveau format
-function sessionClasse(s) { return s.classe||s.level||''; }
+function elevesByClasse(cl) { return data.eleves.filter(e=>e.niveau===(cl||state.classe)); }
+function sessionClasse(s) { return s.niveau||s.classe||s.level||''; }
 function sessionsByClasse() {
   return data.sessions.filter(s=>sessionClasse(s)===state.classe);
 }
@@ -978,8 +977,8 @@ function pageHeader(title, sub, actions='') {
 function renderDashboard() {
   const cards = Object.entries(CLASSES).map(([cl,lbl])=>{
     const elv = elevesByClasse(cl).length;
-    const ses = data.sessions.filter(s=>s.classe===cl).length;
-    const dernierAppel = data.appel.filter(a=>a.level===cl).sort((a,b)=>b.date.localeCompare(a.date))[0];
+    const ses = data.sessions.filter(s=>s.niveau===cl).length;
+    const dernierAppel = data.appel.filter(a=>a.niveau===cl).sort((a,b)=>b.date.localeCompare(a.date))[0];
     return `<div class="dash-card${cl===state.classe?' on':''}" onclick="setClasse('${cl}',null);document.querySelectorAll('.cp').forEach((b,i)=>{b.classList.toggle('on',['2MELEC','1MELEC','T-MELEC'][i]==='${cl}')}); render()">
       <div class="dash-card-title">${lbl}</div>
       <div class="dash-stats">
@@ -993,7 +992,7 @@ function renderDashboard() {
   const cl = state.classe;
   const elv = elevesByClasse();
   const sessions = sessionsByClasse();
-  const appels = data.appel.filter(a=>a.level===cl).sort((a,b)=>b.date.localeCompare(a.date));
+  const appels = data.appel.filter(a=>a.niveau===cl).sort((a,b)=>b.date.localeCompare(a.date));
   const dernierAppel = appels[0];
 
   let presenceRow = '';
@@ -1048,7 +1047,7 @@ function renderDashboard() {
 // ════════════════════════════════════════════════════════════
 function renderAppel() {
   const cl = state.classe;
-  const appels = data.appel.filter(a=>a.level===cl).sort((a,b)=>b.date.localeCompare(a.date));
+  const appels = data.appel.filter(a=>a.niveau===cl).sort((a,b)=>b.date.localeCompare(a.date));
 
   const rows = appels.map(a=>{
     const pres = Object.values(a.presences||{});
@@ -1115,7 +1114,7 @@ function saveAppel() {
   });
   const a = {
     id: genId('APP'),
-    date, level: cl,
+    date, niveau: cl,
     teacherId: state.enseignant?.id || '',
     presences
   };
@@ -1133,10 +1132,10 @@ function deleteAppel(id) {
 
 function showAppelDetail(id) {
   const a = data.appel.find(x=>x.id===id); if(!a)return;
-  const elv = elevesByClasse(a.level);
+  const elv = elevesByClasse(a.niveau);
   const pmap = {P:'✓ Présent',A:'✕ Absent',R:'↩ Retard'};
   const bcls = {P:'b-green',A:'b-red',R:'b-orange'};
-  const content = `<div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:12px;">${a.date} · ${classeLabel(a.level)} · ${enseignantNom(a.teacherId)}</div>
+  const content = `<div style="font-family:var(--mono);font-size:11px;color:var(--text2);margin-bottom:12px;">${a.date} · ${classeLabel(a.niveau)} · ${enseignantNom(a.teacherId)}</div>
     <div style="display:flex;flex-direction:column;gap:5px;">
       ${elv.map(e=>{
         const p = a.presences?.[e.id]||'—';
@@ -1163,7 +1162,7 @@ function renderNotes() {
   const cl = state.classe;
   // notes est {teacherId: [{id,title,date,level,notes:{eleveId:val}}]}
   const allNotes = Object.entries(data.notes).flatMap(([tid,arr])=>
-    (arr||[]).filter(n=>n.level===cl).map(n=>({...n,teacherId:tid}))
+    (arr||[]).filter(n=>n.niveau===cl).map(n=>({...n,teacherId:tid}))
   ).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
   const elv = elevesByClasse();
@@ -1225,7 +1224,7 @@ function saveNote() {
   });
   const tid = state.enseignant?.id || 'T_inconnu';
   if (!data.notes[tid]) data.notes[tid] = [];
-  data.notes[tid].push({ id:genId('NE'), title, date, level:cl, notes });
+  data.notes[tid].push({ id:genId('NE'), title, date, niveau:cl, notes });
   saveLocal(); closeModal('modal-note'); render();
   toast('Interrogation enregistrée','ok');
 }
@@ -1233,7 +1232,7 @@ function saveNote() {
 function showNoteDetail(noteId, teacherId) {
   const arr = data.notes[teacherId]||[];
   const n = arr.find(x=>x.id===noteId); if(!n)return;
-  const elv = elevesByClasse(n.level);
+  const elv = elevesByClasse(n.niveau);
   const html = `<div style="display:flex;flex-direction:column;gap:5px;">
     ${elv.map(e=>{
       const val = n.notes?.[e.id]||'—';
@@ -1296,7 +1295,7 @@ function openEleveModal(id) {
   document.getElementById('modal-eleve-title').textContent = e ? '✏️ Modifier l\'élève' : '👤 Nouvel élève';
   document.getElementById('el-nom').value    = e?.nom||'';
   document.getElementById('el-prenom').value = e?.prenom||'';
-  document.getElementById('el-classe').value = e?.classe||state.classe;
+  document.getElementById('el-classe').value = e?.niveau||state.classe;
   document.getElementById('el-ddn').value    = e?.ddn||'';
   document.getElementById('el-tel').value    = e?.tel||'';
   document.getElementById('el-mail').value   = e?.mail||'';
@@ -1307,22 +1306,26 @@ function openEleveModal(id) {
 function saveEleve() {
   const nom    = document.getElementById('el-nom').value.trim().toUpperCase();
   const prenom = document.getElementById('el-prenom').value.trim();
-  const classe = document.getElementById('el-classe').value;
+  const niveau = document.getElementById('el-classe').value;
   if (!nom||!prenom) { toast('Nom et prénom requis','err'); return; }
   if (editCtx.eleveId) {
     const e = data.eleves.find(x=>x.id===editCtx.eleveId);
-    if (e) { e.nom=nom; e.prenom=prenom; e.classe=classe;
+    if (e) {
+      e.nom=nom; e.prenom=prenom; e.niveau=niveau;
+      delete e.classe; delete e.level; delete e.name;
       e.ddn=document.getElementById('el-ddn').value;
       e.tel=document.getElementById('el-tel').value;
       e.mail=document.getElementById('el-mail').value;
       const p=document.getElementById('el-pass').value;
-      if(p)e.elevePass=hashSimple(p);
+      if(p) e.elevePass=hashPass(p);
     }
   } else {
     const pass = document.getElementById('el-pass').value || (nom+prenom).toLowerCase().replace(/ /g,'');
-    data.eleves.push({ id:genId('E'), nom, prenom, classe, ddn:document.getElementById('el-ddn').value,
-      tel:document.getElementById('el-tel').value, mail:document.getElementById('el-mail').value,
-      elevePass:hashSimple(pass) });
+    data.eleves.push({ id:genId('E'), nom, prenom, niveau,
+      ddn:document.getElementById('el-ddn').value,
+      tel:document.getElementById('el-tel').value,
+      mail:document.getElementById('el-mail').value,
+      elevePass:hashPass(pass) });
   }
   saveLocal(); closeModal('modal-eleve'); render();
   toast('Élève enregistré','ok');
@@ -1336,6 +1339,9 @@ function deleteEleve(id) {
   });
 }
 
+// hashPass : algo melec-eleve — pour les mots de passe élèves
+function hashPass(p) { let h=0; for(let i=0;i<p.length;i++){h=((h<<5)-h)+p.charCodeAt(i);h|=0;} return String(h); }
+// hashSimple : algo legacy — pour les mots de passe enseignants uniquement
 function hashSimple(s) { let h=0; for(let c of String(s)){h=(h*31+c.charCodeAt(0))&0xffffffff;} return String(h); }
 
 // ════════════════════════════════════════════════════════════
@@ -1477,7 +1483,7 @@ function renderTPs() {
   data.sessions.forEach(s => {
     if (!s.id || seenIds.has(s.id)) { s.id = genId('SES'); dirty = true; }
     seenIds.add(s.id);
-    if (!s.classe && s.level) { s.classe = s.level; dirty = true; }
+    if (!s.niveau && (s.classe || s.level)) { s.niveau = s.classe||s.level; dirty = true; }
     if (!s.evaluations) { s.evaluations = {}; dirty = true; }
   });
   if (dirty) saveLocal();
@@ -1698,10 +1704,10 @@ function saveAssignTP() {
     const existing = data.sessions.find(s=>s.tpId===tpId&&s.eleveId===eleveId&&s.statut!=='termine');
     if (!existing) {
       data.sessions.push({
-        id:genId('SES'), tpId, eleveId, classe:cl, date,
+        id:genId('SES'), tpId, eleveId, niveau:cl, date,
         seances, seancesDone:0, statut:'assigne',
         teacherId: state.enseignant?.id||'',
-        evaluations: {} // {compId: {niveauGlobal:'', criteres:{critId:{eleve:'',enseignant:''}}}}
+        evaluations: {}
       });
     }
   });
@@ -1838,7 +1844,7 @@ function saveEval() {
 // ════════════════════════════════════════════════════════════
 function renderCours() {
   const cl = state.classe;
-  const cours = data.cours.filter(c=>(c.level||c.classe)===cl).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const cours = data.cours.filter(c=>c.niveau===cl).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const statut_lbl = {done:'Terminé',todo:'À faire',doing:'En cours'};
   const statut_cls = {done:'b-green',todo:'b-gray',doing:'b-blue'};
 
@@ -1963,7 +1969,7 @@ async function saveCours() {
   }
 
   data.cours.push({
-    id:genId('CRS'), titre:titreFinal, url, date, level:cl, classe:cl,
+    id:genId('CRS'), titre:titreFinal, url, date, niveau:cl,
     teacherId:state.enseignant?.id||'', status:'todo'
   });
   saveLocal(); closeModal('modal-cours'); render(); toast('Cours ajouté','ok');
@@ -2006,17 +2012,15 @@ function deleteCours(id){
 // ════════════════════════════════════════════════════════════
 function renderBons() {
   const cl = state.classe;
-  const bons = data.bons.filter(b=>b.eleveLevel===cl||b.eleveClasse===cl)
-    .sort((a,b)=>(b.createdAt||b.bonLe||'').localeCompare(a.createdAt||a.bonLe||''));
-
-  // DEBUG — à supprimer une fois le problème résolu
-  const debugInfo = data.bons.length
-    ? `<div style="font-size:10px;color:var(--text3);background:var(--bg3);padding:4px 8px;border-radius:6px;margin-bottom:8px;">
-        🔍 Debug : ${data.bons.length} bon(s) total dans data.bons —
-        levels présents : ${[...new Set(data.bons.map(b=>b.eleveLevel||b.eleveClasse||'∅'))].join(', ')} —
-        filtre actif : <strong>${cl}</strong> → ${bons.length} affiché(s)
-       </div>`
-    : `<div style="font-size:10px;color:var(--red);padding:4px 8px;">⚠️ data.bons est vide</div>`;
+  const bons = data.bons.filter(b => {
+    if (b.eleveNiveau === cl) return true;
+    // Fallback pour bons migrés partiellement : chercher via l'élève
+    if (b.eleveId) {
+      const e = data.eleves.find(x => x.id === b.eleveId);
+      if (e && e.niveau === cl) return true;
+    }
+    return false;
+  }).sort((a,b)=>(b.createdAt||b.bonLe||'').localeCompare(a.createdAt||a.bonLe||''));
 
   const rows = bons.map(b=>{
     const e=data.eleves.find(x=>x.id===b.eleveId);
@@ -2040,7 +2044,6 @@ function renderBons() {
 
   setContent(`
     ${pageHeader('Bons d\'intervention','Travaux réalisés — '+classeLabel(cl))}
-    ${debugInfo}
     <div class="card">
       <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${bons.length ? `<table>
@@ -2449,7 +2452,7 @@ function renderAnnee() {
 function askMontee() {
   askConfirm('Montée de niveau — cette action est irréversible.','Tapez MONTEE pour confirmer :',()=>{
     const upgrade={'2MELEC':'1MELEC','1MELEC':'T-MELEC'};
-    data.eleves = data.eleves.filter(e=>e.classe!=='T-MELEC').map(e=>({...e,classe:upgrade[e.classe]||e.classe}));
+    data.eleves = data.eleves.filter(e=>e.niveau!=='T-MELEC').map(e=>({...e,niveau:upgrade[e.niveau]||e.niveau}));
     saveLocal(); render(); toast('Montée de niveau effectuée','ok');
   },'MONTEE');
 }
@@ -2498,7 +2501,7 @@ function diagSessions() {
   const ids = data.sessions.map(s=>s.id);
   const dupes = ids.filter((id,i)=>ids.indexOf(id)!==i);
   const noId  = data.sessions.filter(s=>!s.id);
-  const noCl  = data.sessions.filter(s=>!s.classe&&!s.level);
+  const noCl  = data.sessions.filter(s=>!s.niveau&&!s.classe&&!s.level);
 
   let msg = `Sessions totales : ${data.sessions.length}\n`;
   msg += `IDs dupliqués : ${dupes.length} (${dupes.slice(0,5).join(', ')||'aucun'})\n`;
