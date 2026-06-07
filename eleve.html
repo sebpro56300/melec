@@ -703,6 +703,17 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
   </div>
 </div>
 
+<!-- Modal affectation poste / armoire -->
+<div class="moverlay" id="affModal">
+  <div class="modal" style="max-width:420px">
+    <div class="mhd">📍 <span>Affectation</span>
+      <button class="mcl" onclick="closeModal('affModal')">✕</button>
+    </div>
+    <div class="mbdy" id="affModalBody"></div>
+    <div class="mft" id="affModalFooter"></div>
+  </div>
+</div>
+
 <!-- Scanner Matériel -->
 <div id="scannerMatView">
   <video id="scannerMatVideo" playsinline autoplay muted style="width:100%;max-width:480px;max-height:60vh;object-fit:cover;border-radius:8px"></video>
@@ -812,10 +823,11 @@ async function loadData() {
       if (r2.ok) {
         var g2 = (await r2.json()).files || {};
         data.sessions        = readFile(g2, 'tp-sessions.json', []);
-        data.tpBank    = readFile(g2, 'tps.json',         []);
-        data.ressources= readFile(g2, 'ressources.json',  []);
-      } else { data.sessions = []; data.tpBank = []; }
-    } catch(e2) { data.sessions = []; data.tpBank = []; }
+        data.tpBank          = readFile(g2, 'tps.json',          []);
+        data.ressources      = readFile(g2, 'ressources.json',   []);
+        data.affectations    = readFile(g2, 'affectations.json', []);
+      } else { data.sessions = []; data.tpBank = []; data.affectations = []; }
+    } catch(e2) { data.sessions = []; data.tpBank = []; data.affectations = []; }
 
     // 3. Gist inventaire
     try {
@@ -863,7 +875,8 @@ async function saveData() {
 
     // 2. Gist TP
     var b2 = {files:{}};
-    b2.files['tp-sessions.json'] = {content: JSON.stringify(data.sessions || [])};
+    b2.files['tp-sessions.json']  = {content: JSON.stringify(data.sessions      || [])};
+    b2.files['affectations.json'] = {content: JSON.stringify(data.affectations  || [])};
     await fetch(GIST_TP_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b2)});
 
     try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
@@ -887,6 +900,7 @@ function fixData() {
   if (!data.tpEleve)       data.tpEleve       = {};
   if (!data.ressources)    data.ressources    = [];
   if (!data.inventory)     data.inventory     = [];
+  if (!data.affectations)  data.affectations  = [];
 }
 
 // ═══ SYNC STATE ══════════════════════════════════════════════════════════════
@@ -1525,9 +1539,16 @@ function handleScanTP(code) {
     return (x.id||'').toUpperCase() === code ||
            (x.qr_code||'').toUpperCase() === code;
   });
-  // sysId = l'id interne utilisé dans tp.systemes[]
-  var sysId  = sys ? sys.id : code;
+  // sysId = l'id interne utilisé dans tp.systemes[]\n  var sysId  = sys ? sys.id : code;
   var sysNom = sys ? (sys.nom || sysId) : code;
+
+  // ── Détection poste / cellule / armoire ──────────────────────────────────
+  var typeAff = affType(sysId);
+  if (typeAff) {
+    showAffModal(sysId, sysNom, typeAff);
+    return;
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   // TPs liés à ce système, sans restriction de niveau
   var tpsCandidats = (data.tpBank||[]).filter(function(tp) {
@@ -1623,6 +1644,137 @@ function createSession(tp, sysId) {
   });
 }
 
+// ═══ AFFECTATIONS POSTES / ARMOIRES ═════════════════════════════════════════
+var AFF_POSTES_IDS   = (function(){var r=[];for(var i=51;i<=70;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
+var AFF_CELLULES_IDS = ['MELEC-040'].concat((function(){var r=[];for(var i=71;i<=82;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})());
+var AFF_ARMOIRES_IDS = (function(){var r=[];for(var i=41;i<=45;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
+
+function affType(id) {
+  if (AFF_POSTES_IDS.includes(id) || AFF_CELLULES_IDS.includes(id)) return 'annuelle';
+  if (AFF_ARMOIRES_IDS.includes(id)) return 'ponctuelle';
+  return null;
+}
+
+function getActiveAff(materielId) {
+  var t = today();
+  return (data.affectations||[]).find(function(a) {
+    return a.materielId === materielId && (
+      a.type === 'annuelle' ||
+      (a.dateFin >= t && a.dateDebut <= t)
+    );
+  });
+}
+
+function showAffModal(materielId, materielNom, type) {
+  var isAnnuelle = (type === 'annuelle');
+  var label = isAnnuelle ? 'Poste / Cellule de câblage' : 'Armoire de confinement';
+  var icon  = isAnnuelle ? '🔌' : '🔒';
+  var activeAff = getActiveAff(materielId);
+
+  var html = '<div style="margin-bottom:14px">';
+  html += '<div style="font-size:15px;font-weight:600;margin-bottom:4px">' + icon + ' ' + materielNom + '</div>';
+  html += '<div style="font-size:12px;color:var(--muted)">' + label + ' · ' + materielId + '</div>';
+  html += '</div>';
+
+  if (activeAff) {
+    var estMoi = activeAff.eleveId === String(curEleve.id);
+    html += '<div style="padding:10px 12px;border-radius:8px;margin-bottom:14px;';
+    html += estMoi
+      ? 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#86efac">'
+      : 'background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5">';
+    if (isAnnuelle) {
+      html += estMoi
+        ? '✅ Vous êtes déjà affecté(e) à ce poste (année ' + (activeAff.annee||'—') + ').'
+        : '⛔ Ce poste est affecté à <strong>' + activeAff.eleveNom + '</strong> pour l\'année ' + (activeAff.annee||'—') + '.';
+    } else {
+      html += estMoi
+        ? '✅ Vous occupez actuellement cette armoire. Vous pouvez la libérer quand vous avez terminé.'
+        : '⛔ Cette armoire est utilisée par <strong>' + activeAff.eleveNom + '</strong>.';
+    }
+    html += '</div>';
+  } else {
+    html += '<div style="padding:10px 12px;border-radius:8px;margin-bottom:14px;';
+    html += 'background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93c5fd">';
+    html += isAnnuelle
+      ? '📋 Ce poste est libre. Confirmez votre affectation pour l\'année scolaire.'
+      : '📋 Cette armoire est libre. Confirmez votre affectation provisoire.';
+    html += '</div>';
+  }
+
+  document.getElementById('affModalBody').innerHTML = html;
+
+  // Footer boutons
+  var ft = document.getElementById('affModalFooter');
+  ft.innerHTML = '';
+
+  var btnFermer = '<button class="btn" onclick="closeModal(\'affModal\')">Annuler</button>';
+
+  if (!activeAff) {
+    // Bouton confirmer affectation
+    ft.innerHTML = btnFermer
+      + '<button class="btn pri" onclick="confirmAff(\'' + materielId + '\',\'' + type + '\')">✅ Confirmer l\'affectation</button>';
+  } else if (activeAff.eleveId === String(curEleve.id) && type === 'ponctuelle') {
+    // Armoire : l'élève peut se libérer
+    ft.innerHTML = btnFermer
+      + '<button class="btn" style="background:#ef4444;color:#fff;border-color:#ef4444" onclick="libererPoste(\'' + materielId + '\')">🔓 Libérer l\'armoire</button>';
+  } else {
+    ft.innerHTML = btnFermer;
+  }
+
+  // Stocker pour confirmAff
+  document.getElementById('affModal').dataset.materielId  = materielId;
+  document.getElementById('affModal').dataset.materielNom = materielNom;
+  document.getElementById('affModal').dataset.type        = type;
+  openModal('affModal');
+}
+
+function confirmAff(materielId, type) {
+  if (!curEleve) return;
+  var isAnnuelle = (type === 'annuelle');
+  var nom = (curEleve.nom || curEleve.name || '') + (curEleve.prenom ? ' ' + curEleve.prenom : '');
+
+  // Supprimer l'éventuelle ancienne affectation annuelle sur ce poste
+  if (isAnnuelle) {
+    data.affectations = (data.affectations||[]).filter(function(a) {
+      return !(a.materielId === materielId && a.type === 'annuelle');
+    });
+  }
+
+  var newAff = {
+    id:          'AFF' + Date.now().toString(36).toUpperCase(),
+    materielId:  materielId,
+    eleveId:     String(curEleve.id),
+    eleveNom:    nom,
+    type:        type
+  };
+  if (isAnnuelle) {
+    newAff.annee = new Date().getFullYear() + '-' + (new Date().getFullYear() + 1);
+  } else {
+    newAff.dateDebut = today();
+    newAff.dateFin   = today();   // durée intra-journée ; l'admin peut ajuster
+  }
+
+  if (!data.affectations) data.affectations = [];
+  data.affectations.push(newAff);
+  closeModal('affModal');
+  saveData().then(function() {
+    notify(isAnnuelle
+      ? '🔌 Affectation enregistrée pour l\'année !'
+      : '🔒 Armoire réservée — libérez-la quand vous avez terminé.');
+  });
+}
+
+function libererPoste(materielId) {
+  if (!confirm('Libérer cette armoire ?')) return;
+  var aff = getActiveAff(materielId);
+  if (aff && aff.eleveId === String(curEleve.id)) {
+    data.affectations = (data.affectations||[]).filter(function(a){ return a.id !== aff.id; });
+    closeModal('affModal');
+    saveData().then(function(){ notify('🔓 Armoire libérée.'); });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 function genId(prefix) {
   return (prefix||'ID') + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
 }
