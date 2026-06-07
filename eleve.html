@@ -2337,6 +2337,13 @@ function handleScanMat(code) {
     return;
   }
 
+  // Détecter poste / cellule / armoire → affectation (avant le test bon)
+  var typeAff = affType(item.id);
+  if (typeAff) {
+    showAffModal(item.id, item.nom || item.id, typeAff);
+    return;
+  }
+
   // Avertir si c'est une catégorie non pertinente pour un bon
   if (CAT_EXCLUES_BON.includes(item.categorie)) {
     notify('"'+item.nom+'" est un '+item.categorie.toLowerCase()+', pas un consommable.', true);
