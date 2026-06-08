@@ -2465,6 +2465,10 @@ function openDoc(url, titre, type) {
   if (!url) { notify('Document indisponible.', true); return; }
   titre = titre || 'Document';
   type  = type  || 'pdf';
+
+  // Lien externe simple → ouvrir directement dans un nouvel onglet
+  if (type === 'lien') { window.open(url, '_blank'); return; }
+
   var ext = (url.split('.').pop()||'').toLowerCase().split('?')[0];
   var isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
 
