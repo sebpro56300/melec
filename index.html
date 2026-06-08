@@ -477,6 +477,40 @@ select option{background:var(--bg2);}
   </div>
 </div>
 
+<!-- MODAL SCANNER POSTES / ARMOIRES -->
+<div class="modal-ov" id="modal-scan-poste">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">📷 Scanner un équipement</div>
+    <div id="scan-poste-video-wrap" style="position:relative;width:100%;border-radius:8px;overflow:hidden;background:#000;margin-bottom:12px;display:none;">
+      <video id="scan-poste-video" style="width:100%;display:block;" playsinline></video>
+      <div style="position:absolute;inset:0;border:2px solid rgba(59,130,246,.6);border-radius:8px;pointer-events:none;"></div>
+    </div>
+    <div id="scan-poste-status" style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:8px;min-height:16px;"></div>
+    <div class="fg">
+      <label>Ou saisir l'ID manuellement</label>
+      <input type="text" id="scan-poste-manual" placeholder="Ex: MELEC-051" style="text-transform:uppercase;"
+        oninput="this.value=this.value.toUpperCase()"
+        onkeydown="if(event.key==='Enter')handleScanPoste(this.value)">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeScanPoste()">Fermer</button>
+      <button class="btn btn-p" onclick="handleScanPoste(document.getElementById('scan-poste-manual').value)">Rechercher</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL RÉSULTAT SCAN POSTE -->
+<div class="modal-ov" id="modal-poste-result">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title" id="poste-result-title">📍 Résultat</div>
+    <div id="poste-result-body" style="font-size:13px;"></div>
+    <div class="modal-foot">
+      <button class="btn btn-p" onclick="closeModal('modal-poste-result');openScanPoste()">🔁 Scanner un autre</button>
+      <button class="btn btn-g" onclick="closeModal('modal-poste-result')">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL ÉVALUATION COMPÉTENCES -->
 <div class="modal-ov" id="modal-eval">
   <div class="modal" style="width:640px;max-width:98vw;">
@@ -797,9 +831,10 @@ async function loadRemote() {
       const r2 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
       if (r2.ok) {
         const g2 = await r2.json();
-        data.tps       = g2.files['tps.json']         ? JSON.parse(g2.files['tps.json'].content)         : [];
-        data.sessions  = g2.files['tp-sessions.json'] ? JSON.parse(g2.files['tp-sessions.json'].content) : [];
-        data.ressources= g2.files['ressources.json']  ? JSON.parse(g2.files['ressources.json'].content)  : [];
+        data.tps          = g2.files['tps.json']          ? JSON.parse(g2.files['tps.json'].content)          : [];
+        data.sessions     = g2.files['tp-sessions.json']  ? JSON.parse(g2.files['tp-sessions.json'].content)  : [];
+        data.ressources   = g2.files['ressources.json']   ? JSON.parse(g2.files['ressources.json'].content)   : [];
+        data.affectations = g2.files['affectations.json'] ? JSON.parse(g2.files['affectations.json'].content) : [];
       }
     }
 
@@ -904,6 +939,7 @@ const SIDEBAR_DEFS = {
     { s:'tps',       ico:'🔬', label:'TPs', badge:()=>sessionsByClasse().length },
     { s:'cours',     ico:'📖', label:'Cours', badge:()=>data.cours.filter(c=>c.niveau===state.classe).length },
     { s:'bons',      ico:'📋', label:'Bons d\'intervention', badge:()=>data.bons.filter(b=>b.eleveNiveau===state.classe).length },
+    { s:'postes',    ico:'📍', label:'Postes & armoires' },
   ],
   config: [
     { s:'gists',     ico:'🔗', label:'Connexion Gist' },
@@ -939,6 +975,7 @@ function render() {
     tps:        renderTPs,
     cours:      renderCours,
     bons:       renderBons,
+    postes:     renderPostes,
     gists:      renderConfig,
     teachers:   renderTeachers,
     export:     renderExport,
@@ -2467,6 +2504,222 @@ function askEffacer() {
 // ════════════════════════════════════════════════════════════
 // MODALES UTILS
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// POSTES & ARMOIRES
+// ════════════════════════════════════════════════════════════
+const POSTE_POSTES_IDS   = (function(){const r=[];for(let i=51;i<=70;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
+const POSTE_CELLULES_IDS = ['MELEC-040',...(function(){const r=[];for(let i=71;i<=82;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})()];
+const POSTE_ARMOIRES_IDS = (function(){const r=[];for(let i=41;i<=45;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
+const POSTE_ALL_IDS      = [...POSTE_POSTES_IDS, ...POSTE_CELLULES_IDS, ...POSTE_ARMOIRES_IDS];
+
+function posteTypeLabel(id) {
+  if (POSTE_POSTES_IDS.includes(id))   return { label:'Poste de câblage',     icon:'🔌', type:'annuelle' };
+  if (POSTE_CELLULES_IDS.includes(id)) return { label:'Cellule de câblage',   icon:'🔌', type:'annuelle' };
+  if (POSTE_ARMOIRES_IDS.includes(id)) return { label:'Armoire de confinement',icon:'🔒', type:'ponctuelle' };
+  return null;
+}
+
+function today2() { return new Date().toISOString().slice(0,10); }
+
+function getAffForEquip(materielId) {
+  const t = today2();
+  return (data.affectations||[]).filter(a =>
+    a.materielId === materielId && (
+      a.type === 'annuelle' ||
+      (a.dateFin >= t && a.dateDebut <= t)
+    )
+  );
+}
+
+function renderPostes() {
+  const t = today2();
+  const aff = data.affectations || [];
+
+  // Grouper par type
+  const sections = [
+    { label:'🔌 Postes de câblage', ids: POSTE_POSTES_IDS,   type:'annuelle'   },
+    { label:'🔌 Cellules de câblage', ids: POSTE_CELLULES_IDS, type:'annuelle'  },
+    { label:'🔒 Armoires de confinement', ids: POSTE_ARMOIRES_IDS, type:'ponctuelle' },
+  ];
+
+  // Construire map materielId → affectation active
+  const affMap = {};
+  aff.forEach(a => {
+    if (a.type === 'annuelle' || (a.dateFin >= t && a.dateDebut <= t)) {
+      affMap[a.materielId] = affMap[a.materielId] || [];
+      affMap[a.materielId].push(a);
+    }
+  });
+
+  // Compter les occupés pour le titre
+  const nbOccupes = Object.keys(affMap).filter(id => POSTE_ALL_IDS.includes(id)).length;
+
+  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div style="font-size:16px;font-weight:700;">Postes & armoires</div>
+      <div style="font-size:12px;color:var(--text3);">${nbOccupes} équipement(s) occupé(s) · ${(data.eleves||[]).length} élèves</div>
+    </div>
+    <button class="btn btn-p" onclick="openScanPoste()">📷 Scanner un équipement</button>
+  </div>`;
+
+  sections.forEach(sec => {
+    const isPonct = sec.type === 'ponctuelle';
+    // Séparer : occupés / libres
+    const occupes = sec.ids.filter(id => affMap[id] && affMap[id].length);
+    const libres  = sec.ids.filter(id => !affMap[id] || !affMap[id].length);
+
+    html += `<div style="margin-bottom:20px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text2);">
+        ${sec.label}
+        <span style="font-weight:400;color:var(--text3);font-size:11px;">(${occupes.length}/${sec.ids.length} occupé${occupes.length>1?'s':''})</span>
+      </div>`;
+
+    if (!occupes.length && !libres.length) {
+      html += `<div style="font-size:12px;color:var(--text3);padding:8px 0;">Aucun équipement configuré.</div>`;
+    } else {
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">`;
+
+      // Occupés en premier
+      occupes.forEach(id => {
+        const affList = affMap[id];
+        affList.forEach(a => {
+          const eleve = (data.eleves||[]).find(e => String(e.id) === String(a.eleveId));
+          const nomEleve = eleve ? `${eleve.nom||eleve.name||''} ${eleve.prenom||''}`.trim() : a.eleveNom || '—';
+          const niveauEleve = eleve ? (eleve.niveau||eleve.level||eleve.classe||'') : '';
+          html += `<div style="background:${isPonct?'rgba(245,158,11,.1)':'rgba(59,130,246,.1)'};
+            border:1px solid ${isPonct?'rgba(245,158,11,.4)':'rgba(59,130,246,.35)'};
+            border-radius:8px;padding:10px 12px;">
+            <div style="font-weight:600;font-size:13px;">${id}</div>
+            <div style="font-size:12px;color:${isPonct?'#fcd34d':'#93c5fd'};margin-top:2px;">👤 ${esc(nomEleve)}</div>
+            ${niveauEleve?`<div style="font-size:10px;color:var(--text3);">${niveauEleve}${isPonct?' · Aujourd\'hui':' · Annuel'}</div>`:''}
+          </div>`;
+        });
+      });
+
+      // Libres ensuite (plus discrets)
+      libres.forEach(id => {
+        html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;opacity:.5;">
+          <div style="font-weight:600;font-size:13px;color:var(--text3);">${id}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Libre</div>
+        </div>`;
+      });
+
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+
+  document.getElementById('main').innerHTML = html;
+}
+
+// ── Scanner ZXing ─────────────────────────────────────────────────────────────
+let _scanPosteReader = null;
+
+function openScanPoste() {
+  document.getElementById('scan-poste-manual').value = '';
+  document.getElementById('scan-poste-status').textContent = '';
+  openModal('modal-scan-poste');
+  startScanPoste();
+}
+
+function closeScanPoste() {
+  stopScanPoste();
+  closeModal('modal-scan-poste');
+}
+
+async function startScanPoste() {
+  const wrap  = document.getElementById('scan-poste-video-wrap');
+  const video = document.getElementById('scan-poste-video');
+  const status= document.getElementById('scan-poste-status');
+
+  if (typeof ZXing === 'undefined') {
+    try {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    } catch(e) { status.textContent = 'ZXing indisponible — utilisez la saisie manuelle.'; return; }
+  }
+
+  try {
+    _scanPosteReader = new ZXing.BrowserMultiFormatReader();
+    const devices = await _scanPosteReader.listVideoInputDevices();
+    if (!devices.length) { status.textContent = 'Aucune caméra détectée.'; return; }
+    const camId = devices[devices.length - 1].deviceId; // caméra arrière
+    wrap.style.display = 'block';
+    status.textContent = 'Pointez la caméra vers le QR code…';
+    _scanPosteReader.decodeFromVideoDevice(camId, video, (result, err) => {
+      if (result) {
+        stopScanPoste();
+        closeModal('modal-scan-poste');
+        handleScanPoste(result.getText());
+      }
+    });
+  } catch(e) {
+    status.textContent = 'Caméra inaccessible : ' + e.message;
+  }
+}
+
+function stopScanPoste() {
+  try { if (_scanPosteReader) { _scanPosteReader.reset(); _scanPosteReader = null; } } catch(e){}
+  const wrap = document.getElementById('scan-poste-video-wrap');
+  if (wrap) wrap.style.display = 'none';
+}
+
+function handleScanPoste(code) {
+  if (!code) return;
+  code = code.trim().toUpperCase();
+
+  // Résoudre : l'ID peut être direct (MELEC-051) ou via qr_code dans l'inventaire
+  let equip = (data.inventory||[]).find(x => (x.id||'').toUpperCase() === code || (x.qr_code||'').toUpperCase() === code);
+  let equipId  = equip ? equip.id : code;
+  let equipNom = equip ? (equip.nom || equipId) : equipId;
+
+  const meta = posteTypeLabel(equipId);
+  const affList = getAffForEquip(equipId);
+
+  const titleEl = document.getElementById('poste-result-title');
+  const bodyEl  = document.getElementById('poste-result-body');
+
+  if (!meta) {
+    titleEl.textContent = '❓ Équipement non reconnu';
+    bodyEl.innerHTML = `<div style="color:var(--text2);">L'identifiant <strong>${esc(code)}</strong> ne correspond pas à un poste, une cellule ou une armoire configurés.</div>`;
+    openModal('modal-poste-result');
+    return;
+  }
+
+  titleEl.textContent = `${meta.icon} ${equipNom}`;
+
+  let body = `<div style="font-size:11px;color:var(--text3);margin-bottom:14px;">${meta.label} · ${equipId}</div>`;
+
+  if (!affList.length) {
+    body += `<div style="padding:10px 12px;border-radius:8px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;font-size:13px;">
+      ✅ Libre — aucune affectation active.
+    </div>`;
+  } else {
+    affList.forEach(a => {
+      const eleve = (data.eleves||[]).find(e => String(e.id) === String(a.eleveId));
+      const nomEleve    = eleve ? `${eleve.nom||eleve.name||''} ${eleve.prenom||''}`.trim() : a.eleveNom || '—';
+      const niveauEleve = eleve ? (eleve.niveau||eleve.level||eleve.classe||'') : '';
+      const isPonct = a.type === 'ponctuelle';
+      body += `<div style="padding:12px 14px;border-radius:8px;margin-bottom:8px;
+        background:${isPonct?'rgba(245,158,11,.1)':'rgba(59,130,246,.1)'};
+        border:1px solid ${isPonct?'rgba(245,158,11,.4)':'rgba(59,130,246,.35)'};">
+        <div style="font-weight:600;font-size:14px;">👤 ${esc(nomEleve)}</div>
+        ${niveauEleve?`<div style="font-size:11px;color:var(--text3);">${esc(niveauEleve)}</div>`:''}
+        <div style="font-size:11px;color:${isPonct?'#fcd34d':'#93c5fd'};margin-top:4px;">
+          ${isPonct?'Affectation provisoire · aujourd\'hui':'Affectation annuelle · '+( a.annee||'—')}
+        </div>
+      </div>`;
+    });
+  }
+
+  bodyEl.innerHTML = body;
+  openModal('modal-poste-result');
+}
+
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
