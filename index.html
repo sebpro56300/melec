@@ -257,6 +257,34 @@ select option{background:var(--bg2);}
   .card-inner{overflow-x:auto;}
   table{min-width:500px;}
 
+  #body{flex-direction:column;}
+  /* ── Sidebar → barre horizontale scrollable sous les onglets ── */
+  #sidebar{
+    display:flex !important;
+    flex-direction:row;
+    width:100%;
+    height:auto;
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    padding:4px 6px;
+    gap:4px;
+    flex-shrink:0;
+    scrollbar-width:none;
+  }
+  #sidebar::-webkit-scrollbar{display:none;}
+  .sb-item{
+    flex-direction:row;
+    flex-shrink:0;
+    margin:0;
+    padding:5px 10px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .sb-section{display:none;}
+  .sb-divider{display:none;}
   /* ── Header 2 lignes sur smartphone ── */
   #header{
     flex-wrap:wrap;
