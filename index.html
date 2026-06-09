@@ -256,6 +256,34 @@ select option{background:var(--bg2);}
   .logo small{display:none;}
   .card-inner{overflow-x:auto;}
   table{min-width:500px;}
+
+  /* ── Header 2 lignes sur smartphone ── */
+  #header{
+    flex-wrap:wrap;
+    height:auto;
+    padding:6px 10px;
+    gap:6px;
+    row-gap:6px;
+  }
+  /* Logo + pills : ligne 1, pleine largeur */
+  .logo{flex-shrink:0;}
+  .classe-pills{margin-left:8px;flex:1;}
+  /* Tout ce qui suit (hright) passe en ligne 2 */
+  .hright{
+    width:100%;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-left:0;
+    align-items:center;
+  }
+  /* Label "Enseignant :" masqué pour gagner de la place */
+  .hright > span:first-of-type{display:none;}
+  /* Select enseignant prend la place restante */
+  #teacher-select{flex:1;min-width:0;max-width:160px;font-size:11px;padding:3px 6px;}
+  /* Sync label court */
+  .sync-lbl{font-size:10px;}
+  /* Boutons plus petits */
+  .btn-sm{padding:3px 7px;font-size:11px;}
 }
 @media(max-width:900px){
   .frow{grid-template-columns:1fr;}
