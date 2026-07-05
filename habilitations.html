@@ -220,6 +220,7 @@
   <div class="lockbar">
     <span id="lockState" class="state locked">🔒 Lecture seule</span>
     <button class="ghost" id="lockBtn" onclick="onLockButton()">Déverrouiller</button>
+    <button class="ghost" id="resetTokenBtn" onclick="resetToken()" style="display:none;font-size:11px;">Changer le token</button>
   </div>
 </header>
 
@@ -324,9 +325,15 @@
 /* ============ CONFIG (embarqué — ne pas exposer publiquement) ============ */
 const GIST_ID = "ca955de29e6d28caa098073940787a2d";
 const GIST_FILENAME = "habilitations-data.json";
-const GH_TOKEN_B64 = "Z2hwX2syZ2pEWEFnQ1NiZ3FSNGQ2MXZnR0VzajV4MzJjUTNmN3p2Yg==";
-const GH_TOKEN = atob(GH_TOKEN_B64);
 const APP_PASSWORD = "P0ntivy!";
+const TOKEN_STORAGE_KEY = "habilitations_gh_token";
+
+/* Le token GitHub n'est JAMAIS écrit dans ce fichier (GitHub le détecterait et le
+   révoquerait automatiquement dès qu'un dépôt public le contient). Il est saisi une
+   seule fois par appareil et conservé uniquement dans le navigateur (localStorage). */
+function getToken(){ return localStorage.getItem(TOKEN_STORAGE_KEY) || null; }
+function setToken(t){ localStorage.setItem(TOKEN_STORAGE_KEY, t.trim()); }
+function clearToken(){ localStorage.removeItem(TOKEN_STORAGE_KEY); }
 
 /* ============ RÉFÉRENTIEL FILIÈRES / HABILITATIONS ============ */
 const HAB_LABELS = {
@@ -368,7 +375,9 @@ let currentTab = 'suivi';
 /* ============ GIST I/O ============ */
 async function loadData(){
   try{
-    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { cache: "no-store" });
+    const token = getToken();
+    const headers = token ? { "Authorization": "token " + token } : {};
+    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { cache: "no-store", headers });
     if(!res.ok) throw new Error("Lecture impossible ("+res.status+")");
     const gist = await res.json();
     const file = gist.files && gist.files[GIST_FILENAME];
@@ -385,19 +394,37 @@ async function loadData(){
 
 let saveTimer = null;
 async function saveData(){
+  const token = getToken();
+  if(!token){
+    showSaveIndicator("Aucun token enregistré sur cet appareil", true);
+    unlocked = false;
+    updateLockUI();
+    renderAll();
+    return;
+  }
   showSaveIndicator("Enregistrement…", false);
   try{
     const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "token " + GH_TOKEN
+        "Authorization": "token " + token
       },
       body: JSON.stringify({
         files: { [GIST_FILENAME]: { content: JSON.stringify(DATA, null, 2) } }
       })
     });
-    if(!res.ok) throw new Error("Écriture impossible ("+res.status+")");
+    if(!res.ok){
+      if(res.status === 401){
+        clearToken();
+        showSaveIndicator("Token invalide ou expiré — à ressaisir", true);
+        unlocked = false;
+        updateLockUI();
+        renderAll();
+        return;
+      }
+      throw new Error("Écriture impossible ("+res.status+")");
+    }
     showSaveIndicator("Enregistré ✓", false);
   }catch(err){
     console.error(err);
@@ -430,6 +457,7 @@ function onLockButton(){
 }
 
 function askPassword(onSuccess){
+  const needsToken = !getToken();
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `
@@ -437,6 +465,11 @@ function askPassword(onSuccess){
       <h3>Mode édition</h3>
       <p>Saisis le mot de passe pour ajouter, importer ou modifier des données.</p>
       <input type="password" id="pwdInput" placeholder="Mot de passe" style="width:100%;">
+      ${needsToken ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+          <p style="margin-top:0;">Première utilisation sur cet appareil : colle le token GitHub (fourni séparément). Il sera mémorisé ici et tu n'auras plus à le ressaisir.</p>
+          <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;">
+        </div>` : ''}
       <div class="actions">
         <button onclick="this.closest('.modal-overlay').remove()">Annuler</button>
         <button class="primary" id="pwdOk">Déverrouiller</button>
@@ -444,19 +477,37 @@ function askPassword(onSuccess){
     </div>`;
   document.body.appendChild(overlay);
   const input = overlay.querySelector('#pwdInput');
+  const tokenInput = overlay.querySelector('#tokenInput');
   input.focus();
   function tryUnlock(){
-    if(input.value === APP_PASSWORD){
-      overlay.remove();
-      onSuccess();
-    }else{
+    if(input.value !== APP_PASSWORD){
       input.style.borderColor = 'var(--rust)';
       input.value = '';
       input.placeholder = 'Mot de passe incorrect';
+      return;
     }
+    if(needsToken){
+      const tokenVal = tokenInput.value.trim();
+      if(!tokenVal){
+        tokenInput.style.borderColor = 'var(--rust)';
+        tokenInput.placeholder = 'Token requis la première fois';
+        return;
+      }
+      setToken(tokenVal);
+    }
+    overlay.remove();
+    onSuccess();
   }
   overlay.querySelector('#pwdOk').onclick = tryUnlock;
-  input.addEventListener('keydown', e => { if(e.key === 'Enter') tryUnlock(); });
+  input.addEventListener('keydown', e => { if(e.key === 'Enter' && !needsToken) tryUnlock(); });
+}
+
+function resetToken(){
+  if(!confirm('Retirer le token enregistré sur cet appareil ? Il te sera redemandé au prochain déverrouillage.')) return;
+  clearToken();
+  unlocked = false;
+  updateLockUI();
+  renderAll();
 }
 
 function requireUnlock(action){
@@ -472,14 +523,17 @@ function requireUnlock(action){
 function updateLockUI(){
   const state = document.getElementById('lockState');
   const btn = document.getElementById('lockBtn');
+  const resetBtn = document.getElementById('resetTokenBtn');
   if(unlocked){
     state.textContent = '🔓 Mode édition';
     state.className = 'state unlocked';
     btn.textContent = 'Verrouiller';
+    resetBtn.style.display = '';
   }else{
     state.textContent = '🔒 Lecture seule';
     state.className = 'state locked';
     btn.textContent = 'Déverrouiller';
+    resetBtn.style.display = 'none';
   }
 }
 
