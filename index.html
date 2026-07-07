@@ -256,62 +256,6 @@ select option{background:var(--bg2);}
   .logo small{display:none;}
   .card-inner{overflow-x:auto;}
   table{min-width:500px;}
-
-  #body{flex-direction:column;}
-  /* ── Sidebar → barre horizontale scrollable sous les onglets ── */
-  #sidebar{
-    display:flex !important;
-    flex-direction:row;
-    width:100%;
-    height:auto;
-    border-right:none;
-    border-bottom:1px solid var(--border);
-    overflow-x:auto;
-    overflow-y:hidden;
-    -webkit-overflow-scrolling:touch;
-    padding:4px 6px;
-    gap:4px;
-    flex-shrink:0;
-    scrollbar-width:none;
-  }
-  #sidebar::-webkit-scrollbar{display:none;}
-  .sb-item{
-    flex-direction:row;
-    flex-shrink:0;
-    margin:0;
-    padding:5px 10px;
-    font-size:12px;
-    white-space:nowrap;
-  }
-  .sb-section{display:none;}
-  .sb-divider{display:none;}
-  /* ── Header 2 lignes sur smartphone ── */
-  #header{
-    flex-wrap:wrap;
-    height:auto;
-    padding:6px 10px;
-    gap:6px;
-    row-gap:6px;
-  }
-  /* Logo + pills : ligne 1, pleine largeur */
-  .logo{flex-shrink:0;}
-  .classe-pills{margin-left:8px;flex:1;}
-  /* Tout ce qui suit (hright) passe en ligne 2 */
-  .hright{
-    width:100%;
-    flex-wrap:wrap;
-    gap:6px;
-    margin-left:0;
-    align-items:center;
-  }
-  /* Label "Enseignant :" masqué pour gagner de la place */
-  .hright > span:first-of-type{display:none;}
-  /* Select enseignant prend la place restante */
-  #teacher-select{flex:1;min-width:0;max-width:160px;font-size:11px;padding:3px 6px;}
-  /* Sync label court */
-  .sync-lbl{font-size:10px;}
-  /* Boutons plus petits */
-  .btn-sm{padding:3px 7px;font-size:11px;}
 }
 @media(max-width:900px){
   .frow{grid-template-columns:1fr;}
@@ -533,48 +477,13 @@ select option{background:var(--bg2);}
   </div>
 </div>
 
-<!-- MODAL SCANNER POSTES / ARMOIRES -->
-<div class="modal-ov" id="modal-scan-poste">
-  <div class="modal" style="max-width:420px;">
-    <div class="modal-title">📷 Scanner un équipement</div>
-    <div id="scan-poste-video-wrap" style="position:relative;width:100%;border-radius:8px;overflow:hidden;background:#000;margin-bottom:12px;display:none;">
-      <video id="scan-poste-video" style="width:100%;display:block;" playsinline></video>
-      <div style="position:absolute;inset:0;border:2px solid rgba(59,130,246,.6);border-radius:8px;pointer-events:none;"></div>
-    </div>
-    <div id="scan-poste-status" style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:8px;min-height:16px;"></div>
-    <div class="fg">
-      <label>Ou saisir l'ID manuellement</label>
-      <input type="text" id="scan-poste-manual" placeholder="Ex: MELEC-051" style="text-transform:uppercase;"
-        oninput="this.value=this.value.toUpperCase()"
-        onkeydown="if(event.key==='Enter')handleScanPoste(this.value)">
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-g" onclick="closeScanPoste()">Fermer</button>
-      <button class="btn btn-p" onclick="handleScanPoste(document.getElementById('scan-poste-manual').value)">Rechercher</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL RÉSULTAT SCAN POSTE -->
-<div class="modal-ov" id="modal-poste-result">
-  <div class="modal" style="max-width:420px;">
-    <div class="modal-title" id="poste-result-title">📍 Résultat</div>
-    <div id="poste-result-body" style="font-size:13px;"></div>
-    <div class="modal-foot">
-      <button class="btn btn-p" onclick="closeModal('modal-poste-result');openScanPoste()">🔁 Scanner un autre</button>
-      <button class="btn btn-g" onclick="closeModal('modal-poste-result')">Fermer</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL ÉVALUATION COMPÉTENCES -->
+<!-- MODAL COMPÉTENCES TRAVAILLÉES (lecture seule — évaluation dans Cpro) -->
 <div class="modal-ov" id="modal-eval">
   <div class="modal" style="width:640px;max-width:98vw;">
-    <div class="modal-title" id="eval-title">📋 Évaluation</div>
+    <div class="modal-title" id="eval-title">🎯 Compétences</div>
     <div id="eval-body" style="display:flex;flex-direction:column;gap:12px;"></div>
     <div class="modal-foot">
       <button class="btn btn-g" onclick="closeModal('modal-eval')">Fermer</button>
-      <button class="btn btn-p" onclick="saveEval()">💾 Enregistrer</button>
     </div>
   </div>
 </div>
@@ -887,10 +796,9 @@ async function loadRemote() {
       const r2 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
       if (r2.ok) {
         const g2 = await r2.json();
-        data.tps          = g2.files['tps.json']          ? JSON.parse(g2.files['tps.json'].content)          : [];
-        data.sessions     = g2.files['tp-sessions.json']  ? JSON.parse(g2.files['tp-sessions.json'].content)  : [];
-        data.ressources   = g2.files['ressources.json']   ? JSON.parse(g2.files['ressources.json'].content)   : [];
-        data.affectations = g2.files['affectations.json'] ? JSON.parse(g2.files['affectations.json'].content) : [];
+        data.tps       = g2.files['tps.json']         ? JSON.parse(g2.files['tps.json'].content)         : [];
+        data.sessions  = g2.files['tp-sessions.json'] ? JSON.parse(g2.files['tp-sessions.json'].content) : [];
+        data.ressources= g2.files['ressources.json']  ? JSON.parse(g2.files['ressources.json'].content)  : [];
       }
     }
 
@@ -995,7 +903,6 @@ const SIDEBAR_DEFS = {
     { s:'tps',       ico:'🔬', label:'TPs', badge:()=>sessionsByClasse().length },
     { s:'cours',     ico:'📖', label:'Cours', badge:()=>data.cours.filter(c=>c.niveau===state.classe).length },
     { s:'bons',      ico:'📋', label:'Bons d\'intervention', badge:()=>data.bons.filter(b=>b.eleveNiveau===state.classe).length },
-    { s:'postes',    ico:'📍', label:'Postes & armoires' },
   ],
   config: [
     { s:'gists',     ico:'🔗', label:'Connexion Gist' },
@@ -1031,7 +938,6 @@ function render() {
     tps:        renderTPs,
     cours:      renderCours,
     bons:       renderBons,
-    postes:     renderPostes,
     gists:      renderConfig,
     teachers:   renderTeachers,
     export:     renderExport,
@@ -1624,13 +1530,11 @@ function renderTPs() {
       ? `<span class="badge b-orange" title="${nb} session(s) pour ce TP">🔁 ×${nb}</span>`
       : '';
 
-    // Éval de la dernière session
+    // Compétences déclarées sur le TP (plus d'évaluation ici — voir Cpro)
     const nCompTotal = (tp?.competences||[]).length;
-    const nCompEval  = Object.keys(s0.evaluations||{}).filter(k=>(s0.evaluations[k]?.niveauGlobal||'')!=='').length;
     const evalBadge  = nCompTotal > 0
-      ? `<span class="badge ${nCompEval===nCompTotal?'b-green':nCompEval>0?'b-orange':'b-gray'}"
-           style="cursor:pointer" onclick="openEvalModal('${s0.id}')" title="Évaluation dernière session">
-           🎯 ${nCompEval}/${nCompTotal}</span>`
+      ? `<span class="badge b-blue" style="cursor:pointer" onclick="openEvalModal('${s0.id}')" title="Voir les compétences travaillées">
+           🎯 ${nCompTotal}</span>`
       : '<span class="badge b-gray">—</span>';
 
     // Phases élève
@@ -1683,7 +1587,6 @@ function renderTPs() {
     // Sous-lignes (toutes les sessions, cachées par défaut si multi)
     if (multi) {
       sList.forEach((s, idx) => {
-        const nCE = Object.keys(s.evaluations||{}).filter(k=>(s.evaluations[k]?.niveauGlobal||'')!=='').length;
         const pct = s.seances>0 ? Math.round((s.seancesDone||0)/s.seances*100) : 0;
         const sPhases = data.tpEleve?.[s.eleveId]?.[s.tpId]?.phases || {};
         const sHasPhases = Object.values(sPhases).some(v => v === true);
@@ -1694,8 +1597,7 @@ function renderTPs() {
             ? '<span class="badge b-blue" style="font-size:9px;">En cours</span>'
             : '<span class="badge b-gray" style="font-size:9px;">Assigné</span>';
         const evBdg = nCompTotal > 0
-          ? `<span class="badge ${nCE===nCompTotal?'b-green':nCE>0?'b-orange':'b-gray'}"
-               style="font-size:9px;cursor:pointer" onclick="openEvalModal('${s.id}')">🎯 ${nCE}/${nCompTotal}</span>`
+          ? `<span class="badge b-blue" style="font-size:9px;cursor:pointer" onclick="openEvalModal('${s.id}')">🎯 ${nCompTotal}</span>`
           : '<span class="badge b-gray" style="font-size:9px;">—</span>';
         rows += `<tr class="subrow-${grpId}" style="display:none;background:var(--bg);border-left:3px solid var(--accent2);">
           <td></td>
@@ -1733,7 +1635,7 @@ function renderTPs() {
           <thead><tr>
             <th style="width:28px;"></th>
             <th>TP</th><th>Élève</th><th>Dernière date</th>
-            <th>Statut</th><th>Éval.</th><th>Actions</th>
+            <th>Statut</th><th>Compét.</th><th>Actions</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>` : `<div class="empty">
@@ -1831,13 +1733,9 @@ function deleteSession(id) {
 // ════════════════════════════════════════════════════════════
 // ÉVALUATION PAR COMPÉTENCES
 // ════════════════════════════════════════════════════════════
-const EVAL_COULEURS = ['bleu','rouge','orange','vclair','vfonce'];
-const EVAL_LABELS   = {bleu:'Non évalué',rouge:'Absent/Non fait',orange:'En cours',vclair:'Acquis',vfonce:'Maîtrisé'};
 let evalSessionId = null;
-let evalTemp = {}; // réinitialisé à chaque ouverture de modale
 
 function openEvalModal(sessionId) {
-  evalTemp = {}; // ← reset systématique à chaque ouverture
   evalSessionId = sessionId;
   const s  = data.sessions.find(x=>x.id===sessionId);
   const tp = data.tps.find(t=>t.id===s?.tpId);
@@ -1845,91 +1743,29 @@ function openEvalModal(sessionId) {
   if (!s||!tp) { toast('Session introuvable','err'); return; }
 
   document.getElementById('eval-title').textContent =
-    '📋 Éval. enseignant — '+esc(tp.titre)+' · '+(e?e.nom+' '+e.prenom:s.eleveId);
+    '🎯 Compétences travaillées — '+esc(tp.titre)+' · '+(e?e.nom+' '+e.prenom:s.eleveId);
 
   const comps = tp.competences||[];
+  let body = '';
   if (!comps.length) {
-    document.getElementById('eval-body').innerHTML =
-      '<div style="color:var(--text3);font-size:13px;padding:8px;">Aucune compétence définie sur ce TP (à créer dans melec-tp-admin).</div>';
-    openModal('modal-eval'); return;
-  }
-
-  const evals = s.evaluations||{};
-
-  document.getElementById('eval-body').innerHTML = comps.map(comp=>{
-    const compEval = evals[comp.id]||{};
-    const criteres = comp.criteres||[];
-
-    return `<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:2px;">
-      <div style="padding:9px 14px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;">
+    body = '<div style="color:var(--text3);font-size:13px;padding:8px;">Aucune compétence déclarée sur ce TP (à ajouter dans melec-tp-admin).</div>';
+  } else {
+    body = '<div style="display:flex;flex-direction:column;gap:8px;">' + comps.map(comp => `
+      <div style="display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 14px;">
         <span style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent2);background:#111f3a;padding:2px 7px;border-radius:4px;flex-shrink:0;">${esc(comp.code)}</span>
         <span style="font-size:12px;font-weight:600;flex:1;">${esc(comp.libelle||'—')}</span>
-      </div>
-      ${criteres.length ? `
-      <div style="padding:10px 14px;display:flex;flex-direction:column;gap:7px;">
-        <div style="display:grid;grid-template-columns:1fr 100px 100px;gap:6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);padding-bottom:5px;border-bottom:1px solid var(--border);">
-          <span>Critère</span>
-          <span style="text-align:center;">Élève 👁</span>
-          <span style="text-align:center;">Enseignant ✏️</span>
-        </div>
-        ${criteres.map(cr=>{
-          const crEval = (compEval.criteres||{})[cr.id]||{};
-          const eleveVal = crEval.eleve||'';
-          const ensVal   = crEval.enseignant||'';
-          return `<div style="display:grid;grid-template-columns:1fr 100px 100px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">
-            <span style="font-size:12px;">${esc(cr.libelle)}</span>
-            <!-- Auto-éval élève : lecture seule, pastille affichée -->
-            <div style="display:flex;justify-content:center;">
-              ${eleveVal
-                ? `<div class="eval-dot ${eleveVal} sel" style="cursor:default;" title="Auto-éval élève : ${EVAL_LABELS[eleveVal]||eleveVal}"></div>`
-                : `<div style="width:20px;height:20px;border-radius:50%;border:2px dashed var(--border2);" title="Pas encore auto-évalué"></div>`}
-            </div>
-            <!-- Évaluation enseignant : interactive -->
-            <div style="display:flex;justify-content:center;gap:3px;" id="ce-ens-${comp.id}-${cr.id}">
-              ${EVAL_COULEURS.map(c=>`
-                <div class="eval-dot ${c}${ensVal===c?' sel':''}"
-                  onclick="setCritEns('${comp.id}','${cr.id}','${c}',this)"
-                  title="${EVAL_LABELS[c]||c}" style="width:18px;height:18px;"></div>`).join('')}
-            </div>
-          </div>`;
-        }).join('')}
-      </div>` : '<div style="padding:10px 14px;font-size:11px;color:var(--text3);">Aucun critère défini sur cette compétence</div>'}
-    </div>`;
-  }).join('');
+      </div>`).join('') + '</div>';
+  }
 
+  body += `<div style="margin-top:6px;background:#111f3a;border:1px solid var(--accent2);border-radius:8px;padding:10px 14px;display:flex;gap:10px;align-items:center;">
+    <span style="font-size:18px;flex-shrink:0;">🎓</span>
+    <div style="flex:1;"><p style="font-size:11px;color:var(--text2);margin:0 0 6px;">L'évaluation (enseignant et auto-évaluation élève) se fait dans Cpro.</p>
+    <a href="https://www.cpro-sti.fr/0560039N/index.php" target="_blank" rel="noopener"
+       style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--accent2);color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;">↗ Accéder à Cpro</a>
+    </div></div>`;
+
+  document.getElementById('eval-body').innerHTML = body;
   openModal('modal-eval');
-}
-
-function setCritEns(compId, critId, couleur, el) {
-  if (!evalTemp[compId]) evalTemp[compId]={};
-  if (!evalTemp[compId].criteres) evalTemp[compId].criteres={};
-  if (!evalTemp[compId].criteres[critId]) evalTemp[compId].criteres[critId]={};
-  evalTemp[compId].criteres[critId].enseignant = couleur;
-  // Toggle : recliquer la même couleur la désélectionne
-  const container = document.getElementById('ce-ens-'+compId+'-'+critId);
-  if (container) container.querySelectorAll('.eval-dot').forEach(d=>d.classList.remove('sel'));
-  el.classList.add('sel');
-}
-
-// setCritEleve et setNiveauGlobal ne sont plus utilisés par l'enseignant — supprimés
-
-function saveEval() {
-  const s = data.sessions.find(x=>x.id===evalSessionId);
-  if (!s) return;
-  if (!s.evaluations) s.evaluations={};
-  Object.entries(evalTemp).forEach(([compId,val])=>{
-    if (!s.evaluations[compId]) s.evaluations[compId]={};
-    if (val.criteres) {
-      if (!s.evaluations[compId].criteres) s.evaluations[compId].criteres={};
-      Object.entries(val.criteres).forEach(([critId,cv])=>{
-        if (!s.evaluations[compId].criteres[critId]) s.evaluations[compId].criteres[critId]={};
-        if (cv.enseignant!==undefined) s.evaluations[compId].criteres[critId].enseignant=cv.enseignant;
-      });
-    }
-  });
-  evalTemp={};
-  saveLocal(); closeModal('modal-eval'); render();
-  toast('Évaluation enseignant enregistrée ✓','ok');
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2560,222 +2396,6 @@ function askEffacer() {
 // ════════════════════════════════════════════════════════════
 // MODALES UTILS
 // ════════════════════════════════════════════════════════════
-// ════════════════════════════════════════════════════════════
-// POSTES & ARMOIRES
-// ════════════════════════════════════════════════════════════
-const POSTE_POSTES_IDS   = (function(){const r=[];for(let i=51;i<=70;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
-const POSTE_CELLULES_IDS = ['MELEC-040',...(function(){const r=[];for(let i=71;i<=82;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})()];
-const POSTE_ARMOIRES_IDS = (function(){const r=[];for(let i=41;i<=45;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
-const POSTE_ALL_IDS      = [...POSTE_POSTES_IDS, ...POSTE_CELLULES_IDS, ...POSTE_ARMOIRES_IDS];
-
-function posteTypeLabel(id) {
-  if (POSTE_POSTES_IDS.includes(id))   return { label:'Poste de câblage',     icon:'🔌', type:'annuelle' };
-  if (POSTE_CELLULES_IDS.includes(id)) return { label:'Cellule de câblage',   icon:'🔌', type:'annuelle' };
-  if (POSTE_ARMOIRES_IDS.includes(id)) return { label:'Armoire de confinement',icon:'🔒', type:'ponctuelle' };
-  return null;
-}
-
-function today2() { return new Date().toISOString().slice(0,10); }
-
-function getAffForEquip(materielId) {
-  const t = today2();
-  return (data.affectations||[]).filter(a =>
-    a.materielId === materielId && (
-      a.type === 'annuelle' ||
-      (a.dateFin >= t && a.dateDebut <= t)
-    )
-  );
-}
-
-function renderPostes() {
-  const t = today2();
-  const aff = data.affectations || [];
-
-  // Grouper par type
-  const sections = [
-    { label:'🔌 Postes de câblage', ids: POSTE_POSTES_IDS,   type:'annuelle'   },
-    { label:'🔌 Cellules de câblage', ids: POSTE_CELLULES_IDS, type:'annuelle'  },
-    { label:'🔒 Armoires de confinement', ids: POSTE_ARMOIRES_IDS, type:'ponctuelle' },
-  ];
-
-  // Construire map materielId → affectation active
-  const affMap = {};
-  aff.forEach(a => {
-    if (a.type === 'annuelle' || (a.dateFin >= t && a.dateDebut <= t)) {
-      affMap[a.materielId] = affMap[a.materielId] || [];
-      affMap[a.materielId].push(a);
-    }
-  });
-
-  // Compter les occupés pour le titre
-  const nbOccupes = Object.keys(affMap).filter(id => POSTE_ALL_IDS.includes(id)).length;
-
-  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-    <div>
-      <div style="font-size:16px;font-weight:700;">Postes & armoires</div>
-      <div style="font-size:12px;color:var(--text3);">${nbOccupes} équipement(s) occupé(s) · ${(data.eleves||[]).length} élèves</div>
-    </div>
-    <button class="btn btn-p" onclick="openScanPoste()">📷 Scanner un équipement</button>
-  </div>`;
-
-  sections.forEach(sec => {
-    const isPonct = sec.type === 'ponctuelle';
-    // Séparer : occupés / libres
-    const occupes = sec.ids.filter(id => affMap[id] && affMap[id].length);
-    const libres  = sec.ids.filter(id => !affMap[id] || !affMap[id].length);
-
-    html += `<div style="margin-bottom:20px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text2);">
-        ${sec.label}
-        <span style="font-weight:400;color:var(--text3);font-size:11px;">(${occupes.length}/${sec.ids.length} occupé${occupes.length>1?'s':''})</span>
-      </div>`;
-
-    if (!occupes.length && !libres.length) {
-      html += `<div style="font-size:12px;color:var(--text3);padding:8px 0;">Aucun équipement configuré.</div>`;
-    } else {
-      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">`;
-
-      // Occupés en premier
-      occupes.forEach(id => {
-        const affList = affMap[id];
-        affList.forEach(a => {
-          const eleve = (data.eleves||[]).find(e => String(e.id) === String(a.eleveId));
-          const nomEleve = eleve ? `${eleve.nom||eleve.name||''} ${eleve.prenom||''}`.trim() : a.eleveNom || '—';
-          const niveauEleve = eleve ? (eleve.niveau||eleve.level||eleve.classe||'') : '';
-          html += `<div style="background:${isPonct?'rgba(245,158,11,.1)':'rgba(59,130,246,.1)'};
-            border:1px solid ${isPonct?'rgba(245,158,11,.4)':'rgba(59,130,246,.35)'};
-            border-radius:8px;padding:10px 12px;">
-            <div style="font-weight:600;font-size:13px;">${id}</div>
-            <div style="font-size:12px;color:${isPonct?'#fcd34d':'#93c5fd'};margin-top:2px;">👤 ${esc(nomEleve)}</div>
-            ${niveauEleve?`<div style="font-size:10px;color:var(--text3);">${niveauEleve}${isPonct?' · Aujourd\'hui':' · Annuel'}</div>`:''}
-          </div>`;
-        });
-      });
-
-      // Libres ensuite (plus discrets)
-      libres.forEach(id => {
-        html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;opacity:.5;">
-          <div style="font-weight:600;font-size:13px;color:var(--text3);">${id}</div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px;">Libre</div>
-        </div>`;
-      });
-
-      html += `</div>`;
-    }
-    html += `</div>`;
-  });
-
-  document.getElementById('content').innerHTML = html;
-}
-
-// ── Scanner ZXing ─────────────────────────────────────────────────────────────
-let _scanPosteReader = null;
-
-function openScanPoste() {
-  document.getElementById('scan-poste-manual').value = '';
-  document.getElementById('scan-poste-status').textContent = '';
-  openModal('modal-scan-poste');
-  startScanPoste();
-}
-
-function closeScanPoste() {
-  stopScanPoste();
-  closeModal('modal-scan-poste');
-}
-
-async function startScanPoste() {
-  const wrap  = document.getElementById('scan-poste-video-wrap');
-  const video = document.getElementById('scan-poste-video');
-  const status= document.getElementById('scan-poste-status');
-
-  if (typeof ZXing === 'undefined') {
-    try {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    } catch(e) { status.textContent = 'ZXing indisponible — utilisez la saisie manuelle.'; return; }
-  }
-
-  try {
-    _scanPosteReader = new ZXing.BrowserMultiFormatReader();
-    const devices = await _scanPosteReader.listVideoInputDevices();
-    if (!devices.length) { status.textContent = 'Aucune caméra détectée.'; return; }
-    const camId = devices[devices.length - 1].deviceId; // caméra arrière
-    wrap.style.display = 'block';
-    status.textContent = 'Pointez la caméra vers le QR code…';
-    _scanPosteReader.decodeFromVideoDevice(camId, video, (result, err) => {
-      if (result) {
-        stopScanPoste();
-        closeModal('modal-scan-poste');
-        handleScanPoste(result.getText());
-      }
-    });
-  } catch(e) {
-    status.textContent = 'Caméra inaccessible : ' + e.message;
-  }
-}
-
-function stopScanPoste() {
-  try { if (_scanPosteReader) { _scanPosteReader.reset(); _scanPosteReader = null; } } catch(e){}
-  const wrap = document.getElementById('scan-poste-video-wrap');
-  if (wrap) wrap.style.display = 'none';
-}
-
-function handleScanPoste(code) {
-  if (!code) return;
-  code = code.trim().toUpperCase();
-
-  // Résoudre : l'ID peut être direct (MELEC-051) ou via qr_code dans l'inventaire
-  let equip = (data.inventory||[]).find(x => (x.id||'').toUpperCase() === code || (x.qr_code||'').toUpperCase() === code);
-  let equipId  = equip ? equip.id : code;
-  let equipNom = equip ? (equip.nom || equipId) : equipId;
-
-  const meta = posteTypeLabel(equipId);
-  const affList = getAffForEquip(equipId);
-
-  const titleEl = document.getElementById('poste-result-title');
-  const bodyEl  = document.getElementById('poste-result-body');
-
-  if (!meta) {
-    titleEl.textContent = '❓ Équipement non reconnu';
-    bodyEl.innerHTML = `<div style="color:var(--text2);">L'identifiant <strong>${esc(code)}</strong> ne correspond pas à un poste, une cellule ou une armoire configurés.</div>`;
-    openModal('modal-poste-result');
-    return;
-  }
-
-  titleEl.textContent = `${meta.icon} ${equipNom}`;
-
-  let body = `<div style="font-size:11px;color:var(--text3);margin-bottom:14px;">${meta.label} · ${equipId}</div>`;
-
-  if (!affList.length) {
-    body += `<div style="padding:10px 12px;border-radius:8px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac;font-size:13px;">
-      ✅ Libre — aucune affectation active.
-    </div>`;
-  } else {
-    affList.forEach(a => {
-      const eleve = (data.eleves||[]).find(e => String(e.id) === String(a.eleveId));
-      const nomEleve    = eleve ? `${eleve.nom||eleve.name||''} ${eleve.prenom||''}`.trim() : a.eleveNom || '—';
-      const niveauEleve = eleve ? (eleve.niveau||eleve.level||eleve.classe||'') : '';
-      const isPonct = a.type === 'ponctuelle';
-      body += `<div style="padding:12px 14px;border-radius:8px;margin-bottom:8px;
-        background:${isPonct?'rgba(245,158,11,.1)':'rgba(59,130,246,.1)'};
-        border:1px solid ${isPonct?'rgba(245,158,11,.4)':'rgba(59,130,246,.35)'};">
-        <div style="font-weight:600;font-size:14px;">👤 ${esc(nomEleve)}</div>
-        ${niveauEleve?`<div style="font-size:11px;color:var(--text3);">${esc(niveauEleve)}</div>`:''}
-        <div style="font-size:11px;color:${isPonct?'#fcd34d':'#93c5fd'};margin-top:4px;">
-          ${isPonct?'Affectation provisoire · aujourd\'hui':'Affectation annuelle · '+( a.annee||'—')}
-        </div>
-      </div>`;
-    });
-  }
-
-  bodyEl.innerHTML = body;
-  openModal('modal-poste-result');
-}
-
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
