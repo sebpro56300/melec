@@ -703,17 +703,6 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
   </div>
 </div>
 
-<!-- Modal affectation poste / armoire -->
-<div class="moverlay" id="affModal">
-  <div class="modal" style="max-width:420px">
-    <div class="mhd">📍 <span>Affectation</span>
-      <button class="mcl" onclick="closeModal('affModal')">✕</button>
-    </div>
-    <div class="mbdy" id="affModalBody"></div>
-    <div class="mft" id="affModalFooter"></div>
-  </div>
-</div>
-
 <!-- Scanner Matériel -->
 <div id="scannerMatView">
   <video id="scannerMatVideo" playsinline autoplay muted style="width:100%;max-width:480px;max-height:60vh;object-fit:cover;border-radius:8px"></video>
@@ -823,11 +812,10 @@ async function loadData() {
       if (r2.ok) {
         var g2 = (await r2.json()).files || {};
         data.sessions        = readFile(g2, 'tp-sessions.json', []);
-        data.tpBank          = readFile(g2, 'tps.json',          []);
-        data.ressources      = readFile(g2, 'ressources.json',   []);
-        data.affectations    = readFile(g2, 'affectations.json', []);
-      } else { data.sessions = []; data.tpBank = []; data.affectations = []; }
-    } catch(e2) { data.sessions = []; data.tpBank = []; data.affectations = []; }
+        data.tpBank    = readFile(g2, 'tps.json',         []);
+        data.ressources= readFile(g2, 'ressources.json',  []);
+      } else { data.sessions = []; data.tpBank = []; }
+    } catch(e2) { data.sessions = []; data.tpBank = []; }
 
     // 3. Gist inventaire
     try {
@@ -875,8 +863,7 @@ async function saveData() {
 
     // 2. Gist TP
     var b2 = {files:{}};
-    b2.files['tp-sessions.json']  = {content: JSON.stringify(data.sessions      || [])};
-    b2.files['affectations.json'] = {content: JSON.stringify(data.affectations  || [])};
+    b2.files['tp-sessions.json'] = {content: JSON.stringify(data.sessions || [])};
     await fetch(GIST_TP_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b2)});
 
     try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
@@ -900,7 +887,6 @@ function fixData() {
   if (!data.tpEleve)       data.tpEleve       = {};
   if (!data.ressources)    data.ressources    = [];
   if (!data.inventory)     data.inventory     = [];
-  if (!data.affectations)  data.affectations  = [];
 }
 
 // ═══ SYNC STATE ══════════════════════════════════════════════════════════════
@@ -1036,46 +1022,6 @@ function renderDashboard() {
   var seances = (data.appel||[]).filter(function(a){ return a.level===el.level; })
     .sort(function(a,b){ return b.date.localeCompare(a.date); });
   var html = '';
-
-  // ── Armoires de confinement occupées : bannière d'alerte ─────────────────
-  var mesArmoires = (data.affectations||[]).filter(function(a){
-    return a.eleveId === String(el.id) && a.type === 'ponctuelle' &&
-           a.dateFin >= today() && a.dateDebut <= today();
-  });
-  mesArmoires.forEach(function(a) {
-    var item = (data.inventory||[]).find(function(x){ return x.id === a.materielId; });
-    var nom  = item ? (item.nom || a.materielId) : a.materielId;
-    html += '<div style="background:rgba(245,158,11,.13);border:1px solid rgba(245,158,11,.45);border-radius:10px;'
-          + 'padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px">';
-    html += '<div style="display:flex;align-items:center;gap:10px">';
-    html += '<span style="font-size:20px">🔒</span>';
-    html += '<div>';
-    html += '<div style="font-size:13px;font-weight:600;color:#fcd34d">Armoire occupée</div>';
-    html += '<div style="font-size:11px;color:#d4a017">' + nom + ' · ' + a.materielId + '</div>';
-    html += '</div></div>';
-    html += '<button class="btn sml" style="background:#ef4444;color:#fff;border-color:#ef4444;white-space:nowrap"'
-          + ' onclick="libererDepuisDash(\'' + a.id + '\')">🔓 Libérer</button>';
-    html += '</div>';
-  });
-
-  // ── Poste / cellule affecté(e) ────────────────────────────────────────────
-  var mesPostes = (data.affectations||[]).filter(function(a){
-    return a.eleveId === String(el.id) && a.type === 'annuelle';
-  });
-  if (mesPostes.length) {
-    html += '<div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:10px;'
-          + 'padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px">';
-    html += '<span style="font-size:20px">🔌</span>';
-    html += '<div>';
-    html += '<div style="font-size:13px;font-weight:600;color:#93c5fd">Mon poste de câblage</div>';
-    mesPostes.forEach(function(a) {
-      var item = (data.inventory||[]).find(function(x){ return x.id === a.materielId; });
-      var nom  = item ? (item.nom || a.materielId) : a.materielId;
-      html += '<div style="font-size:11px;color:#7ab3e0">' + nom + ' · ' + a.materielId
-            + ' · Année ' + (a.annee||'—') + '</div>';
-    });
-    html += '</div></div>';
-  }
   if (seances.length) {
     var s = seances[0];
     var v = (s.presences||{})[el.id] || 'P';
@@ -1124,9 +1070,6 @@ function renderDashboard() {
 }
 
 // ═══ RENDER TP ═══════════════════════════════════════════════════════════════
-var EVAL_COULEURS = ['bleu','rouge','orange','vclair','vfonce'];
-var EVAL_LABELS   = {bleu:'Non évalué',rouge:'Absent/Non fait',orange:'En cours',vclair:'Acquis',vfonce:'Maîtrisé'};
-var autoEvalTemp  = {}; // stockage temporaire auto-éval avant save
 var curSessionId  = null; // session en cours d'édition dans la modal
 
 // Retourne les sessions de l'élève connecté, enrichies avec les données tpBank
@@ -1317,12 +1260,9 @@ function openTpModal(sessionId) {
   if (!tp) return;
   curTpId      = tp.id;
   curSessionId = sessionId;
-  autoEvalTemp = {};
 
   var te      = getTpEleve(tp.id);
   var termine = isTpTermine(tp);
-  var session = (data.sessions||[]).find(function(s){ return s.id === sessionId; });
-  var evals   = (session && session.evaluations) ? session.evaluations : {};
   var comps   = tp.competences || [];
 
   document.getElementById('tpModalTitle').textContent = tp.title + (termine ? ' ✅' : '');
@@ -1370,88 +1310,36 @@ function openTpModal(sessionId) {
     + '<textarea class="obs-input" id="tpObs" '+(termine?'disabled style="opacity:.6"':'')
     + ' placeholder="Vos observations, difficultés, remarques…">'+(te.obs||'')+'</textarea>';
 
-  // ── Onglet 3 : Auto-évaluation ──────────────────────────────
-  var tabEval = '';
+  // ── Onglet 3 : Compétences travaillées (lecture seule) ──────
+  var tabComp = '';
   if (!comps.length) {
-    tabEval = '<p style="color:#aaa;font-size:12px;padding:8px 0">Aucune grille d\'évaluation définie pour ce TP.</p>';
+    tabComp = '<p style="color:#aaa;font-size:12px;padding:8px 0">Aucune compétence déclarée pour ce TP.</p>';
   } else {
-    // Légende
-    tabEval += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">';
-    EVAL_COULEURS.forEach(function(c) {
-      tabEval += '<span style="display:flex;align-items:center;gap:4px">'
-        + '<span class="eval-dot '+c+'" style="width:14px;height:14px;cursor:default;border:none"></span>'
-        + EVAL_LABELS[c]+'</span>';
-    });
-    tabEval += '</div>';
-
+    tabComp += '<div style="display:flex;flex-direction:column;gap:8px">';
     comps.forEach(function(comp) {
-      var compEval = evals[comp.id] || {};
-      var criteres = comp.criteres || [];
-      tabEval += '<div class="comp-eval-card">'
-        + '<div class="comp-eval-head">'
-        + '<span class="comp-code-badge">'+comp.code+'</span>'
-        + '<span style="font-size:12px;font-weight:600;flex:1">'+comp.libelle+'</span>'
+      tabComp += '<div style="display:flex;align-items:center;gap:8px;background:#f5f5f5;border-radius:8px;padding:9px 12px">'
+        + '<span style="font-family:monospace;font-size:11px;font-weight:700;color:#1e3a5f;background:#e3ecf5;padding:2px 7px;border-radius:4px;flex-shrink:0">'+(comp.code||'')+'</span>'
+        + '<span style="font-size:12px;flex:1">'+(comp.libelle||'—')+'</span>'
         + '</div>';
-
-      if (!criteres.length) {
-        tabEval += '<div style="padding:10px 12px;font-size:11px;color:var(--muted)">Aucun critère défini.</div>';
-      } else {
-        // En-têtes
-        tabEval += '<div style="display:grid;grid-template-columns:1fr 100px 80px;gap:6px;padding:8px 12px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--brd)">'
-          + '<span>Critère</span>'
-          + '<span style="text-align:center">Mon auto-éval</span>'
-          + '<span style="text-align:center">Enseignant</span>'
-          + '</div>';
-
-        criteres.forEach(function(cr) {
-          var crEval   = (compEval.criteres||{})[cr.id] || {};
-          var eleveVal = crEval.eleve || '';
-          var ensVal   = crEval.enseignant || '';
-
-          // Pastille auto-éval élève : interactive si pas terminé
-          var eleveCell = '<div class="eval-dots" id="ce-elv-'+comp.id+'-'+cr.id+'">';
-          EVAL_COULEURS.forEach(function(c) {
-            if (termine) {
-              eleveCell += '<div class="eval-dot '+c+(eleveVal===c?' sel':'')+'" style="cursor:default" title="'+EVAL_LABELS[c]+'"></div>';
-            } else {
-              eleveCell += '<div class="eval-dot '+c+(eleveVal===c?' sel':'')+'"'
-                + ' onclick="setCritEleve(\''+comp.id+'\',\''+cr.id+'\',\''+c+'\',this)"'
-                + ' title="'+EVAL_LABELS[c]+'"></div>';
-            }
-          });
-          eleveCell += '</div>';
-
-          // Pastille enseignant : lecture seule
-          var ensCell = '<div style="display:flex;justify-content:center">'
-            + (ensVal
-              ? '<div class="eval-dot '+ensVal+' sel" style="cursor:default" title="Enseignant : '+EVAL_LABELS[ensVal]+'"></div>'
-              : '<div class="eval-dot-empty" title="Pas encore évalué"></div>')
-            + '</div>';
-
-          tabEval += '<div style="display:grid;grid-template-columns:1fr 100px 80px;gap:6px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--brd)">'
-            + '<span style="font-size:11px">'+cr.libelle+'</span>'
-            + eleveCell
-            + ensCell
-            + '</div>';
-        });
-      }
-      tabEval += '</div>'; // comp-eval-card
     });
-
-    if (!termine) {
-      tabEval += '<button class="btn pri" style="margin-top:12px;width:100%" onclick="saveAutoEval()">💾 Enregistrer mon auto-évaluation</button>';
-    }
+    tabComp += '</div>';
   }
+  tabComp += '<div style="margin-top:14px;background:#eef4fb;border:1px solid #1e3a5f;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center">'
+    + '<span style="font-size:18px;flex-shrink:0">🎓</span>'
+    + '<div style="flex:1"><p style="font-size:11px;color:#444;margin:0 0 6px">L\'évaluation détaillée de ces compétences se fait dans Cpro.</p>'
+    + '<a href="javascript:void(0)" onclick="openDoc(\'https://www.cpro-sti.fr/0560039N/index.php\',\'Suivi de diplôme — CPRO-STI\',\'lien\')"'
+    + ' style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#1e3a5f;color:#fff;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none">↗ Accéder à Cpro</a>'
+    + '</div></div>';
 
   // ── Assemblage avec onglets ──────────────────────────────────
   var html = '<div class="tp-tabs">'
     + '<div class="tp-tab active" onclick="switchTpTab(0,this)">📎 Documents ('+(ressources.length)+')</div>'
     + '<div class="tp-tab" onclick="switchTpTab(1,this)">📌 Étapes</div>'
-    + '<div class="tp-tab" onclick="switchTpTab(2,this)">🎯 Auto-éval ('+(comps.length)+')</div>'
+    + '<div class="tp-tab" onclick="switchTpTab(2,this)">🎯 Compétences ('+(comps.length)+')</div>'
     + '</div>'
     + '<div class="tp-tab-panel active" id="tptab-0">'+tabDocs+'</div>'
     + '<div class="tp-tab-panel" id="tptab-1">'+tabSteps+'</div>'
-    + '<div class="tp-tab-panel" id="tptab-2">'+tabEval+'</div>';
+    + '<div class="tp-tab-panel" id="tptab-2">'+tabComp+'</div>';
 
   document.getElementById('tpModalBody').innerHTML = html;
   openModal('tpModal');
@@ -1465,38 +1353,10 @@ function switchTpTab(idx, el) {
   if (panel) panel.classList.add('active');
 }
 
-function setCritEleve(compId, critId, couleur, el) {
-  if (!autoEvalTemp[compId]) autoEvalTemp[compId] = {criteres:{}};
-  if (!autoEvalTemp[compId].criteres) autoEvalTemp[compId].criteres = {};
-  if (!autoEvalTemp[compId].criteres[critId]) autoEvalTemp[compId].criteres[critId] = {};
-  // Toggle
-  var current = autoEvalTemp[compId].criteres[critId].eleve;
-  var newVal  = (current === couleur) ? '' : couleur;
-  autoEvalTemp[compId].criteres[critId].eleve = newVal;
-  // Visuel
-  var container = document.getElementById('ce-elv-'+compId+'-'+critId);
-  if (container) container.querySelectorAll('.eval-dot').forEach(function(d){ d.classList.remove('sel'); });
-  if (newVal) el.classList.add('sel');
-}
+function saveTpProgress() {
+  if (!curEleve || !curTpId) return;
 
-function saveAutoEval() {
-  if (!curEleve || !curSessionId) return;
-  var session = (data.sessions||[]).find(function(s){ return s.id === curSessionId; });
-  if (!session) return;
-  if (!session.evaluations) session.evaluations = {};
-
-  // Fusionner autoEvalTemp dans session.evaluations (ne touche qu'au champ .eleve)
-  Object.keys(autoEvalTemp).forEach(function(compId) {
-    if (!session.evaluations[compId]) session.evaluations[compId] = {criteres:{}};
-    if (!session.evaluations[compId].criteres) session.evaluations[compId].criteres = {};
-    var critTmp = autoEvalTemp[compId].criteres || {};
-    Object.keys(critTmp).forEach(function(critId) {
-      if (!session.evaluations[compId].criteres[critId]) session.evaluations[compId].criteres[critId] = {};
-      session.evaluations[compId].criteres[critId].eleve = critTmp[critId].eleve;
-    });
-  });
-
-  // Sauvegarder les étapes et observations aussi
+  // Sauvegarder les étapes et observations
   PHASE_ORDER.forEach(function(pk) {
     var cb = document.getElementById('step_'+pk);
     if (cb) {
@@ -1513,7 +1373,7 @@ function saveAutoEval() {
   }
 
   saveData().then(function(){
-    notify('Auto-évaluation enregistrée.');
+    notify('Progression enregistrée.');
     renderTP();
   });
   closeModal('tpModal');
@@ -1531,7 +1391,7 @@ function toggleStep(phaseKey) {
 }
 
 function saveTpObs() {
-  saveAutoEval();
+  saveTpProgress();
 }
 
 // ═══ SCANNER TP ══════════════════════════════════════════════════════════════
@@ -1579,16 +1439,9 @@ function handleScanTP(code) {
     return (x.id||'').toUpperCase() === code ||
            (x.qr_code||'').toUpperCase() === code;
   });
-  // sysId = l'id interne utilisé dans tp.systemes[]\n  var sysId  = sys ? sys.id : code;
+  // sysId = l'id interne utilisé dans tp.systemes[]
+  var sysId  = sys ? sys.id : code;
   var sysNom = sys ? (sys.nom || sysId) : code;
-
-  // ── Détection poste / cellule / armoire ──────────────────────────────────
-  var typeAff = affType(sysId);
-  if (typeAff) {
-    showAffModal(sysId, sysNom, typeAff);
-    return;
-  }
-  // ─────────────────────────────────────────────────────────────────────────
 
   // TPs liés à ce système, sans restriction de niveau
   var tpsCandidats = (data.tpBank||[]).filter(function(tp) {
@@ -1684,143 +1537,6 @@ function createSession(tp, sysId) {
   });
 }
 
-// ═══ AFFECTATIONS POSTES / ARMOIRES ═════════════════════════════════════════
-var AFF_POSTES_IDS   = (function(){var r=[];for(var i=51;i<=70;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
-var AFF_CELLULES_IDS = ['MELEC-040'].concat((function(){var r=[];for(var i=71;i<=82;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})());
-var AFF_ARMOIRES_IDS = (function(){var r=[];for(var i=41;i<=45;i++)r.push('MELEC-'+String(i).padStart(3,'0'));return r;})();
-
-function affType(id) {
-  if (AFF_POSTES_IDS.includes(id) || AFF_CELLULES_IDS.includes(id)) return 'annuelle';
-  if (AFF_ARMOIRES_IDS.includes(id)) return 'ponctuelle';
-  return null;
-}
-
-function getActiveAff(materielId) {
-  var t = today();
-  return (data.affectations||[]).find(function(a) {
-    return a.materielId === materielId && (
-      a.type === 'annuelle' ||
-      (a.dateFin >= t && a.dateDebut <= t)
-    );
-  });
-}
-
-function showAffModal(materielId, materielNom, type) {
-  var isAnnuelle = (type === 'annuelle');
-  var label = isAnnuelle ? 'Poste / Cellule de câblage' : 'Armoire de confinement';
-  var icon  = isAnnuelle ? '🔌' : '🔒';
-  var activeAff = getActiveAff(materielId);
-
-  var html = '<div style="margin-bottom:14px">';
-  html += '<div style="font-size:15px;font-weight:600;margin-bottom:4px">' + icon + ' ' + materielNom + '</div>';
-  html += '<div style="font-size:12px;color:var(--muted)">' + label + ' · ' + materielId + '</div>';
-  html += '</div>';
-
-  if (activeAff) {
-    var estMoi = activeAff.eleveId === String(curEleve.id);
-    html += '<div style="padding:10px 12px;border-radius:8px;margin-bottom:14px;';
-    html += estMoi
-      ? 'background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#86efac">'
-      : 'background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5">';
-    if (isAnnuelle) {
-      html += estMoi
-        ? '✅ Vous êtes déjà affecté(e) à ce poste (année ' + (activeAff.annee||'—') + ').'
-        : '⛔ Ce poste est affecté à <strong>' + activeAff.eleveNom + '</strong> pour l\'année ' + (activeAff.annee||'—') + '.';
-    } else {
-      html += estMoi
-        ? '✅ Vous occupez actuellement cette armoire. Vous pouvez la libérer quand vous avez terminé.'
-        : '⛔ Cette armoire est utilisée par <strong>' + activeAff.eleveNom + '</strong>.';
-    }
-    html += '</div>';
-  } else {
-    html += '<div style="padding:10px 12px;border-radius:8px;margin-bottom:14px;';
-    html += 'background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93c5fd">';
-    html += isAnnuelle
-      ? '📋 Ce poste est libre. Confirmez votre affectation pour l\'année scolaire.'
-      : '📋 Cette armoire est libre. Confirmez votre affectation provisoire.';
-    html += '</div>';
-  }
-
-  document.getElementById('affModalBody').innerHTML = html;
-
-  // Footer boutons
-  var ft = document.getElementById('affModalFooter');
-  ft.innerHTML = '';
-
-  var btnFermer = '<button class="btn" onclick="closeModal(\'affModal\')">Annuler</button>';
-
-  if (!activeAff) {
-    // Bouton confirmer affectation
-    ft.innerHTML = btnFermer
-      + '<button class="btn pri" onclick="confirmAff(\'' + materielId + '\',\'' + type + '\')">✅ Confirmer l\'affectation</button>';
-  } else if (activeAff.eleveId === String(curEleve.id) && type === 'ponctuelle') {
-    // Armoire : l'élève peut se libérer
-    ft.innerHTML = btnFermer
-      + '<button class="btn" style="background:#ef4444;color:#fff;border-color:#ef4444" onclick="libererPoste(\'' + materielId + '\')">🔓 Libérer l\'armoire</button>';
-  } else {
-    ft.innerHTML = btnFermer;
-  }
-
-  // Stocker pour confirmAff
-  document.getElementById('affModal').dataset.materielId  = materielId;
-  document.getElementById('affModal').dataset.materielNom = materielNom;
-  document.getElementById('affModal').dataset.type        = type;
-  openModal('affModal');
-}
-
-function confirmAff(materielId, type) {
-  if (!curEleve) return;
-  var isAnnuelle = (type === 'annuelle');
-  var nom = (curEleve.nom || curEleve.name || '') + (curEleve.prenom ? ' ' + curEleve.prenom : '');
-
-  // Supprimer l'éventuelle ancienne affectation annuelle sur ce poste
-  if (isAnnuelle) {
-    data.affectations = (data.affectations||[]).filter(function(a) {
-      return !(a.materielId === materielId && a.type === 'annuelle');
-    });
-  }
-
-  var newAff = {
-    id:          'AFF' + Date.now().toString(36).toUpperCase(),
-    materielId:  materielId,
-    eleveId:     String(curEleve.id),
-    eleveNom:    nom,
-    type:        type
-  };
-  if (isAnnuelle) {
-    newAff.annee = new Date().getFullYear() + '-' + (new Date().getFullYear() + 1);
-  } else {
-    newAff.dateDebut = today();
-    newAff.dateFin   = today();   // durée intra-journée ; l'admin peut ajuster
-  }
-
-  if (!data.affectations) data.affectations = [];
-  data.affectations.push(newAff);
-  closeModal('affModal');
-  saveData().then(function() {
-    notify(isAnnuelle
-      ? '🔌 Affectation enregistrée pour l\'année !'
-      : '🔒 Armoire réservée — libérez-la quand vous avez terminé.');
-  });
-}
-
-function libererDepuisDash(affId) {
-  if (!confirm('Libérer cette armoire ?')) return;
-  data.affectations = (data.affectations||[]).filter(function(a){ return a.id !== affId; });
-  saveData().then(function(){ renderDashboard(); notify('🔓 Armoire libérée.'); });
-}
-
-function libererPoste(materielId) {
-  if (!confirm('Libérer cette armoire ?')) return;
-  var aff = getActiveAff(materielId);
-  if (aff && aff.eleveId === String(curEleve.id)) {
-    data.affectations = (data.affectations||[]).filter(function(a){ return a.id !== aff.id; });
-    closeModal('affModal');
-    saveData().then(function(){ notify('🔓 Armoire libérée.'); });
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 function genId(prefix) {
   return (prefix||'ID') + Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2,5).toUpperCase();
 }
@@ -2383,13 +2099,6 @@ function handleScanMat(code) {
     return;
   }
 
-  // Détecter poste / cellule / armoire → affectation (avant le test bon)
-  var typeAff = affType(item.id);
-  if (typeAff) {
-    showAffModal(item.id, item.nom || item.id, typeAff);
-    return;
-  }
-
   // Avertir si c'est une catégorie non pertinente pour un bon
   if (CAT_EXCLUES_BON.includes(item.categorie)) {
     notify('"'+item.nom+'" est un '+item.categorie.toLowerCase()+', pas un consommable.', true);
@@ -2465,10 +2174,6 @@ function openDoc(url, titre, type) {
   if (!url) { notify('Document indisponible.', true); return; }
   titre = titre || 'Document';
   type  = type  || 'pdf';
-
-  // Lien externe simple → ouvrir directement dans un nouvel onglet
-  if (type === 'lien') { window.open(url, '_blank'); return; }
-
   var ext = (url.split('.').pop()||'').toLowerCase().split('?')[0];
   var isImage = ['jpg','jpeg','png','gif','webp'].includes(ext);
 
