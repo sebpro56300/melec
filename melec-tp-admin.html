@@ -903,7 +903,7 @@ function showTPForm(id){
     <div class="fc" id="fc-comp">
       <div class="fc-head">
         <span>🎯</span>
-        <span class="fc-title">Compétences évaluées (${(tp.competences||[]).length})</span>
+        <span class="fc-title">Compétences travaillées (${(tp.competences||[]).length})</span>
         <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="addComp('${id}')">+ Compétence</button>
       </div>
       <div class="fc-body" id="comp-list">
@@ -930,10 +930,8 @@ function detachRes(tpId,rid){saveTPSilent(tpId);const tp=tps.find(x=>x.id===tpId
 // ═══════════════════════════════════════════════════════════════
 // COMPÉTENCES & CRITÈRES
 // ═══════════════════════════════════════════════════════════════
-const EVAL_COULEURS=['bleu','rouge','orange','vclair','vfonce'];
 
 function genCID(){return 'C'+Date.now().toString(36).toUpperCase();}
-function genKID(){return 'K'+Date.now().toString(36).toUpperCase();}
 
 function renderCompList(tpId){
   const tp=tps.find(x=>x.id===tpId);
@@ -945,47 +943,21 @@ function renderCompList(tpId){
       <div class="comp-head">
         <span class="comp-code" contenteditable="true" onblur="updateCompCode('${tpId}','${comp.id}',this.textContent)" title="Cliquer pour modifier le code">${esc(comp.code||'C?')}</span>
         <span class="comp-lib" contenteditable="true" onblur="updateCompLib('${tpId}','${comp.id}',this.textContent)" title="Cliquer pour modifier le libellé">${esc(comp.libelle||'Libellé de la compétence')}</span>
-        <button class="comp-toggle" onclick="toggleComp('${comp.id}')">▶</button>
         <button class="crit-del" onclick="delComp('${tpId}','${comp.id}')" title="Supprimer la compétence">✕</button>
       </div>
-      <div class="comp-body" id="cbody-${comp.id}" style="display:none;">
-        ${(comp.criteres||[]).map((cr,ki)=>`
-          <div class="crit-row" id="crit-${cr.id}">
-            <div class="crit-lib">
-              <input type="text" value="${esc(cr.libelle||'')}" placeholder="Libellé du critère..."
-                onchange="updateCritLib('${tpId}','${comp.id}','${cr.id}',this.value)">
-            </div>
-            <button class="crit-del" onclick="delCrit('${tpId}','${comp.id}','${cr.id}')" title="Supprimer">✕</button>
-          </div>`).join('')}
-        <button class="btn btn-g btn-sm btn-add-crit" style="align-self:flex-start;margin-top:4px;"
-          onclick="addCrit('${tpId}','${comp.id}')">+ Critère</button>
-      </div>
     </div>`).join('');
-}
-
-function toggleComp(compId){
-  const body=document.getElementById('cbody-'+compId);
-  const btn=document.querySelector(`#comp-${compId} .comp-toggle`);
-  if(!body)return;
-  const open=body.style.display==='none';
-  body.style.display=open?'flex':'none';
-  body.style.flexDirection='column';
-  if(btn) btn.style.transform=open?'rotate(90deg)':'rotate(0deg)';
 }
 
 function addComp(tpId){
   saveTPSilent(tpId);
   const tp=tps.find(x=>x.id===tpId);if(!tp)return;
   tp.competences=tp.competences||[];
-  tp.competences.push({id:genCID(),code:'C'+(tp.competences.length+1),libelle:'',criteres:[]});
+  tp.competences.push({id:genCID(),code:'C'+(tp.competences.length+1),libelle:''});
   dirty();
   document.getElementById('comp-list').innerHTML=renderCompList(tpId);
-  // Ouvrir la dernière compétence ajoutée
-  const last=tp.competences[tp.competences.length-1];
-  toggleComp(last.id);
   // Mettre à jour le compteur dans le header
   const h=document.querySelector('#fc-comp .fc-title');
-  if(h) h.textContent=`Compétences évaluées (${tp.competences.length})`;
+  if(h) h.textContent=`Compétences travaillées (${tp.competences.length})`;
 }
 
 function delComp(tpId,compId){
@@ -1008,46 +980,6 @@ function updateCompLib(tpId,compId,val){
   const tp=tps.find(x=>x.id===tpId);if(!tp)return;
   const comp=(tp.competences||[]).find(c=>c.id===compId);
   if(comp){comp.libelle=val.trim();dirty();}
-}
-
-function addCrit(tpId,compId){
-  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
-  const comp=(tp.competences||[]).find(c=>c.id===compId);if(!comp)return;
-  comp.criteres=comp.criteres||[];
-  const newCrit={id:genKID(),libelle:''};
-  comp.criteres.push(newCrit);
-  dirty();
-  const body=document.getElementById('cbody-'+compId);
-  if(!body)return;
-  // Cibler précisément le bouton + Critère via sa classe dédiée
-  const addBtn=body.querySelector('.btn-add-crit');
-  const row=document.createElement('div');
-  row.className='crit-row';row.id='crit-'+newCrit.id;
-  row.innerHTML=`
-    <div class="crit-lib">
-      <input type="text" value="" placeholder="Libellé du critère..."
-        onchange="updateCritLib('${tpId}','${compId}','${newCrit.id}',this.value)"
-        oninput="updateCritLib('${tpId}','${compId}','${newCrit.id}',this.value)">
-    </div>
-    <button class="crit-del" onclick="delCrit('${tpId}','${compId}','${newCrit.id}')" title="Supprimer">✕</button>`;
-  body.insertBefore(row,addBtn);
-  row.querySelector('input').focus();
-}
-
-function delCrit(tpId,compId,critId){
-  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
-  const comp=(tp.competences||[]).find(c=>c.id===compId);if(!comp)return;
-  comp.criteres=(comp.criteres||[]).filter(k=>k.id!==critId);
-  dirty();
-  const row=document.getElementById('crit-'+critId);
-  if(row) row.remove();
-}
-
-function updateCritLib(tpId,compId,critId,val){
-  const tp=tps.find(x=>x.id===tpId);if(!tp)return;
-  const comp=(tp.competences||[]).find(c=>c.id===compId);if(!comp)return;
-  const crit=(comp.criteres||[]).find(k=>k.id===critId);
-  if(crit){crit.libelle=val.trim();dirty();}
 }
 
 // ═══════════════════════════════════════════════════════════════
