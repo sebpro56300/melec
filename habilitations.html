@@ -192,6 +192,19 @@
   .save-indicator.show{opacity:1;transform:translateY(0);}
   .save-indicator.error{background:var(--rust);}
   select[multiple]{min-height:90px;}
+  #classeFilieresList{
+    display:flex;flex-direction:column;gap:7px;
+    max-height:230px;overflow-y:auto;
+    border:1.5px solid var(--line);border-radius:3px;
+    padding:10px 12px;background:#fff;
+  }
+  #classeFilieresList label{
+    display:flex;align-items:flex-start;gap:8px;
+    font-size:13px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink);
+    cursor:pointer;
+  }
+  #classeFilieresList input[type=checkbox]{margin-top:2px;flex-shrink:0;}
+  #classeFilieresList .fil-type{font-family:var(--mono);font-size:10px;color:#999;margin-right:4px;}
   .link-btn{background:none;border:none;color:var(--amber);text-decoration:underline;padding:0;font-size:12.5px;cursor:pointer;}
   .filiere-hint{font-size:11.5px;color:#888;margin-top:4px;}
   .del-x{color:var(--rust);border:none;background:none;font-size:15px;cursor:pointer;padding:2px 6px;font-weight:700;}
@@ -237,11 +250,12 @@
     <div class="panel">
       <h2>Tableau de suivi</h2>
       <p class="desc">Sélectionne une classe pour visualiser et cocher les validations théoriques et pratiques de chaque habilitation.</p>
-      <div class="row">
+      <div class="row" style="justify-content:space-between;align-items:flex-end;">
         <div class="field">
           <label for="suiviClasseSelect">Classe</label>
           <select id="suiviClasseSelect" onchange="renderSuivi()"></select>
         </div>
+        <button onclick="exportExcel()">⬇ Exporter tout en Excel</button>
       </div>
     </div>
     <div class="panel" id="suiviTableWrap"></div>
@@ -251,15 +265,15 @@
   <section id="tab-classes" style="display:none;">
     <div class="panel">
       <h2>Créer une classe</h2>
-      <p class="desc">Choisis la filière : les habilitations à suivre seront assignées automatiquement.</p>
-      <div class="row">
+      <p class="desc">Coche une ou plusieurs filières : les habilitations à suivre seront assignées automatiquement (cumulées si plusieurs filières).</p>
+      <div class="row" style="align-items:flex-start;">
         <div class="field">
           <label for="classeNom">Nom de la classe</label>
-          <input type="text" id="classeNom" placeholder="ex: 2GA1">
+          <input type="text" id="classeNom" placeholder="ex: 2BACC">
         </div>
-        <div class="field">
-          <label for="classeFiliere">Filière</label>
-          <select id="classeFiliere" onchange="updateFiliereHint()" style="min-width:340px;"></select>
+        <div class="field" style="min-width:380px;">
+          <label>Filière(s)</label>
+          <div id="classeFilieresList"></div>
         </div>
         <button class="primary" onclick="addClasse()">Ajouter la classe</button>
       </div>
@@ -270,6 +284,7 @@
         <h2 style="margin:0;">Classes existantes</h2>
       </div>
       <div id="classesTableWrap"></div>
+    </div>
     </div>
   </section>
 
@@ -349,6 +364,7 @@ const HAB_BADGE_CLASS = {
   "B0-CHANTIER": "b0c", "BFHF-CHANTIER": "bfhf", "B0-EXEC": "b0e"
 };
 const FILIERES = [
+  { nom: "Métiers de l'Électricité et de ses Environnements Connectés", type: "Bac Pro", habilitations: ["B1V","BR"] },
   { nom: "Aménagement et finition du bâtiment", type: "Bac Pro", habilitations: ["BS"] },
   { nom: "Installateur en chauffage, climatisation et énergies renouvelables", type: "Bac Pro", habilitations: ["B1V","BR"] },
   { nom: "Maintenance et efficacité énergétique", type: "Bac Pro", habilitations: ["B1V","BR"] },
@@ -362,9 +378,21 @@ const FILIERES = [
 ];
 
 function filiereByNom(nom){ return FILIERES.find(f => f.nom === nom); }
+/* Une classe peut regrouper plusieurs filières (ex: 2BACC = étude du bâtiment + géomètre topographe).
+   classe.filieres est un tableau de noms de filières. Les habilitations affichées sont l'union
+   de celles de chaque filière, sans doublon. */
+function classeFilieres(classe){
+  if(Array.isArray(classe.filieres)) return classe.filieres;
+  if(classe.filiere) return [classe.filiere];
+  return [];
+}
 function habsForClasse(classe){
-  const f = filiereByNom(classe.filiere);
-  return f ? f.habilitations : [];
+  const set = new Set();
+  classeFilieres(classe).forEach(nom => {
+    const f = filiereByNom(nom);
+    if(f) f.habilitations.forEach(h => set.add(h));
+  });
+  return [...set];
 }
 
 /* ============ STATE ============ */
@@ -374,10 +402,17 @@ let currentTab = 'suivi';
 
 /* ============ GIST I/O ============ */
 async function loadData(){
+  const token = getToken();
   try{
-    const token = getToken();
-    const headers = token ? { "Authorization": "token " + token } : {};
-    const res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { cache: "no-store", headers });
+    let res = await fetch(`https://api.github.com/gists/${GIST_ID}`, {
+      cache: "no-store",
+      headers: token ? { "Authorization": "token " + token } : {}
+    });
+    if(res.status === 401 && token){
+      // Le token stocké sur cet appareil est mort : on l'oublie et on relit en anonyme.
+      clearToken();
+      res = await fetch(`https://api.github.com/gists/${GIST_ID}`, { cache: "no-store" });
+    }
     if(!res.ok) throw new Error("Lecture impossible ("+res.status+")");
     const gist = await res.json();
     const file = gist.files && gist.files[GIST_FILENAME];
@@ -386,6 +421,14 @@ async function loadData(){
     const parsed = JSON.parse(content);
     DATA.classes = Array.isArray(parsed.classes) ? parsed.classes : [];
     DATA.eleves = Array.isArray(parsed.eleves) ? parsed.eleves : [];
+    // Migration : ancien format "filiere" (texte unique) -> nouveau format "filieres" (tableau)
+    // (appliquée seulement en mémoire ici ; sera écrite au prochain enregistrement réel)
+    DATA.classes.forEach(c => {
+      if(!Array.isArray(c.filieres)){
+        c.filieres = c.filiere ? [c.filiere] : [];
+        delete c.filiere;
+      }
+    });
   }catch(err){
     console.error(err);
     showSaveIndicator("Erreur de chargement des données", true);
@@ -577,25 +620,29 @@ function renderClasseSelects(){
   filterClasse.value = prevFilter;
 }
 
-/* Filière select in classes tab */
+/* Filières checkboxes in classes tab */
 function fillFiliereSelect(){
-  const sel = document.getElementById('classeFiliere');
-  sel.innerHTML = FILIERES.map(f =>
-    `<option value="${escapeHtml(f.nom)}">${escapeHtml(f.type)} — ${escapeHtml(f.nom)}</option>`
-  ).join('');
+  const list = document.getElementById('classeFilieresList');
+  list.innerHTML = FILIERES.map((f, i) => `
+    <label>
+      <input type="checkbox" class="fil-check" value="${escapeHtml(f.nom)}" onchange="updateFiliereHint()">
+      <span><span class="fil-type">${escapeHtml(f.type)}</span>${escapeHtml(f.nom)}</span>
+    </label>
+  `).join('');
   updateFiliereHint();
 }
+function getCheckedFilieres(){
+  return [...document.querySelectorAll('#classeFilieresList .fil-check:checked')].map(el => el.value);
+}
 function updateFiliereHint(){
-  const sel = document.getElementById('classeFiliere');
-  const f = filiereByNom(sel.value);
+  const noms = getCheckedFilieres();
   const hint = document.getElementById('filiereHint');
-  if(f){
-    hint.innerHTML = 'Habilitations suivies : ' + f.habilitations.map(h =>
-      `<span class="badge ${HAB_BADGE_CLASS[h]}">${HAB_LABELS[h]}</span>`
-    ).join(' ');
-  }else{
-    hint.textContent = '';
-  }
+  if(noms.length === 0){ hint.textContent = ''; return; }
+  const set = new Set();
+  noms.forEach(nom => { const f = filiereByNom(nom); if(f) f.habilitations.forEach(h => set.add(h)); });
+  hint.innerHTML = 'Habilitations suivies (cumulées) : ' + [...set].map(h =>
+    `<span class="badge ${HAB_BADGE_CLASS[h]}">${HAB_LABELS[h]}</span>`
+  ).join(' ');
 }
 
 /* ============ CLASSES ============ */
@@ -603,13 +650,15 @@ function addClasse(){
   requireUnlock(()=>{
     const nomInput = document.getElementById('classeNom');
     const nom = nomInput.value.trim();
-    const filiere = document.getElementById('classeFiliere').value;
+    const filieres = getCheckedFilieres();
     if(!nom){ alert('Indique un nom de classe.'); return; }
-    if(!filiere){ alert('Choisis une filière.'); return; }
+    if(filieres.length === 0){ alert('Coche au moins une filière.'); return; }
     const exists = DATA.classes.some(c => c.nom.toLowerCase() === nom.toLowerCase());
     if(exists){ alert('Cette classe existe déjà.'); return; }
-    DATA.classes.push({ id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), nom, filiere });
+    DATA.classes.push({ id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), nom, filieres });
     nomInput.value = '';
+    document.querySelectorAll('#classeFilieresList .fil-check:checked').forEach(el => el.checked = false);
+    updateFiliereHint();
     saveData();
     renderAll();
   });
@@ -637,17 +686,18 @@ function renderClasses(){
   }
   const rows = DATA.classes.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(c => {
     const habs = habsForClasse(c).map(h => `<span class="badge ${HAB_BADGE_CLASS[h]}">${HAB_LABELS[h]}</span>`).join(' ');
+    const filieresTxt = classeFilieres(c).map(escapeHtml).join('<br>');
     const nb = DATA.eleves.filter(e => e.classeId === c.id).length;
     return `<tr>
       <td><strong>${escapeHtml(c.nom)}</strong></td>
-      <td>${escapeHtml(c.filiere)}</td>
+      <td style="font-size:12px;">${filieresTxt}</td>
       <td><div class="chip-list">${habs}</div></td>
       <td>${nb}</td>
       <td>${unlocked ? `<button class="del-x" onclick="deleteClasse('${c.id}')" title="Supprimer">✕</button>` : ''}</td>
     </tr>`;
   }).join('');
   wrap.innerHTML = `<table>
-    <thead><tr><th>Classe</th><th>Filière</th><th>Habilitations</th><th>Élèves</th><th></th></tr></thead>
+    <thead><tr><th>Classe</th><th>Filière(s)</th><th>Habilitations</th><th>Élèves</th><th></th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
@@ -849,7 +899,7 @@ function renderSuivi(){
 
   wrap.innerHTML = `
     <div class="toolbar">
-      <h2 style="margin:0;">${escapeHtml(classe.nom)} — ${escapeHtml(classe.filiere)}</h2>
+      <h2 style="margin:0;">${escapeHtml(classe.nom)} — ${classeFilieres(classe).map(escapeHtml).join(' + ')}</h2>
       <div class="chip-list">${habs.map(h => `<span class="badge ${HAB_BADGE_CLASS[h]}">${HAB_LABELS[h]}</span>`).join(' ')}</div>
     </div>
     <table>
@@ -861,6 +911,61 @@ function renderSuivi(){
     </table>
     ${!unlocked ? '<div class="filiere-hint" style="margin-top:12px;">🔒 Déverrouille l\'application pour cocher les validations.</div>' : ''}
   `;
+}
+
+/* ============ EXPORT EXCEL ============ */
+function sanitizeSheetName(name, usedNames){
+  let clean = String(name).trim().replace(/[:\\\/\?\*\[\]]/g, '-').slice(0, 31);
+  if(!clean) clean = 'Classe';
+  let final = clean;
+  let i = 2;
+  while(usedNames.has(final)){
+    const suffix = '_' + i;
+    final = clean.slice(0, 31 - suffix.length) + suffix;
+    i++;
+  }
+  usedNames.add(final);
+  return final;
+}
+
+function exportExcel(){
+  if(typeof XLSX === 'undefined'){ alert("La librairie Excel n'a pas pu se charger. Vérifie la connexion internet et recharge la page."); return; }
+  if(DATA.classes.length === 0){ alert('Aucune classe à exporter.'); return; }
+
+  const wb = XLSX.utils.book_new();
+  const usedNames = new Set();
+  const classesSorted = DATA.classes.slice().sort((a,b) => a.nom.localeCompare(b.nom));
+
+  classesSorted.forEach(c => {
+    const habs = habsForClasse(c);
+    const eleves = DATA.eleves.filter(e => e.classeId === c.id)
+      .sort((a,b) => a.nom.localeCompare(b.nom) || a.prenom.localeCompare(b.prenom));
+
+    const header = ['Nom', 'Prénom'];
+    habs.forEach(h => {
+      header.push(HAB_LABELS[h] + ' - Théorique');
+      header.push(HAB_LABELS[h] + ' - Pratique');
+    });
+
+    const rows = [header];
+    eleves.forEach(e => {
+      const row = [e.nom, e.prenom];
+      habs.forEach(h => {
+        const v = (e.validations && e.validations[h]) || { theorique:false, pratique:false };
+        row.push(v.theorique ? 'Oui' : 'Non');
+        row.push(v.pratique ? 'Oui' : 'Non');
+      });
+      rows.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:18},{wch:14}, ...habs.flatMap(()=>[{wch:16},{wch:16}])];
+    const sheetName = sanitizeSheetName(c.nom, usedNames);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  const dateStr = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `suivi_habilitations_${dateStr}.xlsx`);
 }
 
 /* ============ UTIL ============ */
