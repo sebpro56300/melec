@@ -437,9 +437,10 @@ select option{background:var(--bg2);}
   <div class="modal" style="width:580px;">
     <div class="modal-title">🔬 Assigner un TP</div>
     <div class="fg"><label>TP (depuis la bibliothèque)</label>
-      <select id="assign-tp-id">
+      <select id="assign-tp-id" onchange="refreshAssignTpComp()">
         <option value="">Chargement...</option>
       </select>
+      <div id="assign-tp-comp" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;"></div>
     </div>
     <div class="fg"><label>Classe</label>
       <select id="assign-classe" onchange="refreshAssignEleves()">
@@ -1669,7 +1670,17 @@ function openAssignTPModal() {
         .map(t=>`<option value="${t.id}">${esc(t.titre)} · ${(t.niveaux||[]).join(',')}</option>`).join('')
     : '<option value="">Aucun TP dans la bibliothèque</option>';
   refreshAssignEleves();
+  refreshAssignTpComp();
   openModal('modal-assign-tp');
+}
+
+function refreshAssignTpComp() {
+  const tpId = document.getElementById('assign-tp-id')?.value;
+  const tp   = data.tps.find(t=>t.id===tpId);
+  const comps = tp?.competences||[];
+  document.getElementById('assign-tp-comp').innerHTML = comps.length
+    ? comps.map(c=>`<span style="font-size:10px;font-weight:600;background:#111f3a;color:var(--accent2);border:1px solid var(--accent2);border-radius:4px;padding:2px 7px;" title="${esc(c.libelle||'')}">${esc(c.code||'')} ${esc(c.libelle||'')}</span>`).join('')
+    : '<span style="font-size:11px;color:var(--text3);">Aucune compétence déclarée sur ce TP</span>';
 }
 
 function classeNiveau(cl) {
