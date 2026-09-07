@@ -2407,9 +2407,22 @@ function renderAnnee() {
           • 2nde MELEC → 1ère MELEC<br>
           • 1ère MELEC → Terminale MELEC<br>
           • Terminales → archivés et supprimés<br><br>
-          Les PFMP, habilitations et sessions TP suivent les élèves.
+          Les PFMP, habilitations, sessions TP et cours dispensés suivent les élèves.
         </p>
         <button class="btn btn-o" onclick="askMontee()">🎓 Lancer la montée de niveau</button>
+      </div>
+    </div>
+    <div class="card" style="border-color:var(--orange);margin-top:2px;">
+      <div class="card-head" style="background:#251a0a;border-color:var(--orange);">
+        <span>🔧</span><span class="card-title" style="color:var(--orange);">Rattraper une montée déjà effectuée</span>
+      </div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">
+          Si une montée de niveau a déjà eu lieu avant que les cours ne suivent les élèves,
+          utilisez ce bouton une seule fois pour décaler les cours existants
+          (2nde→1ère, 1ère→Terminale, anciens cours de Terminale supprimés).
+        </p>
+        <button class="btn btn-o" onclick="askRattraperCours()">🔧 Rattraper les cours (une seule fois)</button>
       </div>
     </div>
     <div class="card" style="border-color:var(--red);margin-top:2px;">
@@ -2423,10 +2436,26 @@ function renderAnnee() {
   `);
 }
 
+function askRattraperCours() {
+  askConfirm(
+    'Rattraper les cours — cette action est irréversible.',
+    'Décale les cours (2nde→1ère, 1ère→Terminale) et supprime les anciens cours de Terminale. Tapez RATTRAPER pour confirmer :',
+    ()=>{
+      const upgrade={'2MELEC':'1MELEC','1MELEC':'T-MELEC'};
+      data.cours = data.cours.filter(c=>c.niveau!=='T-MELEC').map(c=>({...c,niveau:upgrade[c.niveau]||c.niveau}));
+      saveLocal(); render(); toast('Cours rattrapés ✓','ok');
+    },
+    'RATTRAPER'
+  );
+}
+
 function askMontee() {
   askConfirm('Montée de niveau — cette action est irréversible.','Tapez MONTEE pour confirmer :',()=>{
     const upgrade={'2MELEC':'1MELEC','1MELEC':'T-MELEC'};
     data.eleves = data.eleves.filter(e=>e.niveau!=='T-MELEC').map(e=>({...e,niveau:upgrade[e.niveau]||e.niveau}));
+    // Les cours dispensés suivent la même promotion que les élèves,
+    // afin que les nouveaux terminaux retrouvent les cours reçus en 1ère (etc).
+    data.cours  = data.cours.filter(c=>c.niveau!=='T-MELEC').map(c=>({...c,niveau:upgrade[c.niveau]||c.niveau}));
     saveLocal(); render(); toast('Montée de niveau effectuée','ok');
   },'MONTEE');
 }
