@@ -1979,20 +1979,54 @@ function renderBons() {
           : `<button class="btn btn-g btn-sm" onclick="signerBon('${b.id}')">✍️ Signer</button>`}
       </td>
       <td><button class="btn btn-g btn-sm" onclick="showBonDetail('${b.id}')">👁 Voir</button></td>
+      <td><button class="btn btn-d btn-sm" onclick="deleteBon('${b.id}')">🗑️</button></td>
     </tr>`;
   }).join('');
 
   setContent(`
-    ${pageHeader('Bons d\'intervention','Travaux réalisés — '+classeLabel(cl))}
+    ${pageHeader('Bons d\'intervention','Travaux réalisés — '+classeLabel(cl),
+      bons.length ? `<button class="btn btn-d btn-sm" onclick="purgeBonsClasse()">🗑️ Purger ${classeLabel(cl)}</button>` : '')}
     <div class="card">
       <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
         ${bons.length ? `<table>
-          <thead><tr><th>N°</th><th>Élève</th><th>Projet</th><th>Client</th><th>Date</th><th>Statut</th><th>Signature</th><th></th></tr></thead>
+          <thead><tr><th>N°</th><th>Élève</th><th>Projet</th><th>Client</th><th>Date</th><th>Statut</th><th>Signature</th><th></th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>` : '<div class="empty"><div class="ei">📋</div><div class="et">Aucun bon d\'intervention</div></div>'}
       </div>
     </div>
   `);
+}
+
+function deleteBon(id) {
+  const b = data.bons.find(x=>x.id===id); if(!b) return;
+  askConfirm('Supprimer ce bon d\'intervention ?','N°'+(b.numero||'—')+' — action irréversible.',()=>{
+    data.bons = data.bons.filter(x=>x.id!==id);
+    saveLocal(); render();
+    saveAll().then(()=>toast('Bon supprimé','ok'));
+  });
+}
+
+function purgeBonsClasse() {
+  const cl = state.classe;
+  const idsAPurger = data.bons.filter(b => {
+    if (b.eleveNiveau === cl) return true;
+    if (b.eleveId) {
+      const e = data.eleves.find(x => x.id === b.eleveId);
+      if (e && e.niveau === cl) return true;
+    }
+    return false;
+  }).map(b=>b.id);
+
+  askConfirm(
+    'Purger tous les bons — '+classeLabel(cl)+' ?',
+    'Cette action supprimera '+idsAPurger.length+' bon(s) et est irréversible. Tapez PURGER pour confirmer :',
+    ()=>{
+      data.bons = data.bons.filter(b=>!idsAPurger.includes(b.id));
+      saveLocal(); render();
+      saveAll().then(()=>toast('Bons purgés pour '+classeLabel(cl),'ok'));
+    },
+    'PURGER'
+  );
 }
 
 function signerBon(id) {
