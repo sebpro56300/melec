@@ -550,7 +550,8 @@ let cfg = {
   token: '',
   dataGistId: '',   // gist melec-data (nouveaux fichiers séparés)
   tpGistId: '',     // gist tp-admin (tps.json, ressources.json)
-  appUrl: ''
+  appUrl: '',
+  uploadRepo: ''    // owner/repo pour l'upload des fichiers de cours
 };
 let state = {
   classe: '2MELEC',
@@ -2192,6 +2193,10 @@ function renderConfig() {
         <div class="fg"><label>URL app élève</label>
           <input type="text" id="cfg-app-url" value="${esc(cfg.appUrl||'')}" placeholder="https://...github.io/melec-eleve.html">
         </div>
+        <div class="fg"><label>Dépôt d'upload (cours/ressources)</label>
+          <input type="text" id="cfg-upload-repo" value="${esc(cfg.uploadRepo||'')}" placeholder="mon-compte/mon-depot">
+          <div class="hint">Dépôt GitHub où seront déposés les fichiers de cours (format <code>owner/repo</code>), avec write access pour le token ci-dessus.</div>
+        </div>
         <div class="fe">
           <button class="btn btn-g" onclick="testGist()">🔄 Tester</button>
           <button class="btn btn-p" onclick="saveCfg()">Enregistrer</button>
@@ -2220,6 +2225,7 @@ function saveCfg() {
   cfg.dataGistId = document.getElementById('cfg-data-gist').value.trim();
   cfg.tpGistId   = document.getElementById('cfg-tp-gist').value.trim();
   cfg.appUrl     = document.getElementById('cfg-app-url').value.trim();
+  cfg.uploadRepo = document.getElementById('cfg-upload-repo').value.trim();
   localStorage.setItem('melec_suivi_cfg', JSON.stringify(cfg));
   toast('Configuration enregistrée','ok');
   loadRemote();
@@ -2418,11 +2424,12 @@ function renderAnnee() {
       </div>
       <div class="card-body">
         <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">
-          Si une montée de niveau a déjà eu lieu avant que les cours ne suivent les élèves,
-          utilisez ce bouton une seule fois pour décaler les cours existants
-          (2nde→1ère, 1ère→Terminale, anciens cours de Terminale supprimés).
+          Si une montée de niveau a déjà eu lieu avant que les cours et les sessions TP ne suivent
+          les élèves, utilisez ces boutons une seule fois pour décaler les données existantes
+          (2nde→1ère, 1ère→Terminale, anciennes données de Terminale supprimées).
         </p>
         <button class="btn btn-o" onclick="askRattraperCours()">🔧 Rattraper les cours (une seule fois)</button>
+        <button class="btn btn-o" style="margin-top:8px;" onclick="askRattraperSessions()">🔧 Rattraper les sessions TP (une seule fois)</button>
       </div>
     </div>
     <div class="card" style="border-color:var(--red);margin-top:2px;">
@@ -2449,6 +2456,19 @@ function askRattraperCours() {
   );
 }
 
+function askRattraperSessions() {
+  askConfirm(
+    'Rattraper les sessions TP — cette action est irréversible.',
+    'Décale les sessions TP (2nde→1ère, 1ère→Terminale) et supprime les anciennes sessions de Terminale. Tapez RATTRAPER pour confirmer :',
+    ()=>{
+      const upgrade={'2MELEC':'1MELEC','1MELEC':'T-MELEC'};
+      data.sessions = data.sessions.filter(s=>sessionClasse(s)!=='T-MELEC').map(s=>({...s,niveau:upgrade[sessionClasse(s)]||sessionClasse(s)}));
+      saveLocal(); render(); toast('Sessions TP rattrapées ✓','ok');
+    },
+    'RATTRAPER'
+  );
+}
+
 function askMontee() {
   askConfirm('Montée de niveau — cette action est irréversible.','Tapez MONTEE pour confirmer :',()=>{
     const upgrade={'2MELEC':'1MELEC','1MELEC':'T-MELEC'};
@@ -2456,6 +2476,8 @@ function askMontee() {
     // Les cours dispensés suivent la même promotion que les élèves,
     // afin que les nouveaux terminaux retrouvent les cours reçus en 1ère (etc).
     data.cours  = data.cours.filter(c=>c.niveau!=='T-MELEC').map(c=>({...c,niveau:upgrade[c.niveau]||c.niveau}));
+    // Idem pour les sessions TP (le champ niveau est stocké indépendamment de l'élève).
+    data.sessions = data.sessions.filter(s=>sessionClasse(s)!=='T-MELEC').map(s=>({...s,niveau:upgrade[sessionClasse(s)]||sessionClasse(s)}));
     saveLocal(); render(); toast('Montée de niveau effectuée','ok');
   },'MONTEE');
 }
