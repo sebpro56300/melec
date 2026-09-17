@@ -592,6 +592,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
       <div id="scanMatContent">
         <div style="background:#fff;border-radius:10px;box-shadow:var(--shad);padding:16px;margin-bottom:12px">
           <p style="font-size:13px;margin-bottom:12px">Scannez le QR code d'un matériel ou saisissez son code pour l'ajouter dans les <strong>matériels utilisés</strong> du bon d'intervention en cours.</p>
+          <p style="font-size:11px;color:var(--muted);margin-top:-6px;margin-bottom:12px">ℹ️ Système didactique → vous serez redirigé vers <strong>Mes TP</strong>. Poste de câblage, cellule de câblage ou armoire de confinement → l'affectation de l'équipement s'affiche (ou peut être déclarée à votre nom s'il est libre).</p>
           <button class="btn pri" style="width:100%;margin-bottom:10px" onclick="openScannerMat()">📷 Scanner un matériel</button>
           <div style="display:flex;gap:8px">
             <input type="text" id="matCodeManuel" placeholder="Saisir un code : MELEC-037"
@@ -699,6 +700,19 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
     <div class="mbdy" id="tpChoiceBody"></div>
     <div class="mft">
       <button class="btn" onclick="closeModal('tpChoiceModal')">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal affectation équipement (poste / cellule / armoire) -->
+<div class="moverlay" id="affModal">
+  <div class="modal">
+    <div class="mhd">🔌 <span id="affModalTitle">Équipement</span>
+      <button class="mcl" onclick="closeModal('affModal')">✕</button>
+    </div>
+    <div class="mbdy" id="affModalBody"></div>
+    <div class="mft">
+      <button class="btn" onclick="closeModal('affModal')">Fermer</button>
     </div>
   </div>
 </div>
@@ -814,8 +828,9 @@ async function loadData() {
         data.sessions        = readFile(g2, 'tp-sessions.json', []);
         data.tpBank    = readFile(g2, 'tps.json',         []);
         data.ressources= readFile(g2, 'ressources.json',  []);
-      } else { data.sessions = []; data.tpBank = []; }
-    } catch(e2) { data.sessions = []; data.tpBank = []; }
+        data.affectations = readFile(g2, 'affectations.json', []);
+      } else { data.sessions = []; data.tpBank = []; data.affectations = []; }
+    } catch(e2) { data.sessions = []; data.tpBank = []; data.affectations = []; }
 
     // 3. Gist inventaire
     try {
@@ -864,6 +879,7 @@ async function saveData() {
     // 2. Gist TP
     var b2 = {files:{}};
     b2.files['tp-sessions.json'] = {content: JSON.stringify(data.sessions || [])};
+    b2.files['affectations.json'] = {content: JSON.stringify(data.affectations || [])};
     await fetch(GIST_TP_API, {method:'PATCH', headers:gistHeaders(), body:JSON.stringify(b2)});
 
     try { localStorage.setItem(LS_BACKUP, JSON.stringify(data)); } catch(e){}
@@ -887,6 +903,7 @@ function fixData() {
   if (!data.tpEleve)       data.tpEleve       = {};
   if (!data.ressources)    data.ressources    = [];
   if (!data.inventory)     data.inventory     = [];
+  if (!data.affectations)  data.affectations  = [];
 }
 
 // ═══ SYNC STATE ══════════════════════════════════════════════════════════════
@@ -2037,6 +2054,95 @@ function renderHabilitations() {
 // (tout sauf Systèmes didactiques, Armoires)
 var CAT_EXCLUES_BON = ['Systèmes didactiques', 'Armoires'];
 
+// ─── Équipements affectables (postes/cellules/armoires) ───
+// Mêmes plages d'ID que melec-tp-admin.html, pour rester cohérent avec les affectations qui y sont gérées.
+function melecRange(pfx, a, b) { var r = []; for (var i = a; i <= b; i++) r.push(pfx + String(i).padStart(3,'0')); return r; }
+var POSTES_IDS   = melecRange('MELEC-', 51, 70);                         // affectation annuelle
+var CELLULES_IDS = ['MELEC-040'].concat(melecRange('MELEC-', 71, 82));   // affectation annuelle
+var ARMOIRES_IDS = melecRange('MELEC-', 41, 45);                         // affectation ponctuelle
+
+function affType(id) {
+  if (POSTES_IDS.includes(id) || CELLULES_IDS.includes(id)) return 'annuelle';
+  if (ARMOIRES_IDS.includes(id)) return 'ponctuelle';
+  return null;
+}
+function libelleAffectable(id) {
+  if (POSTES_IDS.includes(id))   return 'poste de câblage';
+  if (CELLULES_IDS.includes(id)) return 'cellule de câblage';
+  if (ARMOIRES_IDS.includes(id)) return 'armoire de confinement';
+  return 'équipement';
+}
+function getActiveAff(id) {
+  var d = today();
+  return (data.affectations||[]).find(function(a) {
+    return a.materielId === id && (a.type === 'annuelle' || (a.dateFin >= d && a.dateDebut <= d));
+  });
+}
+function anneeScolaire() {
+  var d = new Date(), y = d.getFullYear();
+  return (d.getMonth() >= 7) ? (y + '-' + (y+1)) : ((y-1) + '-' + y);
+}
+
+function showAffectationEquipement(item) {
+  var type = affType(item.id);
+  var aff  = getActiveAff(item.id);
+  var lbl  = libelleAffectable(item.id);
+
+  var body = '<div style="margin-bottom:12px">'
+    + '<div style="font-size:14px;font-weight:700">'+esc(item.nom||item.id)+'</div>'
+    + '<div style="font-size:11px;color:var(--muted)">'+esc(item.id)+' · '+(type==='annuelle'?'Affectation annuelle':'Affectation ponctuelle')
+    + (item.localisation?' · '+esc(item.localisation):'')+'</div>'
+    + '</div>';
+
+  if (aff) {
+    var mine = curEleve && aff.eleveId === curEleve.id;
+    body += '<div style="background:#fff4ce;border-radius:8px;padding:12px;font-size:13px">'
+      + '🔒 Ce '+lbl+' est actuellement affecté à <strong>'+esc(aff.eleveNom||'—')+'</strong>'
+      + (type==='annuelle'
+          ? (aff.annee ? ' (année '+esc(aff.annee)+')' : '')
+          : (' du '+fmtD(aff.dateDebut)+' au '+fmtD(aff.dateFin)))
+      + '.</div>';
+    if (mine) body += '<p style="font-size:11px;color:var(--muted);margin-top:10px">C\'est votre affectation en cours.</p>';
+  } else {
+    body += '<div style="background:#dff6dd;border-radius:8px;padding:12px;font-size:13px;margin-bottom:12px">'
+      + '✅ Ce '+lbl+' est actuellement <strong>libre</strong>.</div>';
+    if (curEleve) {
+      body += '<button class="btn pri" style="width:100%" onclick="declarerAffectation(\''+item.id+'\')">📌 Déclarer cette affectation à mon nom</button>';
+    }
+  }
+
+  document.getElementById('affModalTitle').textContent = lbl.charAt(0).toUpperCase()+lbl.slice(1);
+  document.getElementById('affModalBody').innerHTML = body;
+  openModal('affModal');
+}
+
+function declarerAffectation(materielId) {
+  if (!curEleve) return;
+  var item = (data.inventory||[]).find(function(x){ return x.id === materielId; });
+  var type = affType(materielId);
+  if (!type) return;
+  // Sécurité : ne pas écraser une affectation apparue entre-temps
+  if (getActiveAff(materielId)) { notify('Cet équipement vient d\'être affecté par quelqu\'un d\'autre.', true); showAffectationEquipement(item||{id:materielId}); return; }
+
+  var d = today();
+  var newAff = {
+    id:         genId('AFF'),
+    materielId: materielId,
+    eleveId:    curEleve.id,
+    eleveNom:   curEleve.nom || curEleve.name || '',
+    type:       type,
+    dateDebut:  d,
+    dateFin:    type === 'ponctuelle' ? d : '',
+    annee:      type === 'annuelle' ? anneeScolaire() : ''
+  };
+  if (!data.affectations) data.affectations = [];
+  data.affectations.push(newAff);
+  saveData().then(function() {
+    closeModal('affModal');
+    notify('✅ Affectation enregistrée : '+(item?item.nom:materielId)+'.');
+  });
+}
+
 var zxingMatReader  = null;
 var matScannés      = []; // historique de la session en cours
 
@@ -2107,7 +2213,21 @@ function handleScanMat(code) {
     return;
   }
 
-  // Avertir si c'est une catégorie non pertinente pour un bon
+  // Système didactique : pas un consommable → retrouver les TP associés dans la section "Mes TP"
+  if (item.categorie === 'Systèmes didactiques') {
+    showView('tp');
+    handleScanTP(item.id || code);
+    return;
+  }
+
+  // Poste de câblage, cellule de câblage, armoire de confinement : équipement affectable,
+  // pas un consommable → afficher/déclarer l'affectation au lieu de l'ajouter à un bon
+  if (affType(item.id)) {
+    showAffectationEquipement(item);
+    return;
+  }
+
+  // Avertir si c'est une catégorie non pertinente pour un bon (garde-fou en cas de données incohérentes)
   if (CAT_EXCLUES_BON.includes(item.categorie)) {
     notify('"'+item.nom+'" est un '+item.categorie.toLowerCase()+', pas un consommable.', true);
     return;
