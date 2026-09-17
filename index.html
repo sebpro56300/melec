@@ -1716,6 +1716,11 @@ function saveAssignTP() {
         teacherId: state.enseignant?.id||'',
         evaluations: {}
       });
+    } else if (existing.niveau !== cl) {
+      // Une session active existait déjà mais avec un niveau différent (ex. héritée
+      // d'avant une montée de niveau) : on la réaligne sur la classe choisie ici,
+      // plutôt que de la laisser invisible dans l'ancienne classe.
+      existing.niveau = cl;
     }
   });
   saveLocal(); closeModal('modal-assign-tp'); render();
@@ -2527,16 +2532,24 @@ function diagSessions() {
   const dupes = ids.filter((id,i)=>ids.indexOf(id)!==i);
   const noId  = data.sessions.filter(s=>!s.id);
   const noCl  = data.sessions.filter(s=>!s.niveau&&!s.classe&&!s.level);
+  // Sessions dont le niveau enregistré ne correspond plus au niveau ACTUEL de l'élève
+  // (typiquement : ancienne session non terminée, oubliée par une montée de niveau).
+  const desync = data.sessions.filter(s=>{
+    const e = data.eleves.find(x=>x.id===s.eleveId);
+    return e && sessionClasse(s) && sessionClasse(s)!==e.niveau;
+  });
 
   let msg = `Sessions totales : ${data.sessions.length}\n`;
   msg += `IDs dupliqués : ${dupes.length} (${dupes.slice(0,5).join(', ')||'aucun'})\n`;
   msg += `Sans ID : ${noId.length}\n`;
-  msg += `Sans classe : ${noCl.length}\n\n`;
+  msg += `Sans classe : ${noCl.length}\n`;
+  msg += `Désynchronisées (niveau session ≠ niveau actuel élève) : ${desync.length}\n\n`;
   msg += `Détail :\n`;
   data.sessions.forEach((s,i)=>{
     const e = data.eleves.find(x=>x.id===s.eleveId);
     const t = data.tps.find(x=>x.id===s.tpId);
-    msg += `[${i}] id=${s.id||'⚠️VIDE'} | ${e?e.nom+' '+e.prenom:'élève?'} | ${t?t.titre.substring(0,25)+'…':'tp?'} | classe=${s.classe||s.level||'⚠️?'} | ${s.statut}\n`;
+    const mismatch = e && sessionClasse(s) && sessionClasse(s)!==e.niveau;
+    msg += `[${i}] id=${s.id||'⚠️VIDE'} | ${e?e.nom+' '+e.prenom:'élève?'} | ${t?t.titre.substring(0,25)+'…':'tp?'} | session=${sessionClasse(s)||'⚠️?'}${e?' | élève actuel='+e.niveau:''}${mismatch?' ⚠️ DÉSYNC':''} | ${s.statut}\n`;
   });
 
   document.getElementById('content').insertAdjacentHTML('afterbegin',`
@@ -2547,12 +2560,31 @@ function diagSessions() {
       </div>
       <div class="card-body">
         <pre style="font-size:11px;font-family:var(--mono);color:var(--text2);white-space:pre-wrap;max-height:300px;overflow-y:auto;background:var(--bg);padding:10px;border-radius:6px;">${msg}</pre>
+        ${desync.length
+          ? `<button class="btn btn-o" style="margin-top:8px;width:100%;" onclick="fixDesyncSessions()">🔧 Réaligner les ${desync.length} session(s) désynchronisée(s) sur le niveau actuel de l'élève</button>`
+          : ''}
         ${(dupes.length||noId.length||noCl.length)
           ? `<button class="btn btn-o" style="margin-top:8px;width:100%;" onclick="fixSessions()">🔧 Corriger automatiquement les IDs/classes manquants</button>`
-          : `<div style="color:var(--green);font-size:12px;margin-top:8px;">✓ Aucun problème détecté dans les IDs — le bug vient peut-être du cache. Essayez de vider les sessions et réassigner.</div>`}
+          : ''}
+        ${!(desync.length||dupes.length||noId.length||noCl.length)
+          ? `<div style="color:var(--green);font-size:12px;margin-top:8px;">✓ Aucun problème détecté.</div>`
+          : ''}
         <button class="btn btn-d" style="margin-top:8px;width:100%;" onclick="askConfirm('Supprimer TOUTES les sessions TP ?','Cette action est irréversible.',()=>{data.sessions=[];saveLocal();render();toast(\'Sessions effacées\',\'ok\');})">🗑️ Vider toutes les sessions</button>
       </div>
     </div>`);
+}
+
+function fixDesyncSessions() {
+  let n = 0;
+  data.sessions.forEach(s=>{
+    const e = data.eleves.find(x=>x.id===s.eleveId);
+    if (e && sessionClasse(s) && sessionClasse(s)!==e.niveau) {
+      s.niveau = e.niveau;
+      n++;
+    }
+  });
+  saveLocal(); render();
+  toast(n+' session(s) réalignée(s) ✓','ok');
 }
 
 function fixSessions() {
