@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0d1117">
 <title>MELEC — Suivi Pédagogique v9</title>
+<!-- QR Scanner -->
+<script src="https://unpkg.com/@zxing/library@latest/umd/index.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 :root{
@@ -533,6 +535,25 @@ select option{background:var(--bg2);}
   </div>
 </div>
 
+<!-- MODAL SCAN ÉQUIPEMENT (recherche affectation — lecture seule) -->
+<div class="modal-ov" id="modal-scan-equip">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">📷 Scanner un équipement</div>
+    <video id="scan-equip-video" playsinline autoplay muted
+      style="width:100%;max-height:50vh;object-fit:cover;border-radius:8px;background:#000;margin-bottom:10px;"></video>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:10px;" id="scan-equip-status">Pointez vers un QR code…</div>
+    <div class="fg">
+      <label>Ou saisir un code</label>
+      <input type="text" id="scan-equip-manual" placeholder="MELEC-055"
+        onkeydown="if(event.key==='Enter')handleScanEquip(document.getElementById('scan-equip-manual').value.trim())">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeScanEquip()">Fermer</button>
+      <button class="btn btn-p" onclick="handleScanEquip(document.getElementById('scan-equip-manual').value.trim())">OK</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -542,6 +563,33 @@ select option{background:var(--bg2);}
 const CLASSES = { '2MELEC':'2nde MELEC', '1MELEC':'1ère MELEC', 'T-MELEC':'Terminale MELEC' };
 const PRESENCES = { P:'P', A:'A', R:'R' };
 const HAB_TYPES = ['B0','B1V','BR'];
+
+// ── Inventaire & équipements affectables (mêmes réf. que melec-tp-admin.html / melec-eleve.html) ──
+const INV_GIST = '7199f3da76a616c61c7b7780409bf786';
+const INV_FILE = 'melec-inventaire.json';
+function melecRange(pfx,a,b){ const r=[]; for(let i=a;i<=b;i++) r.push(pfx+String(i).padStart(3,'0')); return r; }
+const POSTES_IDS   = melecRange('MELEC-',51,70);                          // affectation annuelle
+const CELLULES_IDS = ['MELEC-040', ...melecRange('MELEC-',71,82)];        // affectation annuelle
+const ARMOIRES_IDS = melecRange('MELEC-',41,45);                          // affectation ponctuelle
+function affType(id) {
+  if (POSTES_IDS.includes(id) || CELLULES_IDS.includes(id)) return 'annuelle';
+  if (ARMOIRES_IDS.includes(id)) return 'ponctuelle';
+  return null;
+}
+function libelleAffectable(id) {
+  if (POSTES_IDS.includes(id))   return 'Poste de câblage';
+  if (CELLULES_IDS.includes(id)) return 'Cellule de câblage';
+  if (ARMOIRES_IDS.includes(id)) return 'Armoire de confinement';
+  return 'Équipement';
+}
+function getActiveAffEquip(id) {
+  const d = today();
+  return (data.affectations||[]).find(a => a.materielId===id && (a.type==='annuelle' || (a.dateFin>=d && a.dateDebut<=d)));
+}
+function equipementsAffectables() {
+  const ids = [...POSTES_IDS, ...CELLULES_IDS, ...ARMOIRES_IDS];
+  return (data.inventory||[]).filter(i => ids.includes(i.id));
+}
 
 // ════════════════════════════════════════════════════════════
 // STATE
@@ -573,6 +621,8 @@ let data = {
   tps: [],
   sessions: [],
   tpEleve:  {},   // observations et phases élèves (tp-eleve.json)
+  inventory: [],     // depuis melec-inventaire.json (Gist inventaire, lecture seule)
+  affectations: [],  // depuis affectations.json (Gist tp-admin, lecture seule — géré dans melec-tp-admin.html)
 };
 let confirmCb = null;
 let editCtx = {}; // contexte d'édition en cours
@@ -710,13 +760,15 @@ async function pollSessions() {
     data.habEleve = parse('hab-eleve.json',          data.habEleve);
     data.tpEleve  = parse('tp-eleve.json',           data.tpEleve);
 
-    // Gist TP → sessions élèves
+    // Gist TP → sessions élèves + affectations équipement (postes/cellules/armoires)
     if (cfg.tpGistId) {
       const r2 = await fetch(`https://api.github.com/gists/${cfg.tpGistId}`, { headers:h });
       if (r2.ok) {
         const g2 = await r2.json();
         const fSes = g2.files['tp-sessions.json'];
         if (fSes) data.sessions = JSON.parse(fSes.content);
+        const fAff = g2.files['affectations.json'];
+        if (fAff) data.affectations = JSON.parse(fAff.content);
       }
     }
 
@@ -744,6 +796,8 @@ function loadLocal() {
   try { data.tps        = JSON.parse(localStorage.getItem('ml_tps')     || '[]'); } catch(e){}
   try { data.sessions   = JSON.parse(localStorage.getItem('ml_sessions')|| '[]'); } catch(e){}
   try { data.tpEleve    = JSON.parse(localStorage.getItem('ml_tp_eleve')|| '{}'); } catch(e){}
+  try { data.inventory    = JSON.parse(localStorage.getItem('ml_inventory')   || '[]'); } catch(e){}
+  try { data.affectations = JSON.parse(localStorage.getItem('ml_affectations')|| '[]'); } catch(e){}
 }
 
 function saveLocal() {
@@ -760,6 +814,8 @@ function saveLocal() {
   localStorage.setItem('ml_tps',      JSON.stringify(data.tps));
   localStorage.setItem('ml_sessions', JSON.stringify(data.sessions));
   localStorage.setItem('ml_tp_eleve', JSON.stringify(data.tpEleve));
+  localStorage.setItem('ml_inventory',    JSON.stringify(data.inventory));
+  localStorage.setItem('ml_affectations', JSON.stringify(data.affectations));
 }
 
 // ════════════════════════════════════════════════════════════
@@ -801,8 +857,21 @@ async function loadRemote() {
         data.tps       = g2.files['tps.json']         ? JSON.parse(g2.files['tps.json'].content)         : [];
         data.sessions  = g2.files['tp-sessions.json'] ? JSON.parse(g2.files['tp-sessions.json'].content) : [];
         data.ressources= g2.files['ressources.json']  ? JSON.parse(g2.files['ressources.json'].content)  : [];
+        // affectations.json — géré (créé/modifié) dans melec-tp-admin.html et melec-eleve.html ; lecture seule ici
+        data.affectations = g2.files['affectations.json'] ? JSON.parse(g2.files['affectations.json'].content) : [];
       }
     }
+
+    // Charger le Gist inventaire (lecture seule)
+    try {
+      const r3 = await fetch(`https://api.github.com/gists/${INV_GIST}`, { headers:h });
+      if (r3.ok) {
+        const g3 = await r3.json();
+        const f = g3.files[INV_FILE];
+        const inv = f ? JSON.parse(f.content) : null;
+        data.inventory = inv && inv.items ? inv.items : (Array.isArray(inv) ? inv : []);
+      }
+    } catch(e) { /* inventaire optionnel — pas bloquant */ }
 
     saveLocal();
     isSyncing = false;
@@ -895,6 +964,7 @@ const SIDEBAR_DEFS = {
     { s:'dashboard', ico:'🏠', label:'Tableau de bord' },
     { s:'appel',     ico:'📋', label:'Appel', badge:()=>data.appel.filter(a=>a.niveau===state.classe).length },
     { s:'notes',     ico:'🗒️', label:'Notes', badge:()=>Object.values(data.notes).reduce((a,arr)=>a+(arr||[]).filter(n=>n.niveau===state.classe).length,0) },
+    { s:'equipaff',  ico:'🔌', label:'Affectation équipement', badge:()=>equipementsAffectables().filter(i=>getActiveAffEquip(i.id)).length },
   ],
   eleves: [
     { s:'fiches',    ico:'👤', label:'Fiches élèves', badge:()=>elevesByClasse().length },
@@ -934,6 +1004,7 @@ function render() {
     dashboard:  renderDashboard,
     appel:      renderAppel,
     notes:      renderNotes,
+    equipaff:   renderEquipAff,
     fiches:     renderFiches,
     pfmp:       renderPFMP,
     hab:        renderHab,
@@ -1258,6 +1329,132 @@ function deleteNote(noteId, teacherId) {
     if (data.notes[teacherId]) data.notes[teacherId] = data.notes[teacherId].filter(n=>n.id!==noteId);
     saveLocal(); render(); toast('Supprimée','ok');
   });
+}
+
+// ════════════════════════════════════════════════════════════
+// AFFECTATION ÉQUIPEMENT (lecture seule — gestion dans melec-tp-admin.html)
+// ════════════════════════════════════════════════════════════
+let equipAffFilter   = '';
+let zxingEquipReader = null;
+
+function renderEquipAff() {
+  const groups = [
+    { ico:'🔌', label:'Postes de câblage',      ids:POSTES_IDS   },
+    { ico:'🗄️', label:'Cellules de câblage',     ids:CELLULES_IDS },
+    { ico:'🔒', label:'Armoires de confinement', ids:ARMOIRES_IDS },
+  ];
+
+  const f = equipAffFilter.trim().toUpperCase();
+  let matchInfo = '';
+  if (f) {
+    const item = (data.inventory||[]).find(i => (i.id||'').toUpperCase()===f || (i.qr_code||'').toUpperCase()===f);
+    if (!item) {
+      matchInfo = `<div class="card"><div class="empty"><div class="ei">❔</div><div class="et">Aucun équipement trouvé pour « ${esc(f)} »</div></div></div>`;
+    } else if (!affType(item.id)) {
+      matchInfo = `<div class="card"><div class="empty"><div class="ei">ℹ️</div><div class="et">${esc(item.nom||item.id)} n'est pas un poste, une cellule ou une armoire.</div></div></div>`;
+    } else {
+      const aff = getActiveAffEquip(item.id);
+      matchInfo = `<div class="card" style="border-color:var(--accent2);">
+        <div class="card-head"><span>🔎</span><span class="card-title">Résultat — ${esc(libelleAffectable(item.id))}</span>
+          <button class="btn btn-g btn-sm" style="margin-left:auto" onclick="clearEquipAffSearch()">✕</button>
+        </div>
+        <div class="card-body">
+          <div style="font-size:13px;font-weight:600;">${esc(item.nom||item.id)}</div>
+          <div class="td-mono" style="margin-bottom:8px;">${esc(item.id)}${item.localisation?' · '+esc(item.localisation):''}</div>
+          ${aff
+            ? `<span class="badge ${aff.type==='annuelle'?'b-blue':'b-orange'}">${esc(aff.eleveNom||'—')} — ${aff.type==='annuelle'?('Année '+esc(aff.annee||'—')):('du '+esc(aff.dateDebut||'?')+' au '+esc(aff.dateFin||'?'))}</span>`
+            : `<span class="badge b-green">Libre — aucune affectation</span>`}
+        </div>
+      </div>`;
+    }
+  }
+
+  const sections = groups.map(g=>{
+    const items = equipementsAffectables().filter(i=>g.ids.includes(i.id));
+    const rows = items.map(i=>{
+      const aff = getActiveAffEquip(i.id);
+      if (!aff) return null; // le matériel libre n'est pas affiché
+      return `<tr>
+        <td>${esc(i.nom||i.id)}</td>
+        <td class="td-mono">${esc(i.id)}</td>
+        <td>${esc(aff.eleveNom||'—')}</td>
+        <td><span class="badge ${aff.type==='annuelle'?'b-blue':'b-orange'}">${aff.type==='annuelle'?'Annuelle':'Ponctuelle'}</span></td>
+        <td class="td-mono">${aff.type==='annuelle' ? ('Année '+esc(aff.annee||'—')) : ('du '+esc(aff.dateDebut||'?')+' au '+esc(aff.dateFin||'?'))}</td>
+      </tr>`;
+    }).filter(Boolean);
+
+    return `<div class="card">
+      <div class="card-head"><span>${g.ico}</span><span class="card-title">${g.label}</span>
+        <span class="badge b-gray" style="margin-left:auto">${rows.length} affecté(s) / ${items.length}</span>
+      </div>
+      <div class="card-body" style="padding:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+        ${rows.length
+          ? `<table><thead><tr><th>Équipement</th><th>ID</th><th>Élève affecté</th><th>Type</th><th>Période</th></tr></thead><tbody>${rows.join('')}</tbody></table>`
+          : `<div class="empty"><div class="et">Aucun affecté actuellement.</div></div>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  setContent(`
+    ${pageHeader('Affectation équipement','Postes de câblage, cellules de câblage, armoires de confinement — lecture seule',
+      `<button class="btn btn-g btn-sm" onclick="window.open('melec-tp-admin.html','_blank')">🔗 Gérer les affectations (melec-tp-admin.html)</button>`)}
+    <div class="card">
+      <div class="card-body" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <input type="text" id="equipaff-search" placeholder="Rechercher un code : MELEC-055" value="${esc(equipAffFilter)}"
+          style="flex:1;min-width:200px;" onkeydown="if(event.key==='Enter')searchEquipAff()">
+        <button class="btn btn-g btn-sm" onclick="searchEquipAff()">🔎 Rechercher</button>
+        <button class="btn btn-p btn-sm" onclick="openScanEquip()">📷 Scanner</button>
+        ${equipAffFilter ? `<button class="btn btn-g btn-sm" onclick="clearEquipAffSearch()">✕ Effacer</button>` : ''}
+      </div>
+    </div>
+    ${matchInfo}
+    ${sections}
+  `);
+}
+
+function searchEquipAff() {
+  equipAffFilter = document.getElementById('equipaff-search').value.trim();
+  renderEquipAff();
+}
+function clearEquipAffSearch() {
+  equipAffFilter = '';
+  renderEquipAff();
+}
+
+function openScanEquip() {
+  openModal('modal-scan-equip');
+  document.getElementById('scan-equip-status').textContent = 'Démarrage caméra…';
+  document.getElementById('scan-equip-manual').value = '';
+  try {
+    zxingEquipReader = new ZXing.BrowserMultiFormatReader();
+    const video = document.getElementById('scan-equip-video');
+    document.getElementById('scan-equip-status').textContent = 'Pointez vers un QR code…';
+    zxingEquipReader.decodeFromConstraints(
+      { video:{ facingMode:{ ideal:'environment' } } },
+      video,
+      (result, err) => {
+        if (result) {
+          const code = result.getText();
+          closeScanEquip();
+          handleScanEquip(code);
+        }
+      }
+    );
+  } catch(e) {
+    document.getElementById('scan-equip-status').textContent = '❌ Caméra indisponible — saisissez le code manuellement';
+  }
+}
+
+function closeScanEquip() {
+  closeModal('modal-scan-equip');
+  if (zxingEquipReader) { try { zxingEquipReader.reset(); } catch(e){} zxingEquipReader = null; }
+}
+
+function handleScanEquip(code) {
+  if (!code) return;
+  closeScanEquip();
+  equipAffFilter = code.trim().toUpperCase();
+  renderEquipAff();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2499,7 +2696,7 @@ function askEffacer() {
 // ════════════════════════════════════════════════════════════
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+document.querySelectorAll('.modal-ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o){ if(o.id==='modal-scan-equip') closeScanEquip(); else o.classList.remove('open'); }}));
 
 function askConfirm(title, body, cb, keyword) {
   confirmCb = cb;
