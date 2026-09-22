@@ -2414,7 +2414,7 @@ function today(){ return new Date().toISOString().slice(0,10); }
 // À CONFIGURER : adresse du dépôt GitHub PUBLIC contenant radio.json + les mp3 (dossier audio/)
 // Format de radio.json : [{ "id":"...", "titre":"...", "theme":"...", "style":"...", "fichier":"audio/titre.mp3" }, ...]
 // "fichier" peut être un chemin relatif à RADIO_BASE_URL, ou une URL http(s) complète.
-var RADIO_BASE_URL     = 'https://raw.githubusercontent.com/VOTRE-COMPTE/VOTRE-DEPOT/main/';
+var RADIO_BASE_URL = 'https://raw.githubusercontent.com/sebpro56300/melec-radio/main/';
 var RADIO_MANIFEST_URL = RADIO_BASE_URL + 'radio.json';
 
 var radioTracks = [];
