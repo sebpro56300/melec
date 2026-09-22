@@ -445,6 +445,30 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
 .mbdy{padding:14px;}
 .mft{padding:10px 14px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end;}
 
+/* ── Radio Cours (lecteur MP3 pédagogique) ── */
+.radio-bar{
+  position:fixed;right:12px;bottom:150px;z-index:900;
+  background:var(--tp);color:#fff;border-radius:30px;
+  display:flex;align-items:center;gap:8px;padding:8px 10px 8px 14px;
+  box-shadow:0 4px 16px rgba(0,0,0,.35);cursor:pointer;max-width:230px;
+  transition:all .2s;
+}
+.radio-bar.collapsed{width:52px;height:52px;padding:0;justify-content:center;border-radius:50%;max-width:52px;}
+.radio-bar.collapsed .rb-info,.radio-bar.collapsed .rb-play{display:none;}
+.radio-bar .rb-ic{font-size:18px;flex-shrink:0;}
+.radio-bar .rb-info{overflow:hidden;flex:1;}
+.radio-bar .rb-title{font-size:11px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.radio-bar .rb-sub{font-size:9px;color:#cfe3ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.radio-bar .rb-play{background:rgba(255,255,255,.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;font-size:12px;cursor:pointer;flex-shrink:0;}
+@media (max-width:768px){ .radio-bar{bottom:70px;} }
+
+.radio-track{display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid #eee;cursor:pointer;}
+.radio-track:last-child{border-bottom:none;}
+.radio-track.playing{background:#eef6ff;}
+.radio-track .rt-ic{font-size:16px;width:20px;text-align:center;flex-shrink:0;}
+.radio-track .rt-title{font-size:13px;font-weight:600;}
+.radio-track .rt-meta{font-size:11px;color:var(--muted);}
+
 /* ── Splash ── */
 #splashScreen{
   position:fixed;inset:0;background:#1e3a5f;z-index:9999;
@@ -522,6 +546,7 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
     <div class="si" data-view="bons" onclick="showView('bons')"><span class="ic">📋</span> Bons d'intervention</div>
     <div class="si" data-view="habilitations" onclick="showView('habilitations')"><span class="ic">⚡</span> Habilitations</div>
     <div class="si" data-view="scan-materiel" onclick="showView('scan-materiel')"><span class="ic">📦</span> Scanner matériel</div>
+    <div class="si" onclick="openRadioModal()"><span class="ic">📻</span> Radio Cours</div>
     <div style="margin-top:auto;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)">
       <button class="btn sml" onclick="logout()" style="width:100%;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#ccc;font-size:11px">↩ Déconnexion</button>
     </div>
@@ -641,6 +666,31 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;background:#6b7280;
   </div>
 
 </div><!-- /window -->
+
+<!-- Radio Cours : mini-lecteur flottant (visible sur toutes les vues) -->
+<div class="radio-bar collapsed" id="radioBar" onclick="openRadioModal()">
+  <span class="rb-ic">📻</span>
+  <div class="rb-info">
+    <div class="rb-title" id="radioBarTitle">Radio Cours</div>
+    <div class="rb-sub" id="radioBarSub">Toucher pour ouvrir</div>
+  </div>
+  <button class="rb-play" id="radioBarPlay" onclick="event.stopPropagation();toggleRadioPlay()">▶</button>
+</div>
+
+<!-- Modal Radio Cours -->
+<div class="moverlay" id="radioModal">
+  <div class="modal">
+    <div class="mhd">📻 <span>Radio Cours</span>
+      <button class="mcl" onclick="closeModal('radioModal')">✕</button>
+    </div>
+    <div class="mbdy" style="padding:0" id="radioListBody"></div>
+    <div class="mft" style="justify-content:space-between;align-items:center">
+      <button class="btn" onclick="prevRadioTrack()">⏮ Préc.</button>
+      <button class="btn ok" onclick="toggleRadioPlay()" id="radioModalPlay">▶ Lecture</button>
+      <button class="btn" onclick="nextRadioTrack()">Suiv. ⏭</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal détail TP -->
 <div class="moverlay" id="tpModal">
@@ -2358,6 +2408,109 @@ function openDoc(url, titre, type) {
 }
 function fmtD(d){ if(!d)return'—';try{return new Date(d+'T00:00:00').toLocaleDateString('fr-FR');}catch(e){return d;} }
 function today(){ return new Date().toISOString().slice(0,10); }
+// ═══════════════════════════════════════════════════════════
+// RADIO COURS — lecture de titres MP3 pédagogiques hébergés sur GitHub
+// ═══════════════════════════════════════════════════════════
+// À CONFIGURER : adresse du dépôt GitHub PUBLIC contenant radio.json + les mp3 (dossier audio/)
+// Format de radio.json : [{ "id":"...", "titre":"...", "theme":"...", "style":"...", "fichier":"audio/titre.mp3" }, ...]
+// "fichier" peut être un chemin relatif à RADIO_BASE_URL, ou une URL http(s) complète.
+var RADIO_BASE_URL     = 'https://raw.githubusercontent.com/VOTRE-COMPTE/VOTRE-DEPOT/main/';
+var RADIO_MANIFEST_URL = RADIO_BASE_URL + 'radio.json';
+
+var radioTracks = [];
+var radioIdx    = -1;
+var radioAudio  = null;
+var radioLoaded = false;
+
+function radioResolveUrl(fichier) {
+  if (!fichier) return '';
+  return /^https?:\/\//i.test(fichier) ? fichier : RADIO_BASE_URL + fichier;
+}
+
+function loadRadioManifest() {
+  var el = document.getElementById('radioListBody');
+  el.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:14px">Chargement…</p>';
+  fetch(RADIO_MANIFEST_URL, { cache:'no-store' })
+    .then(function(r){ if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(list){ radioTracks = Array.isArray(list) ? list : []; radioLoaded = true; renderRadioList(); })
+    .catch(function(e){
+      el.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:14px">⚠️ Impossible de charger la playlist ('
+        + esc(e.message) + '). Vérifiez l\'adresse du dépôt GitHub (RADIO_MANIFEST_URL dans le code).</p>';
+    });
+}
+
+function openRadioModal() {
+  openModal('radioModal');
+  if (!radioLoaded) loadRadioManifest(); else renderRadioList();
+}
+
+function renderRadioList() {
+  var el = document.getElementById('radioListBody');
+  if (!radioTracks.length) {
+    if (radioLoaded) el.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:14px">Aucun titre disponible pour le moment.</p>';
+    return;
+  }
+  el.innerHTML = radioTracks.map(function(t,i){
+    var playing = (i === radioIdx);
+    var live    = playing && radioAudio && !radioAudio.paused;
+    return '<div class="radio-track'+(playing?' playing':'')+'" onclick="playTrackByIdx('+i+')">'
+      + '<span class="rt-ic">'+(live?'🔊':'🎵')+'</span>'
+      + '<div class="rt-info"><div class="rt-title">'+esc(t.titre||'Sans titre')+'</div>'
+      + '<div class="rt-meta">'+esc(t.theme||'')+(t.style?' · '+esc(t.style):'')+'</div></div>'
+      + '</div>';
+  }).join('');
+}
+
+function ensureRadioAudio() {
+  if (radioAudio) return radioAudio;
+  radioAudio = new Audio();
+  radioAudio.addEventListener('play',  updateRadioBar);
+  radioAudio.addEventListener('pause', updateRadioBar);
+  radioAudio.addEventListener('ended', function(){ nextRadioTrack(); });
+  return radioAudio;
+}
+
+function playTrackByIdx(i) {
+  if (!radioTracks[i]) return;
+  radioIdx = i;
+  var a = ensureRadioAudio();
+  a.src = radioResolveUrl(radioTracks[i].fichier);
+  a.play().catch(function(){ notify('Lecture impossible pour ce titre.', true); });
+  updateRadioBar();
+}
+
+function toggleRadioPlay() {
+  if (radioIdx < 0) { if (radioTracks.length) playTrackByIdx(0); else openRadioModal(); return; }
+  var a = ensureRadioAudio();
+  if (a.paused) a.play(); else a.pause();
+}
+
+function nextRadioTrack() { if (radioTracks.length) playTrackByIdx((radioIdx + 1) % radioTracks.length); }
+function prevRadioTrack() { if (radioTracks.length) playTrackByIdx((radioIdx - 1 + radioTracks.length) % radioTracks.length); }
+
+function updateRadioBar() {
+  var bar     = document.getElementById('radioBar');
+  var titleEl = document.getElementById('radioBarTitle');
+  var subEl   = document.getElementById('radioBarSub');
+  var playBtn = document.getElementById('radioBarPlay');
+  var modBtn  = document.getElementById('radioModalPlay');
+  var playing = radioAudio && !radioAudio.paused && radioIdx >= 0;
+
+  if (radioIdx < 0 || !radioTracks[radioIdx]) {
+    bar.classList.add('collapsed');
+    titleEl.textContent = 'Radio Cours';
+    subEl.textContent   = 'Toucher pour ouvrir';
+  } else {
+    bar.classList.remove('collapsed');
+    var t = radioTracks[radioIdx];
+    titleEl.textContent = t.titre || 'Sans titre';
+    subEl.textContent   = t.theme || '';
+    playBtn.textContent = playing ? '⏸' : '▶';
+  }
+  if (modBtn) modBtn.textContent = playing ? '⏸ Pause' : '▶ Lecture';
+  renderRadioList();
+}
+
 function openModal(id){ var el=document.getElementById(id);if(el)el.classList.add('show'); }
 function closeModal(id){ var el=document.getElementById(id);if(el)el.classList.remove('show'); }
 document.addEventListener('click',function(e){
